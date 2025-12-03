@@ -19,8 +19,8 @@ services:
 
   dago:
     build:
-      context: ../..
-      dockerfile: deployments/docker/Dockerfile
+      context: ..
+      dockerfile: dago/deployments/docker/Dockerfile
     image: aescanero/dago:latest
     container_name: dago
     ports:

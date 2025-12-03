@@ -1,7 +1,7 @@
 # Multi-stage build for DA Orchestrator
 
 # Stage 1: Build
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25.5-alpine AS builder
 
 # Install build dependencies
 RUN apk add --no-cache git make
@@ -9,12 +9,15 @@ RUN apk add --no-cache git make
 # Set working directory
 WORKDIR /build
 
-# Copy go mod files
-COPY go.mod go.sum ./
+# Copy dago-libs first (needed for replace directive)
+COPY dago-libs/ /dago-libs/
+
+# Copy go mod files from dago
+COPY dago/go.mod dago/go.sum ./
 RUN go mod download
 
-# Copy source code
-COPY . .
+# Copy dago source code
+COPY dago/ .
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

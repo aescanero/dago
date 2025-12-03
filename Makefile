@@ -35,17 +35,17 @@ build-linux: ## Build binary for Linux
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o bin/$(BINARY_NAME)-linux-amd64 ./cmd/dago
 
 docker-build: ## Build Docker image
-	docker build -t $(DOCKER_IMAGE):$(VERSION) -t $(DOCKER_IMAGE):latest -f deployments/docker/Dockerfile .
+	cd .. && docker build -t $(DOCKER_IMAGE):$(VERSION) -t $(DOCKER_IMAGE):latest -f dago/deployments/docker/Dockerfile .
 
 docker-push: ## Push Docker image
 	docker push $(DOCKER_IMAGE):$(VERSION)
 	docker push $(DOCKER_IMAGE):latest
 
 docker-compose-up: ## Start local stack with docker-compose
-	docker-compose -f deployments/docker-compose.yml up -d
+	cd .. && docker-compose -f dago/deployments/docker-compose.yml up -d
 
 docker-compose-down: ## Stop local stack
-	docker-compose -f deployments/docker-compose.yml down
+	cd .. && docker-compose -f dago/deployments/docker-compose.yml down
 
 helm-install: ## Install Helm chart
 	helm install dago deployments/helm/dago -f deployments/helm/dago/values.yaml
