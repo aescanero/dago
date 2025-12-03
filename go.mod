@@ -3,7 +3,7 @@ module github.com/aescanero/dago
 go 1.25.5
 
 require (
-	github.com/aescanero/dago-libs v0.1.0
+	github.com/aescanero/dago-libs v0.2.0
 
 	// LLM client
 	github.com/anthropics/anthropic-sdk-go v1.17.0
@@ -67,5 +67,3 @@ require (
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/aescanero/dago-libs => ../dago-libs

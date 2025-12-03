@@ -9,15 +9,12 @@ RUN apk add --no-cache git make
 # Set working directory
 WORKDIR /build
 
-# Copy dago-libs first (needed for replace directive)
-COPY dago-libs/ /dago-libs/
-
-# Copy go mod files from dago
-COPY dago/go.mod dago/go.sum ./
+# Copy go mod files
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy dago source code
-COPY dago/ .
+# Copy source code
+COPY . .
 
 # Build binary
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \

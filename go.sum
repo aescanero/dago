@@ -1,3 +1,5 @@
+github.com/aescanero/dago-libs v0.2.0 h1:KTVMoBBib9b0MW+DyfhCu/TojDIPsD46hw9+KAtiJQ4=
+github.com/aescanero/dago-libs v0.2.0/go.mod h1:hmWFVnaxe7Mx4U93U7fnvSAn0o7Knkux3g0Y3l8jRvc=
 github.com/anthropics/anthropic-sdk-go v1.17.0 h1:BwK8ApcmaAUkvZTiQE0yi3R9XneEFskDIjLTmOAFZxQ=
 github.com/anthropics/anthropic-sdk-go v1.17.0/go.mod h1:WTz31rIUHUHqai2UslPpw5CwXrQP3geYBioRV4WOLvE=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
