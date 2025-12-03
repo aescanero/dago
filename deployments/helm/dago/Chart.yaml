@@ -1,0 +1,17 @@
+apiVersion: v2
+name: dago
+description: DA Orchestrator - Deep Agent Orchestration Engine
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - dago
+  - orchestrator
+  - ai
+  - llm
+home: https://disasterproject.com
+sources:
+  - https://github.com/aescanero/dago
+maintainers:
+  - name: Disaster Project
+    email: hello@disasterproject.com

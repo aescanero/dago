@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: dago-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - dago-network
+
+  dago:
+    build:
+      context: ../..
+      dockerfile: deployments/docker/Dockerfile
+    image: aescanero/dago:latest
+    container_name: dago
+    ports:
+      - "8080:8080"
+      - "9090:9090"
+    environment:
+      - REDIS_ADDR=redis:6379
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - WORKER_POOL_SIZE=${WORKER_POOL_SIZE:-5}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - dago-network
+
+volumes:
+  redis-data:
+    driver: local
+
+networks:
+  dago-network:
+    driver: bridge
