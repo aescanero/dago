@@ -3,9 +3,6 @@
 # Stage 1: Build
 FROM golang:1.25.5-alpine AS builder
 
-# Install build dependencies
-RUN apk add --no-cache git make
-
 # Set working directory
 WORKDIR /build
 
@@ -23,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
     ./cmd/dago
 
 # Stage 2: Runtime
-FROM alpine:3.19
+FROM alpine:3.23
 
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata

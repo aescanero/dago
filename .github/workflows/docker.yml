@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - develop
     tags:
       - 'v*'
 
@@ -35,12 +34,10 @@ jobs:
         with:
           images: aescanero/dago
           tags: |
-            type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
