@@ -21,11 +21,12 @@ services:
     build:
       context: ../..
       dockerfile: deployments/docker/Dockerfile
-    image: aescanero/dago:latest
+    image: aescanero/dago:0.1.0
     container_name: dago
     ports:
       - "8080:8080"
       - "9090:9090"
+      - "2112:2112"  # Prometheus metrics
     environment:
       - REDIS_ADDR=redis:6379
       - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
@@ -42,6 +43,42 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    networks:
+      - dago-network
+
+  executor-worker:
+    image: aescanero/dago-node-executor:0.1.0
+    container_name: dago-executor-worker
+    environment:
+      - REDIS_ADDR=redis:6379
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - WORKER_ID=${EXECUTOR_WORKER_ID:-executor-1}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      dago:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - dago-network
+
+  router-worker:
+    image: aescanero/dago-node-router:0.1.0
+    container_name: dago-router-worker
+    environment:
+      - REDIS_ADDR=redis:6379
+      - LLM_PROVIDER=${LLM_PROVIDER:-anthropic}
+      - LLM_API_KEY=${LLM_API_KEY}
+      - WORKER_ID=${ROUTER_WORKER_ID:-router-1}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    depends_on:
+      redis:
+        condition: service_healthy
+      dago:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - dago-network
 

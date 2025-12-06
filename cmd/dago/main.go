@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/aescanero/dago/internal/application/orchestrator"
-	"github.com/aescanero/dago/internal/application/workers"
 	"github.com/aescanero/dago/internal/config"
 	"github.com/aescanero/dago/pkg/adapters/events/redis"
-	"github.com/aescanero/dago/pkg/adapters/llm"
 	"github.com/aescanero/dago/pkg/adapters/metrics/prometheus"
 	redisstorage "github.com/aescanero/dago/pkg/adapters/storage/redis"
 	"github.com/aescanero/dago/pkg/api/grpc"
@@ -83,15 +81,6 @@ func main() {
 		logger,
 	)
 
-	llmClient, err := llm.NewClient(&llm.Config{
-		Provider: cfg.LLM.Provider,
-		APIKey:   cfg.LLM.APIKey,
-		Logger:   logger,
-	})
-	if err != nil {
-		logger.Fatal("failed to create LLM client", zap.Error(err))
-	}
-
 	metricsCollector := prometheus.NewCollector()
 
 	// Initialize application components
@@ -107,19 +96,9 @@ func main() {
 		cfg.Timeouts.NodeExecutionTimeout,
 	)
 
-	workerPool := workers.NewPool(
-		cfg.Workers.PoolSize,
-		eventBus,
-		stateStorage,
-		llmClient,
-		metricsCollector,
-		logger,
-		cfg.Workers.HealthCheckInterval,
-	)
-
-	// Start worker pool
-	if err := workerPool.Start(); err != nil {
-		logger.Fatal("failed to start worker pool", zap.Error(err))
+	// Start orchestrator manager (subscribes to node.completed events)
+	if err := orchestratorMgr.Start(); err != nil {
+		logger.Fatal("failed to start orchestrator manager", zap.Error(err))
 	}
 
 	// Initialize API servers
@@ -157,8 +136,7 @@ func main() {
 
 	logger.Info("DA Orchestrator started",
 		zap.Int("http_port", cfg.HTTPPort),
-		zap.Int("grpc_port", cfg.GRPCPort),
-		zap.Int("worker_pool_size", cfg.Workers.PoolSize))
+		zap.Int("grpc_port", cfg.GRPCPort))
 
 	// Wait for interrupt signal
 	sigCh := make(chan os.Signal, 1)
@@ -178,10 +156,6 @@ func main() {
 
 	if err := grpcServer.Shutdown(shutdownCtx); err != nil {
 		logger.Error("gRPC server shutdown error", zap.Error(err))
-	}
-
-	if err := workerPool.Shutdown(shutdownCtx); err != nil {
-		logger.Error("worker pool shutdown error", zap.Error(err))
 	}
 
 	if err := orchestratorMgr.Shutdown(shutdownCtx); err != nil {

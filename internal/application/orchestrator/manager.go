@@ -7,12 +7,22 @@ import (
 	"time"
 
 	"github.com/aescanero/dago-libs/pkg/domain"
+	"github.com/aescanero/dago-libs/pkg/domain/graph"
 	"github.com/aescanero/dago-libs/pkg/ports"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
-// Manager coordinates graph execution
+// Event topics for worker communication
+const (
+	TopicExecutorWork   = "executor.work"
+	TopicRouterWork     = "router.work"
+	TopicNodeCompleted  = "node.completed"
+	TopicGraphEvents    = "graph.events"
+)
+
+// Manager coordinates graph execution by publishing work to workers
+// and listening for completion events
 type Manager struct {
 	eventBus   ports.EventBus
 	storage    ports.StateStorage
@@ -26,6 +36,10 @@ type Manager struct {
 	// Configuration
 	graphTimeout time.Duration
 	nodeTimeout  time.Duration
+
+	// Context for subscriptions
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // executionContext holds state for a single graph execution
@@ -46,6 +60,7 @@ func NewManager(
 	logger *zap.Logger,
 	graphTimeout, nodeTimeout time.Duration,
 ) *Manager {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Manager{
 		eventBus:     eventBus,
 		storage:      storage,
@@ -54,15 +69,30 @@ func NewManager(
 		logger:       logger,
 		graphTimeout: graphTimeout,
 		nodeTimeout:  nodeTimeout,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 }
 
+// Start initializes the manager and starts listening for events
+func (m *Manager) Start() error {
+	m.logger.Info("starting orchestrator manager")
+
+	// Subscribe to node completion events from workers
+	if err := m.eventBus.Subscribe(m.ctx, TopicNodeCompleted, m.handleNodeCompleted); err != nil {
+		return fmt.Errorf("failed to subscribe to node completed events: %w", err)
+	}
+
+	m.logger.Info("orchestrator manager started, listening for node completion events")
+	return nil
+}
+
 // SubmitGraph validates and submits a graph for execution
-func (m *Manager) SubmitGraph(ctx context.Context, graph *domain.Graph, inputs map[string]interface{}) (string, error) {
+func (m *Manager) SubmitGraph(ctx context.Context, g *domain.Graph, inputs map[string]interface{}) (string, error) {
 	// Validate graph structure
-	if err := m.validator.Validate(graph); err != nil {
+	if err := m.validator.Validate(g); err != nil {
 		m.logger.Error("graph validation failed",
-			zap.String("graph_id", graph.ID),
+			zap.String("graph_id", g.ID),
 			zap.Error(err))
 		m.metrics.RecordGraphSubmitted(string(domain.ExecutionStatusFailed))
 		return "", fmt.Errorf("validation failed: %w", err)
@@ -74,15 +104,15 @@ func (m *Manager) SubmitGraph(ctx context.Context, graph *domain.Graph, inputs m
 	// Create initial state
 	state := &domain.GraphState{
 		GraphID:     graphID,
-		Graph:       graph,
-		Status:      domain.ExecutionStatusSubmitted,
+		Graph:       g,
+		Status:      domain.ExecutionStatusRunning,
 		Inputs:      inputs,
 		NodeStates:  make(map[string]*domain.NodeState),
 		SubmittedAt: time.Now(),
 	}
 
 	// Initialize node states
-	for nodeID := range graph.Nodes {
+	for nodeID := range g.Nodes {
 		state.NodeStates[nodeID] = &domain.NodeState{
 			NodeID: nodeID,
 			Status: domain.ExecutionStatusPending,
@@ -98,38 +128,17 @@ func (m *Manager) SubmitGraph(ctx context.Context, graph *domain.Graph, inputs m
 	}
 
 	// Publish graph submitted event
-	event := &domain.Event{
-		ID:        uuid.New().String(),
-		Type:      domain.EventTypeGraphSubmitted,
-		GraphID:   graphID,
-		Timestamp: time.Now(),
-		Data: map[string]interface{}{
-			"graph":  graph,
-			"inputs": inputs,
-		},
-	}
-
-	// Convert domain.Event to ports.Event
-	portsEvent := ports.Event{
-		ID:          event.ID,
-		Type:        ports.EventType(event.Type),
-		Timestamp:   event.Timestamp,
-		ExecutionID: event.GraphID,
-		Data:        event.Data,
-	}
-
-	if err := m.eventBus.Publish(ctx, "graph.events", portsEvent); err != nil {
-		m.logger.Error("failed to publish graph submitted event",
-			zap.String("graph_id", graphID),
-			zap.Error(err))
-		return "", fmt.Errorf("failed to publish event: %w", err)
+	if err := m.publishGraphEvent(ctx, graphID, domain.EventTypeGraphSubmitted, map[string]interface{}{
+		"original_graph_id": g.ID,
+	}); err != nil {
+		return "", err
 	}
 
 	// Track execution
 	execCtx, cancel := context.WithTimeout(context.Background(), m.graphTimeout)
 	m.executions.Store(graphID, &executionContext{
 		graphID:    graphID,
-		status:     domain.ExecutionStatusSubmitted,
+		status:     domain.ExecutionStatusRunning,
 		startedAt:  time.Now(),
 		cancelFunc: cancel,
 	})
@@ -137,12 +146,261 @@ func (m *Manager) SubmitGraph(ctx context.Context, graph *domain.Graph, inputs m
 	m.metrics.RecordGraphSubmitted(string(domain.ExecutionStatusSubmitted))
 	m.logger.Info("graph submitted",
 		zap.String("graph_id", graphID),
-		zap.String("original_graph_id", graph.ID))
+		zap.String("original_graph_id", g.ID),
+		zap.String("entry_node", g.EntryNode))
 
 	// Start execution monitoring in background
 	go m.monitorExecution(execCtx, graphID)
 
+	// Publish work for entry node
+	if err := m.publishNodeWork(ctx, graphID, g.EntryNode, state); err != nil {
+		m.logger.Error("failed to publish entry node work",
+			zap.String("graph_id", graphID),
+			zap.String("node_id", g.EntryNode),
+			zap.Error(err))
+		return graphID, nil // Return graphID even on error, execution will timeout
+	}
+
 	return graphID, nil
+}
+
+// handleNodeCompleted processes node completion events from workers
+func (m *Manager) handleNodeCompleted(ctx context.Context, event ports.Event) error {
+	graphID := event.ExecutionID
+	nodeID, _ := event.Data["node_id"].(string)
+	output := event.Data["output"]
+	errorMsg, hasError := event.Data["error"].(string)
+	nextNodeID, _ := event.Data["next_node"].(string) // For router nodes
+
+	m.logger.Info("received node completed event",
+		zap.String("graph_id", graphID),
+		zap.String("node_id", nodeID),
+		zap.Bool("has_error", hasError),
+		zap.String("next_node", nextNodeID))
+
+	// Get current state
+	stateInterface, err := m.storage.GetState(ctx, graphID)
+	if err != nil {
+		m.logger.Error("failed to get state on node completion",
+			zap.String("graph_id", graphID),
+			zap.Error(err))
+		return nil // Don't return error to avoid reprocessing
+	}
+
+	state, ok := stateInterface.(*domain.GraphState)
+	if !ok {
+		m.logger.Error("invalid state type",
+			zap.String("graph_id", graphID))
+		return nil
+	}
+
+	// Update node state
+	nodeState := state.NodeStates[nodeID]
+	if nodeState == nil {
+		m.logger.Error("node state not found",
+			zap.String("graph_id", graphID),
+			zap.String("node_id", nodeID))
+		return nil
+	}
+
+	now := time.Now()
+	nodeState.CompletedAt = &now
+
+	if hasError {
+		nodeState.Status = domain.ExecutionStatusFailed
+		nodeState.Error = errorMsg
+	} else {
+		nodeState.Status = domain.ExecutionStatusCompleted
+		nodeState.Output = output
+	}
+
+	// Save state
+	if err := m.storage.SaveState(ctx, state); err != nil {
+		m.logger.Error("failed to save state after node completion",
+			zap.String("graph_id", graphID),
+			zap.Error(err))
+	}
+
+	// If node failed, mark graph as failed
+	if hasError {
+		m.completeGraph(ctx, graphID, state, domain.ExecutionStatusFailed, errorMsg)
+		return nil
+	}
+
+	// Determine next node
+	var nextNode string
+
+	if nextNodeID != "" {
+		// Router provided next node
+		nextNode = nextNodeID
+	} else {
+		// Find next node from edges
+		nextNode = m.findNextNode(state.Graph, nodeID)
+	}
+
+	if nextNode == "" {
+		// No more nodes, graph complete
+		m.completeGraph(ctx, graphID, state, domain.ExecutionStatusCompleted, "")
+		return nil
+	}
+
+	// Publish work for next node
+	if err := m.publishNodeWork(ctx, graphID, nextNode, state); err != nil {
+		m.logger.Error("failed to publish next node work",
+			zap.String("graph_id", graphID),
+			zap.String("node_id", nextNode),
+			zap.Error(err))
+	}
+
+	return nil
+}
+
+// findNextNode finds the next node to execute based on edges
+func (m *Manager) findNextNode(g *domain.Graph, currentNodeID string) string {
+	edges := g.GetOutgoingEdges(currentNodeID)
+	if len(edges) == 0 {
+		return ""
+	}
+	// For now, just take the first edge (linear flow)
+	// Router nodes will provide next_node explicitly
+	return edges[0].To
+}
+
+// publishNodeWork publishes a work event for a node
+func (m *Manager) publishNodeWork(ctx context.Context, graphID, nodeID string, state *domain.GraphState) error {
+	node := state.Graph.GetNode(nodeID)
+	if node == nil {
+		return fmt.Errorf("node not found: %s", nodeID)
+	}
+
+	// Update node state to running
+	nodeState := state.NodeStates[nodeID]
+	now := time.Now()
+	nodeState.Status = domain.ExecutionStatusRunning
+	nodeState.StartedAt = &now
+
+	if err := m.storage.SaveState(ctx, state); err != nil {
+		m.logger.Error("failed to save state before node work",
+			zap.String("graph_id", graphID),
+			zap.String("node_id", nodeID),
+			zap.Error(err))
+	}
+
+	// Determine topic based on node type
+	var topic string
+	switch node.GetType() {
+	case graph.NodeTypeExecutor:
+		topic = TopicExecutorWork
+	case graph.NodeTypeRouter:
+		topic = TopicRouterWork
+	default:
+		// For other types (start, end), find next node
+		if node.GetType() == graph.NodeTypeEnd {
+			m.completeGraph(ctx, graphID, state, domain.ExecutionStatusCompleted, "")
+			return nil
+		}
+		// For start node, find next
+		nextNode := m.findNextNode(state.Graph, nodeID)
+		if nextNode != "" {
+			return m.publishNodeWork(ctx, graphID, nextNode, state)
+		}
+		return nil
+	}
+
+	// Build work event
+	event := ports.Event{
+		ID:          uuid.New().String(),
+		Type:        ports.EventType("node.work"),
+		Timestamp:   time.Now(),
+		ExecutionID: graphID,
+		Data: map[string]interface{}{
+			"node_id":    nodeID,
+			"node_type":  string(node.GetType()),
+			"graph_id":   graphID,
+			"state":      state.Inputs,
+			"node_state": state.NodeStates,
+		},
+	}
+
+	m.logger.Info("publishing node work",
+		zap.String("topic", topic),
+		zap.String("graph_id", graphID),
+		zap.String("node_id", nodeID),
+		zap.String("node_type", string(node.GetType())))
+
+	if err := m.eventBus.Publish(ctx, topic, event); err != nil {
+		return fmt.Errorf("failed to publish work event: %w", err)
+	}
+
+	// Publish node started event
+	m.publishGraphEvent(ctx, graphID, domain.EventTypeNodeStarted, map[string]interface{}{
+		"node_id": nodeID,
+	})
+
+	return nil
+}
+
+// completeGraph marks a graph execution as complete
+func (m *Manager) completeGraph(ctx context.Context, graphID string, state *domain.GraphState, status domain.ExecutionStatus, errorMsg string) {
+	now := time.Now()
+	state.Status = status
+	state.CompletedAt = &now
+	if errorMsg != "" {
+		state.Error = errorMsg
+	}
+
+	if err := m.storage.SaveState(ctx, state); err != nil {
+		m.logger.Error("failed to save final state",
+			zap.String("graph_id", graphID),
+			zap.Error(err))
+	}
+
+	// Cancel execution context
+	if val, ok := m.executions.Load(graphID); ok {
+		execCtx := val.(*executionContext)
+		execCtx.cancelFunc()
+		m.executions.Delete(graphID)
+	}
+
+	// Publish completion event
+	eventType := domain.EventTypeGraphCompleted
+	if status == domain.ExecutionStatusFailed {
+		eventType = domain.EventTypeGraphFailed
+	}
+
+	data := map[string]interface{}{}
+	if errorMsg != "" {
+		data["error"] = errorMsg
+	}
+
+	m.publishGraphEvent(ctx, graphID, eventType, data)
+
+	m.logger.Info("graph execution completed",
+		zap.String("graph_id", graphID),
+		zap.String("status", string(status)))
+
+	// Record metrics
+	m.metrics.RecordGraphCompleted(string(status), time.Since(state.SubmittedAt))
+}
+
+// publishGraphEvent publishes a graph-level event
+func (m *Manager) publishGraphEvent(ctx context.Context, graphID string, eventType domain.EventType, data map[string]interface{}) error {
+	event := ports.Event{
+		ID:          uuid.New().String(),
+		Type:        ports.EventType(eventType),
+		Timestamp:   time.Now(),
+		ExecutionID: graphID,
+		Data:        data,
+	}
+
+	if err := m.eventBus.Publish(ctx, TopicGraphEvents, event); err != nil {
+		m.logger.Error("failed to publish graph event",
+			zap.String("graph_id", graphID),
+			zap.String("event_type", string(eventType)),
+			zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 // GetStatus retrieves the current status of a graph execution
@@ -152,7 +410,6 @@ func (m *Manager) GetStatus(ctx context.Context, graphID string) (*domain.GraphS
 		return nil, fmt.Errorf("failed to get state: %w", err)
 	}
 
-	// Type assert to GraphState
 	state, ok := stateInterface.(*domain.GraphState)
 	if !ok {
 		return nil, fmt.Errorf("invalid state type")
@@ -190,7 +447,6 @@ func (m *Manager) CancelExecution(ctx context.Context, graphID string) error {
 		return fmt.Errorf("failed to get state: %w", err)
 	}
 
-	// Type assert to GraphState
 	state, ok := stateInterface.(*domain.GraphState)
 	if !ok {
 		return fmt.Errorf("invalid state type")
@@ -205,26 +461,9 @@ func (m *Manager) CancelExecution(ctx context.Context, graphID string) error {
 	}
 
 	// Publish cancellation event
-	event := &domain.Event{
-		ID:        uuid.New().String(),
-		Type:      domain.EventTypeGraphCancelled,
-		GraphID:   graphID,
-		Timestamp: time.Now(),
-	}
+	m.publishGraphEvent(ctx, graphID, domain.EventTypeGraphCancelled, nil)
 
-	// Convert to ports.Event
-	portsEvent := ports.Event{
-		ID:          event.ID,
-		Type:        ports.EventType(event.Type),
-		Timestamp:   event.Timestamp,
-		ExecutionID: event.GraphID,
-	}
-
-	if err := m.eventBus.Publish(ctx, "graph.events", portsEvent); err != nil {
-		m.logger.Error("failed to publish graph cancelled event",
-			zap.String("graph_id", graphID),
-			zap.Error(err))
-	}
+	m.executions.Delete(graphID)
 
 	m.logger.Info("graph execution cancelled",
 		zap.String("graph_id", graphID))
@@ -234,44 +473,11 @@ func (m *Manager) CancelExecution(ctx context.Context, graphID string) error {
 
 // monitorExecution monitors graph execution and handles timeouts
 func (m *Manager) monitorExecution(ctx context.Context, graphID string) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
+	<-ctx.Done()
 
-	for {
-		select {
-		case <-ctx.Done():
-			// Check if it's a timeout
-			if ctx.Err() == context.DeadlineExceeded {
-				m.handleTimeout(graphID)
-			}
-			return
-
-		case <-ticker.C:
-			// Check execution status
-			stateInterface, err := m.storage.GetState(context.Background(), graphID)
-			if err != nil {
-				m.logger.Error("failed to get state during monitoring",
-					zap.String("graph_id", graphID),
-					zap.Error(err))
-				continue
-			}
-
-			// Type assert to GraphState
-			state, ok := stateInterface.(*domain.GraphState)
-			if !ok {
-				m.logger.Error("invalid state type during monitoring",
-					zap.String("graph_id", graphID))
-				continue
-			}
-
-			// Check if execution is complete
-			if state.Status == domain.ExecutionStatusCompleted ||
-				state.Status == domain.ExecutionStatusFailed ||
-				state.Status == domain.ExecutionStatusCancelled {
-				m.executions.Delete(graphID)
-				return
-			}
-		}
+	// Check if it's a timeout (not cancelled)
+	if ctx.Err() == context.DeadlineExceeded {
+		m.handleTimeout(graphID)
 	}
 }
 
@@ -291,7 +497,6 @@ func (m *Manager) handleTimeout(graphID string) {
 		return
 	}
 
-	// Type assert to GraphState
 	state, ok := stateInterface.(*domain.GraphState)
 	if !ok {
 		m.logger.Error("invalid state type during timeout",
@@ -299,49 +504,15 @@ func (m *Manager) handleTimeout(graphID string) {
 		return
 	}
 
-	now := time.Now()
-	state.Status = domain.ExecutionStatusFailed
-	state.Error = "execution timeout"
-	state.CompletedAt = &now
-
-	if err := m.storage.SaveState(ctx, state); err != nil {
-		m.logger.Error("failed to save state during timeout",
-			zap.String("graph_id", graphID),
-			zap.Error(err))
-	}
-
-	// Publish timeout event
-	event := &domain.Event{
-		ID:        uuid.New().String(),
-		Type:      domain.EventTypeGraphFailed,
-		GraphID:   graphID,
-		Timestamp: time.Now(),
-		Data: map[string]interface{}{
-			"error": "execution timeout",
-		},
-	}
-
-	// Convert to ports.Event
-	portsEvent := ports.Event{
-		ID:          event.ID,
-		Type:        ports.EventType(event.Type),
-		Timestamp:   event.Timestamp,
-		ExecutionID: event.GraphID,
-		Data:        event.Data,
-	}
-
-	if err := m.eventBus.Publish(ctx, "graph.events", portsEvent); err != nil {
-		m.logger.Error("failed to publish timeout event",
-			zap.String("graph_id", graphID),
-			zap.Error(err))
-	}
-
-	m.executions.Delete(graphID)
+	m.completeGraph(ctx, graphID, state, domain.ExecutionStatusFailed, "execution timeout")
 }
 
 // Shutdown gracefully shuts down the manager
 func (m *Manager) Shutdown(ctx context.Context) error {
 	m.logger.Info("shutting down orchestrator manager")
+
+	// Cancel subscriptions
+	m.cancel()
 
 	// Cancel all active executions
 	m.executions.Range(func(key, value interface{}) bool {

@@ -17,12 +17,6 @@ type Config struct {
 	// Redis configuration
 	Redis RedisConfig
 
-	// LLM configuration
-	LLM LLMConfig
-
-	// Worker configuration
-	Workers WorkerConfig
-
 	// Timeouts
 	Timeouts TimeoutConfig
 }
@@ -40,29 +34,6 @@ type RedisConfig struct {
 	DialTimeout  time.Duration `env:"REDIS_DIAL_TIMEOUT" envDefault:"5s"`
 	ReadTimeout  time.Duration `env:"REDIS_READ_TIMEOUT" envDefault:"3s"`
 	WriteTimeout time.Duration `env:"REDIS_WRITE_TIMEOUT" envDefault:"3s"`
-}
-
-// LLMConfig holds LLM provider configuration
-type LLMConfig struct {
-	Provider string `env:"LLM_PROVIDER" envDefault:"anthropic"`
-	APIKey   string `env:"LLM_API_KEY"`
-
-	// Rate limiting
-	MaxConcurrentRequests int           `env:"LLM_MAX_CONCURRENT_REQUESTS" envDefault:"10"`
-	RequestTimeout        time.Duration `env:"LLM_REQUEST_TIMEOUT" envDefault:"120s"`
-
-	// Default model settings
-	DefaultModel       string  `env:"LLM_DEFAULT_MODEL" envDefault:"claude-3-5-sonnet-20241022"`
-	DefaultTemperature float64 `env:"LLM_DEFAULT_TEMPERATURE" envDefault:"0.7"`
-	DefaultMaxTokens   int     `env:"LLM_DEFAULT_MAX_TOKENS" envDefault:"4096"`
-}
-
-// WorkerConfig holds worker pool configuration
-type WorkerConfig struct {
-	PoolSize           int           `env:"WORKER_POOL_SIZE" envDefault:"5"`
-	MaxRetries         int           `env:"WORKER_MAX_RETRIES" envDefault:"3"`
-	RetryDelay         time.Duration `env:"WORKER_RETRY_DELAY" envDefault:"5s"`
-	HealthCheckInterval time.Duration `env:"WORKER_HEALTH_CHECK_INTERVAL" envDefault:"30s"`
 }
 
 // TimeoutConfig holds various timeout configurations
@@ -99,19 +70,6 @@ func (c *Config) Validate() error {
 	// Validate Redis config
 	if c.Redis.Addr == "" {
 		return fmt.Errorf("redis address is required")
-	}
-
-	// Validate LLM config
-	if c.LLM.APIKey == "" {
-		return fmt.Errorf("LLM API key is required")
-	}
-	if c.LLM.Provider != "anthropic" {
-		return fmt.Errorf("unsupported LLM provider: %s (only 'anthropic' is supported in MVP)", c.LLM.Provider)
-	}
-
-	// Validate worker config
-	if c.Workers.PoolSize < 1 {
-		return fmt.Errorf("worker pool size must be at least 1")
 	}
 
 	// Validate log level
