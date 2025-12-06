@@ -332,8 +332,8 @@ func (m *Manager) publishNodeWork(ctx context.Context, graphID, nodeID string, s
 		return fmt.Errorf("failed to publish work event: %w", err)
 	}
 
-	// Publish node started event
-	m.publishGraphEvent(ctx, graphID, domain.EventTypeNodeStarted, map[string]interface{}{
+	// Publish node started event (ignore error as it's non-critical)
+	_ = m.publishGraphEvent(ctx, graphID, domain.EventTypeNodeStarted, map[string]interface{}{
 		"node_id": nodeID,
 	})
 
@@ -373,7 +373,8 @@ func (m *Manager) completeGraph(ctx context.Context, graphID string, state *doma
 		data["error"] = errorMsg
 	}
 
-	m.publishGraphEvent(ctx, graphID, eventType, data)
+	// Publish completion event (ignore error as it's non-critical at this point)
+	_ = m.publishGraphEvent(ctx, graphID, eventType, data)
 
 	m.logger.Info("graph execution completed",
 		zap.String("graph_id", graphID),
@@ -460,8 +461,8 @@ func (m *Manager) CancelExecution(ctx context.Context, graphID string) error {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
-	// Publish cancellation event
-	m.publishGraphEvent(ctx, graphID, domain.EventTypeGraphCancelled, nil)
+	// Publish cancellation event (ignore error as state is already saved)
+	_ = m.publishGraphEvent(ctx, graphID, domain.EventTypeGraphCancelled, nil)
 
 	m.executions.Delete(graphID)
 

@@ -44,7 +44,7 @@ func (h *Handler) HandleGraphStream(c *gin.Context) {
 		h.logger.Error("failed to upgrade connection", zap.Error(err))
 		return
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	h.logger.Info("WebSocket connection established",
 		zap.String("graph_id", graphID),

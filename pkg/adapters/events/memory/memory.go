@@ -31,9 +31,8 @@ func (e *InMemoryEventBus) Publish(ctx context.Context, topic string, event port
 	// Call all handlers asynchronously
 	for _, handler := range handlers {
 		go func(h ports.EventHandler) {
-			if err := h(ctx, event); err != nil {
-				// Silently ignore handler errors in MVP
-			}
+			// Silently ignore handler errors in MVP
+			_ = h(ctx, event)
 		}(handler)
 	}
 

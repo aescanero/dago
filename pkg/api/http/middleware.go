@@ -21,8 +21,9 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-// Authentication middleware (placeholder for future)
-func authMiddleware() gin.HandlerFunc {
+// AuthMiddleware is an authentication middleware (placeholder for future).
+// Exported for use in production when authentication is implemented.
+func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// TODO: Implement authentication
 		c.Next()

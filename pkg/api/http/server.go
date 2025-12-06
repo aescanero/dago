@@ -34,6 +34,7 @@ func NewServer(cfg *Config) *Server {
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(corsMiddleware())
 	router.Use(requestLogger(cfg.Logger))
 
 	s := &Server{
