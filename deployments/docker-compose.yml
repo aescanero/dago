@@ -19,7 +19,7 @@ services:
     build:
       context: ../..
       dockerfile: dago/deployments/docker/Dockerfile.monorepo
-    image: aescanero/dago:0.1.0
+    image: aescanero/dago:0.1.1
     container_name: dago
     ports:
       - "8080:8080"
