@@ -34,13 +34,10 @@ dago/
 ├── internal/                  # Private code
 │   ├── application/           # Use cases / orchestration
 │   │   ├── orchestrator/
-│   │   │   ├── manager.go    # Orchestrator manager
+│   │   │   ├── manager.go    # Orchestrator manager (publishes events)
 │   │   │   ├── validator.go # Graph validator
 │   │   │   └── doc.go
-│   │   └── workers/
-│   │       ├── pool.go       # Worker pool manager
-│   │       ├── health.go     # Health monitoring
-│   │       └── doc.go
+│   │   # Note: workers/ directory does NOT exist - workers are separate services
 │   │
 │   └── config/
 │       ├── config.go         # Configuration from env
@@ -48,11 +45,8 @@ dago/
 │
 ├── pkg/                       # Public (importable)
 │   ├── adapters/
-│   │   ├── llm/
-│   │   │   ├── factory.go    # LLM client factory
-│   │   │   ├── anthropic/
-│   │   │   │   └── client.go # Anthropic implementation
-│   │   │   └── doc.go
+│   │   # Note: llm/ directory does NOT exist in dago core
+│   │   # LLM adapters are in dago-adapters repo, used by worker services
 │   │   ├── events/
 │   │   │   ├── redis/
 │   │   │   │   └── streams.go # Redis Streams implementation
@@ -129,28 +123,22 @@ dago/
 #### Orchestrator Manager
 - Graph submission and validation
 - Execution lifecycle management
+- Publishes events to Redis Streams (executor.work, router.work)
+- Listens for completion events (node.completed)
 - Timeout handling
 - Status queries
 - Cancellation support
 
-#### Worker Pool
-- Fixed-size worker pool (configurable)
-- Event-driven node execution
-- Health monitoring
-- LLM integration
-- Metrics collection
+**Note**: Worker pools do NOT exist in dago core - they run as separate services (dago-node-executor, dago-node-router).
 
 ### 2. Adapters Layer (`pkg/adapters/`)
 
-#### LLM Adapters
-- Factory pattern for provider abstraction
-- Anthropic Claude implementation
-- Extensible for future providers
+**Note**: LLM adapters do NOT exist in dago core - they are in dago-adapters repo and used by worker services.
 
 #### Event Bus
 - Redis Streams with consumer groups
 - In-memory implementation for testing
-- Pub/sub pattern
+- Pub/sub pattern for event coordination
 
 #### State Storage
 - Redis with JSON serialization
@@ -159,8 +147,8 @@ dago/
 
 #### Metrics
 - Prometheus metrics collection
-- Graph and node execution metrics
-- Worker pool status metrics
+- Graph submission and event publishing metrics
+- Event queue depth metrics
 
 ### 3. API Layer (`pkg/api/`)
 
@@ -185,10 +173,10 @@ dago/
 Environment-based configuration:
 - Server ports (HTTP, gRPC)
 - Redis connection
-- LLM provider settings
-- Worker pool size
 - Timeouts and intervals
 - Log level
+
+**Note**: LLM provider settings and worker pool size are configured in worker services, not in dago core.
 
 ### 5. Deployment
 
@@ -231,7 +219,6 @@ Environment-based configuration:
 
 ### External Dependencies
 - **dago-libs v1.0.0**: Domain models and port interfaces
-- **Anthropic SDK**: LLM client
 - **Redis Go Client**: Event bus and storage
 - **Gin**: HTTP framework
 - **Gorilla WebSocket**: WebSocket support
@@ -239,19 +226,23 @@ Environment-based configuration:
 - **Prometheus Client**: Metrics
 - **Zap**: Structured logging
 
+**Note**: Anthropic SDK is a dependency of worker services, not dago core.
+
 ### Infrastructure Requirements
 - **Redis 7.0+**: Event bus and state storage
-- **Anthropic API**: LLM provider
+
+**Note**: LLM API access is required by worker services, not dago core.
 
 ## MVP Simplifications
 
 For MVP, the following simplifications were made:
 
-1. **Single LLM Provider**: Only Anthropic Claude (extensible)
-2. **Redis for Everything**: Events, storage, cache
-3. **Static Worker Pool**: No auto-scaling (manual scaling via config)
-4. **Basic gRPC**: Minimal implementation, HTTP is primary
-5. **No Advanced Features**: No graph versioning, replay, or multi-region
+1. **Redis for Everything**: Events, storage, cache (single infrastructure)
+2. **Basic gRPC**: Minimal implementation, HTTP is primary
+3. **No Advanced Features**: No graph versioning, replay, or multi-region
+4. **Separate Services**: Workers run as separate services, not embedded in dago core
+
+**Note**: LLM provider selection and worker pool scaling are concerns of the worker services.
 
 ## Development Workflow
 
@@ -262,7 +253,7 @@ docker-compose -f deployments/docker-compose.yml up redis -d
 
 # Set environment variables
 export REDIS_ADDR=localhost:6379
-export LLM_API_KEY=your-key
+# Note: LLM_API_KEY not needed for dago core
 
 # Build and run
 make build
@@ -274,8 +265,7 @@ make build
 # Build image
 make docker-build
 
-# Run with docker-compose
-export LLM_API_KEY=your-key
+# Run with docker-compose (note: docker-compose.yml may have LLM_API_KEY but it's not used)
 make docker-compose-up
 ```
 
@@ -283,8 +273,8 @@ make docker-compose-up
 ```bash
 # Using Helm
 helm install dago deployments/helm/dago \
-  --set llm.apiKey=your-key \
   --set redis.addr=redis:6379
+# Note: llm.apiKey not needed - dago is pure orchestrator
 ```
 
 ## Testing
@@ -310,20 +300,20 @@ go test ./tests/e2e/...
 ## Next Steps
 
 ### Post-MVP Features
-1. Additional LLM providers (OpenAI, Gemini)
-2. Auto-scaling worker pools
-3. NATS event bus option
-4. PostgreSQL for long-term storage
-5. Graph versioning
-6. Execution replay
-7. Advanced monitoring dashboard
-8. API authentication/authorization
+1. NATS event bus option
+2. PostgreSQL for long-term storage
+3. Graph versioning
+4. Execution replay
+5. Advanced monitoring dashboard
+6. API authentication/authorization
+
+**Note**: Additional LLM providers and auto-scaling worker pools are features of worker services.
 
 ### Scalability Improvements
 1. Horizontal scaling with load balancer
 2. Redis Cluster for high availability
 3. Multi-region support
-4. Worker pool optimization
+4. Independent scaling of orchestrator vs. worker services
 
 ## Architecture Principles
 

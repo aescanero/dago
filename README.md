@@ -6,10 +6,12 @@ Deep Agent Orchestrator - Core orchestration engine for the Disaster Project.
 
 `dago` is the core orchestration engine that implements the Deep Agent architecture. It provides:
 
-- **Orchestration Manager**: Coordinates multi-agent graph execution
-- **Worker Pools**: Manages concurrent agent workers
-- **Adapters**: Integrations for LLM providers, event buses, storage, and metrics
+- **Orchestration Manager**: Coordinates graph execution via event-driven architecture
+- **Event Coordination**: Publishes work events to separate worker services via Redis Streams
+- **Adapters**: Integrations for event buses, storage, and metrics (NO LLM - handled by workers)
 - **APIs**: HTTP, WebSocket, and gRPC interfaces for graph submission and monitoring
+
+**Note**: This is a **pure orchestrator** - it does NOT execute nodes or call LLMs. Node execution is handled by separate worker services (`dago-node-executor` and `dago-node-router`).
 
 ## Architecture
 

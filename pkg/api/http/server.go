@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aescanero/dago/internal/application/orchestrator"
+	"github.com/aescanero/dago-libs/pkg/ports"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -14,16 +15,18 @@ import (
 
 // Server represents the HTTP API server
 type Server struct {
-	router      *gin.Engine
-	server      *http.Server
+	router       *gin.Engine
+	server       *http.Server
 	orchestrator *orchestrator.Manager
-	logger      *zap.Logger
+	registry     ports.WorkerRegistry
+	logger       *zap.Logger
 }
 
 // Config holds HTTP server configuration
 type Config struct {
 	Port         int
 	Orchestrator *orchestrator.Manager
+	Registry     ports.WorkerRegistry
 	Logger       *zap.Logger
 }
 
@@ -40,6 +43,7 @@ func NewServer(cfg *Config) *Server {
 	s := &Server{
 		router:       router,
 		orchestrator: cfg.Orchestrator,
+		registry:     cfg.Registry,
 		logger:       cfg.Logger,
 	}
 
@@ -71,6 +75,13 @@ func (s *Server) setupRoutes() {
 		v1.GET("/graphs/:id/status", s.handleGetStatus)
 		v1.GET("/graphs/:id/result", s.handleGetResult)
 		v1.POST("/graphs/:id/cancel", s.handleCancelGraph)
+
+		// Worker endpoints
+		v1.GET("/workers", s.handleListWorkers)
+		v1.GET("/workers/stats", s.handleGetWorkerStats)
+		v1.GET("/workers/pool/:type", s.handleGetWorkerPool)
+		v1.GET("/workers/:id", s.handleGetWorker)
+		v1.GET("/workers/:id/metrics", s.handleGetWorkerMetrics)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"syscall"
 	"time"
 
+	workerRegistry "github.com/aescanero/dago-adapters/pkg/worker_registry/redis"
 	"github.com/aescanero/dago/internal/application/orchestrator"
 	"github.com/aescanero/dago/internal/config"
 	"github.com/aescanero/dago/pkg/adapters/events/redis"
@@ -83,6 +84,9 @@ func main() {
 
 	metricsCollector := prometheus.NewCollector()
 
+	// Initialize worker registry
+	registry := workerRegistry.NewRegistry(redisClient, logger)
+
 	// Initialize application components
 	validator := orchestrator.NewValidator()
 
@@ -105,6 +109,7 @@ func main() {
 	httpServer := http.NewServer(&http.Config{
 		Port:         cfg.HTTPPort,
 		Orchestrator: orchestratorMgr,
+		Registry:     registry,
 		Logger:       logger,
 	})
 

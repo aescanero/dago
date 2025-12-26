@@ -8,24 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Multi-provider LLM support (OpenAI, Gemini)
-- Auto-scaling worker pools
 - NATS event bus support
 - PostgreSQL for long-term storage
 - Advanced monitoring dashboard
 - Graph versioning
 - Execution replay
 
+Note: Multi-provider LLM support and auto-scaling worker pools are features of worker services.
+
 ## [1.0.0] - 2025-12-02
 
 ### Added
 - Initial MVP release
 - Core orchestration engine
-  - Orchestrator manager for graph coordination
+  - Orchestrator manager for graph coordination (event-driven)
   - Graph validator for structure and cycle detection
-  - Worker pool manager with health monitoring
+  - Event publishing to Redis Streams (executor.work, router.work)
+  - Event listening for completion (node.completed)
 - Infrastructure adapters
-  - Anthropic Claude LLM adapter
   - Redis Streams event bus
   - Redis state storage
   - Prometheus metrics collector
@@ -48,12 +48,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Go 1.21
 - dago-libs v1.0.0
 - Redis 7.0+ for event bus and storage
-- Anthropic API for LLM
+
+Note: Anthropic API is a dependency of worker services, not dago core.
 
 ### Notes
 - MVP uses Redis for all infrastructure (events, storage, cache)
-- Static worker pool (no auto-scaling in MVP)
-- Single LLM provider (Anthropic Claude)
+- Pure orchestrator - does NOT execute nodes or call LLMs
+- Worker pools run as separate services (dago-node-executor, dago-node-router)
 - Basic health checks and metrics
 
 ## [0.1.0] - 2025-11-15

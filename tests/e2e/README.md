@@ -6,21 +6,25 @@ End-to-end tests for DA Orchestrator.
 
 - Docker & Docker Compose
 - Go 1.21+
-- LLM API key
+- Worker services running (dago-node-executor, dago-node-router)
 
 ## Running Tests
 
 ```bash
-# Start the stack
+# Start the stack (dago orchestrator + Redis)
 docker-compose -f ../../deployments/docker-compose.yml up -d
 
+# Note: You'll also need to start worker services separately
+# Worker services need LLM_API_KEY configured
+
 # Run E2E tests
-export LLM_API_KEY=your-key
 go test -v ./tests/e2e/...
 
 # Stop the stack
 docker-compose -f ../../deployments/docker-compose.yml down
 ```
+
+**Note**: dago core doesn't need LLM_API_KEY - only worker services do.
 
 ## Test Structure
 

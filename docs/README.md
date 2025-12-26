@@ -18,16 +18,18 @@ Contains the business logic:
 
 - **Orchestrator Manager**: Coordinates graph execution, manages lifecycle
 - **Validator**: Validates graph structure and dependencies
-- **Worker Pool**: Manages concurrent agent workers, health monitoring
+
+**Note**: Worker pools are NOT in dago core - they run as separate services (`dago-node-executor` and `dago-node-router`).
 
 ### 3. Adapters Layer (`pkg/adapters/`)
 
 Implements infrastructure concerns:
 
-- **LLM Adapters**: Integration with LLM providers (Anthropic Claude)
 - **Event Bus**: Redis Streams for event-driven communication
 - **State Storage**: Redis for persistent state management
 - **Metrics**: Prometheus metrics collection
+
+**Note**: LLM adapters are in the separate `dago-adapters` repository and used by worker services, NOT by dago core.
 
 ## Component Interactions
 
@@ -44,28 +46,37 @@ Implements infrastructure concerns:
 └──────┬───────────────────────────────────────────┘
        │
 ┌──────▼───────────────────────────────────────────┐
-│          Application Layer                        │
-│  ┌─────────────────┐  ┌──────────────┐          │
-│  │   Orchestrator  │  │ Worker Pool  │          │
-│  │     Manager     │  │   Manager    │          │
-│  └─────────────────┘  └──────────────┘          │
-└──────┬──────────────────────┬────────────────────┘
-       │                      │
-┌──────▼──────────────────────▼────────────────────┐
-│             Adapters Layer                        │
-│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐│
-│  │  LLM   │  │ Events │  │Storage │  │Metrics ││
-│  └────────┘  └────────┘  └────────┘  └────────┘│
-└──────┬──────────┬────────────┬──────────┬───────┘
-       │          │            │          │
-       │      ┌───▼────────────▼──────────▼───┐
-       │      │         Redis                  │
-       │      └────────────────────────────────┘
+│          Application Layer (dago core)            │
+│  ┌─────────────────┐                             │
+│  │   Orchestrator  │  Publishes events:          │
+│  │     Manager     │  - executor.work            │
+│  │                 │  - router.work              │
+│  └─────────────────┘                             │
+└──────┬──────────────────────────────────────────┘
        │
-   ┌───▼──────┐
-   │ Anthropic│
-   └──────────┘
+┌──────▼──────────────────────────────────────────┐
+│             Adapters Layer                       │
+│  ┌────────┐  ┌────────┐  ┌────────┐            │
+│  │ Events │  │Storage │  │Metrics │            │
+│  └────────┘  └────────┘  └────────┘            │
+└──────┬────────────┬──────────┬──────────────────┘
+       │            │          │
+   ┌───▼────────────▼──────────▼───┐
+   │         Redis Streams          │
+   │    (Event Bus + Storage)       │
+   └───┬────────────────────────┬───┘
+       │                        │
+┌──────▼────────┐      ┌────────▼────────┐
+│ executor      │      │ router          │
+│ workers       │      │ workers         │
+│ (separate     │      │ (separate       │
+│  service)     │      │  service)       │
+│               │      │                 │
+│ Uses LLM      │      │ Uses LLM        │
+└───────────────┘      └─────────────────┘
 ```
+
+**IMPORTANT**: dago core is a pure orchestrator - it does NOT execute nodes or call LLMs. Worker services subscribe to Redis Streams events and handle execution.
 
 ## Data Flow
 
@@ -81,13 +92,15 @@ Implements infrastructure concerns:
 
 ### Execution Flow
 
-1. **Worker Pool** subscribes to execution events
-2. **Worker** picks up ready node from event bus
-3. **LLM Adapter** executes node with appropriate provider
-4. **Orchestrator Manager** updates graph state based on results
-5. **Event Bus** publishes node completion/failure events
+1. **Orchestrator Manager** publishes `executor.work` or `router.work` events to Redis Streams
+2. **Worker services** (dago-node-executor/router) subscribe to execution events
+3. **Workers** pick up events and execute nodes (using LLM when needed)
+4. **Workers** publish `node.completed` events back to Redis Streams
+5. **Orchestrator Manager** receives completion events and updates graph state
 6. **WebSocket** streams updates to connected clients
 7. **Metrics** records execution statistics
+
+**Note**: Steps 2-4 happen in separate worker services, NOT in dago core.
 
 ## Configuration
 
@@ -103,14 +116,9 @@ LOG_LEVEL=info                # Log level
 REDIS_ADDR=localhost:6379     # Redis address
 REDIS_PASS=                   # Redis password (optional)
 REDIS_DB=0                    # Redis database number
-
-# LLM Configuration
-LLM_PROVIDER=anthropic        # LLM provider
-LLM_API_KEY=sk-ant-...        # API key
-
-# Worker Configuration
-WORKER_POOL_SIZE=5            # Number of workers
 ```
+
+**Note**: LLM_PROVIDER, LLM_API_KEY, and WORKER_POOL_SIZE are configured in the worker services (dago-node-executor and dago-node-router), NOT in dago core.
 
 ### Redis Usage
 
@@ -124,9 +132,10 @@ For MVP simplicity, all infrastructure uses Redis:
 
 ### API Security
 
-- API keys for LLM providers stored in environment variables
 - Consider adding API authentication for production
 - Rate limiting should be implemented at reverse proxy level
+
+**Note**: LLM API keys are configured in worker services, not in dago core.
 
 ### Network Security
 
@@ -142,11 +151,11 @@ For MVP simplicity, all infrastructure uses Redis:
 
 ## Performance Tuning
 
-### Worker Pool Sizing
+### Scaling
 
-- Start with 5 workers for MVP
+- Scale horizontally by adding more dago orchestrator instances
+- Scale worker services independently based on workload
 - Monitor CPU and memory usage
-- Scale horizontally by adding more instances
 
 ### Redis Optimization
 
@@ -157,10 +166,11 @@ For MVP simplicity, all infrastructure uses Redis:
 ### Metrics to Monitor
 
 - Graph submission rate
-- Node execution latency
-- Worker utilization
+- Event publishing latency
 - Redis connection pool
-- LLM API latency and errors
+- Event processing backlog
+
+**Note**: Worker utilization, node execution latency, and LLM API metrics are monitored in the worker services.
 
 ## Troubleshooting
 
@@ -172,17 +182,11 @@ Error: dial tcp: connection refused
 ```
 Solution: Ensure Redis is running and REDIS_ADDR is correct
 
-**LLM API Errors**
+**Event Backlog**
 ```
-Error: 401 Unauthorized
+Warning: Event queue growing
 ```
-Solution: Check LLM_API_KEY is valid
-
-**Worker Starvation**
-```
-Warning: All workers busy
-```
-Solution: Increase WORKER_POOL_SIZE or scale horizontally
+Solution: Scale up worker services to process events faster
 
 ### Debug Mode
 
@@ -207,9 +211,11 @@ LOG_LEVEL=debug ./dago
 
 ### Error Handling
 
-- Design for failure - LLM calls can fail
+- Design for failure - worker services may fail
 - Implement retry logic with exponential backoff
 - Use circuit breakers for external services
+
+**Note**: LLM call failures are handled in worker services.
 
 ### Monitoring
 
@@ -250,13 +256,13 @@ dlv debug ./cmd/dago
 
 ### Post-MVP Features
 
-- Auto-scaling worker pools
 - NATS for event bus (in addition to Redis)
 - PostgreSQL for long-term state storage
-- Multi-provider LLM support
 - Graph versioning
 - Execution replay
 - Advanced monitoring dashboard
+
+**Note**: Auto-scaling worker pools and multi-provider LLM support are features of the worker services.
 
 ### Scalability
 

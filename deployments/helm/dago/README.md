@@ -13,8 +13,9 @@ This Helm chart deploys the DA Orchestrator on Kubernetes.
 ### Basic Installation
 
 ```bash
-helm install dago . \
-  --set llm.apiKey=your-api-key
+helm install dago .
+
+# Note: No llm.apiKey needed - dago is a pure orchestrator
 ```
 
 ### With Custom Values
@@ -28,12 +29,8 @@ redis:
   addr: "redis-master.redis.svc.cluster.local:6379"
   password: "your-redis-password"
 
-llm:
-  provider: "anthropic"
-  apiKey: "your-api-key"
-
-workers:
-  poolSize: 10
+# Note: llm and workers configuration removed
+# These are only needed in worker services (dago-node-executor, dago-node-router)
 
 resources:
   limits:
@@ -73,11 +70,10 @@ helm install dago . -f my-values.yaml
 | `image.tag` | Image tag | `latest` |
 | `redis.addr` | Redis address | `redis:6379` |
 | `redis.password` | Redis password | `""` |
-| `llm.provider` | LLM provider | `anthropic` |
-| `llm.apiKey` | LLM API key | `""` (required) |
-| `workers.poolSize` | Worker pool size | `5` |
 | `autoscaling.enabled` | Enable HPA | `false` |
 | `ingress.enabled` | Enable ingress | `false` |
+
+**Note**: `llm.provider`, `llm.apiKey`, and `workers.poolSize` removed - not used by dago core orchestrator.
 
 ## Upgrading
 

@@ -52,11 +52,12 @@ docker run -d --name redis -p 6379:6379 redis:7-alpine
 
 # Set environment variables
 export REDIS_ADDR=localhost:6379
-export LLM_API_KEY=sk-ant-your-key-here
 export LOG_LEVEL=debug
 
 # Run the application
 ./dago
+
+# Note: LLM_API_KEY is only needed for worker services (dago-node-executor, dago-node-router)
 ```
 
 The service will be available at:
@@ -76,8 +77,9 @@ docker run -d \
   -p 8080:8080 \
   -p 9090:9090 \
   -e REDIS_ADDR=redis:6379 \
-  -e LLM_API_KEY=sk-ant-your-key-here \
   aescanero/dago:latest
+
+# Note: LLM_API_KEY not needed - dago is a pure orchestrator
 ```
 
 ### Building Custom Image
@@ -92,7 +94,6 @@ docker run -d \
   -p 8080:8080 \
   -p 9090:9090 \
   -e REDIS_ADDR=redis:6379 \
-  -e LLM_API_KEY=sk-ant-your-key-here \
   aescanero/dago:latest
 ```
 
@@ -114,13 +115,14 @@ docker buildx build \
 ```bash
 # Create .env file
 cat > .env <<EOF
-LLM_API_KEY=sk-ant-your-key-here
-WORKER_POOL_SIZE=5
 LOG_LEVEL=info
 EOF
 
 # Start services
 make docker-compose-up
+
+# Note: docker-compose.yml may have LLM_API_KEY and WORKER_POOL_SIZE
+# but these are not used by dago core - only by worker services
 
 # View logs
 docker-compose -f deployments/docker-compose.yml logs -f dago
@@ -152,12 +154,11 @@ services:
       - "9090:9090"
     environment:
       - REDIS_ADDR=redis:6379
-      - LLM_API_KEY=${LLM_API_KEY}
-      - WORKER_POOL_SIZE=${WORKER_POOL_SIZE:-5}
       - LOG_LEVEL=${LOG_LEVEL:-info}
     depends_on:
       - redis
     restart: unless-stopped
+    # Note: LLM_API_KEY and WORKER_POOL_SIZE removed - not used by dago core
 
 volumes:
   redis-data:
@@ -182,13 +183,14 @@ kubectl create namespace dago
 ```bash
 # Install with default values
 helm install dago deployments/helm/dago \
-  --namespace dago \
-  --set llm.apiKey=sk-ant-your-key-here
+  --namespace dago
 
 # Install with custom values
 helm install dago deployments/helm/dago \
   --namespace dago \
   --values my-values.yaml
+
+# Note: llm.apiKey not needed - dago is pure orchestrator
 ```
 
 #### Custom Values File
@@ -221,12 +223,8 @@ redis:
   addr: redis-master.redis.svc.cluster.local:6379
   password: "redis-password"
 
-llm:
-  provider: anthropic
-  apiKey: sk-ant-your-key-here
-
-workers:
-  poolSize: 10
+# Note: llm and workers sections removed - not used by dago core
+# Configure these in worker services (dago-node-executor, dago-node-router)
 
 ingress:
   enabled: true
@@ -264,16 +262,15 @@ helm uninstall dago --namespace dago
 kubectl create configmap dago-config \
   --namespace dago \
   --from-literal=REDIS_ADDR=redis:6379 \
-  --from-literal=WORKER_POOL_SIZE=5 \
   --from-literal=LOG_LEVEL=info
 ```
 
-#### Create Secret
+#### Create Secret (Optional)
 
 ```bash
-kubectl create secret generic dago-secrets \
-  --namespace dago \
-  --from-literal=LLM_API_KEY=sk-ant-your-key-here
+# Note: Secrets not needed for dago core
+# Only create secrets for worker services (dago-node-executor, dago-node-router)
+# which need LLM_API_KEY
 ```
 
 #### Deploy Redis
@@ -345,12 +342,7 @@ spec:
         envFrom:
         - configMapRef:
             name: dago-config
-        env:
-        - name: LLM_API_KEY
-          valueFrom:
-            secretKeyRef:
-              name: dago-secrets
-              key: LLM_API_KEY
+        # Note: No LLM_API_KEY secret needed - dago is pure orchestrator
         livenessProbe:
           httpGet:
             path: /health
@@ -447,10 +439,11 @@ Import the provided Grafana dashboard from `deployments/monitoring/grafana-dashb
 
 Key metrics to monitor:
 - Graph submission rate
-- Node execution latency
-- Worker utilization
+- Event publishing latency
 - Redis connection pool
-- LLM API errors
+- Event queue depth
+
+Note: Node execution latency, worker utilization, and LLM API errors are monitored in worker services.
 
 ### Logging
 
@@ -516,7 +509,7 @@ spec:
     - namespaceSelector: {}
     ports:
     - protocol: TCP
-      port: 443  # HTTPS for LLM APIs
+      port: 443  # HTTPS for external APIs (if needed)
 ```
 
 #### Pod Security
@@ -577,12 +570,13 @@ Adjust resource requests and limits based on monitoring data.
 
 ### Performance Tuning
 
-#### Worker Pool Size
+#### Scaling Strategy
 
-- Start with `WORKER_POOL_SIZE=5`
-- Monitor worker utilization
-- Increase if workers are consistently busy
-- Scale horizontally rather than increasing pool size too much
+- Scale dago orchestrator horizontally for high graph submission rates
+- Scale worker services independently based on event processing needs
+- Monitor event queue depth to determine if more workers are needed
+
+Note: WORKER_POOL_SIZE is configured in worker services, not dago core.
 
 #### Redis Connection Pool
 
