@@ -50,7 +50,32 @@ stubs Go compilables, atlas.hcl, smoke tests del pipeline.
 
 **TODOs:** 9 (infra ×7, test ×1, docs ×1) — ver documento de sprint.
 
-**Estado:** planificado
+**Estado:** completado
+
+---
+
+## [2026-04-30] sprint | SPRINT-001: completado
+
+**Resultado:** Todos los TODOs implementados. 13/13 smoke tests pasan.
+`make ci` finaliza en 0. 8 binarios en bin/. Monorepo compilable.
+
+**Artefactos creados:**
+- `go.mod` + `go.sum` (módulo github.com/aescanero/dago, Go 1.25)
+- `Makefile` (20 targets)
+- `docker-compose.yml` (pgvector:pg16 + valkey:8, healthchecks)
+- `.golangci.yml` (17 linters, ADR-003 + ADR-004)
+- `atlas.hcl` (configuración mínima)
+- Package stubs: libs/ (4), adapters/ (5), services/ ×8 cmd/main.go
+- `tests/smoke/build_test.go` (5 tests, build tag: smoke)
+
+**Verificaciones:**
+- `go mod verify` → OK
+- `go build ./...` → 0 errores
+- `go vet ./...` → 0 problemas
+- `golangci-lint run ./...` → 0 errores
+- `make test-smoke` → 13/13 PASS
+- `make ci` → 0 (lint + build-all + test)
+- `bin/` → 8 binarios
 
 ---
 

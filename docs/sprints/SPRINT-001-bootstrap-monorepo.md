@@ -4,7 +4,7 @@
 
 - **Fecha inicio:** 2026-04-27
 - **Fecha fin estimada:** 2026-04-28
-- **Estado:** planificado
+- **Estado:** completado
 - **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-007, ADR-008, ADR-013
 - **Specs afectadas:** ninguna (sprint de infraestructura)
 - **Agente planificador:** planner
@@ -573,21 +573,49 @@ Adicionalmente:
 
 ## Resultado del sprint
 
-_Se completa al finalizar el sprint._
+Sprint completado el 2026-04-30. Todos los criterios de aceptación verificados.
 
 ### Tests ejecutados
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 13 (5 tests raíz + 8 subtests en TestAllServicesHaveMainPackage)
+- Passed: 13
+- Failed: 0
 
 ### Ficheros creados/modificados
 
-_Lista generada al cierre._
+- `go.mod` + `go.sum` — módulo github.com/aescanero/dago, Go 1.25
+- `Makefile` — 20 targets, binarios en bin/
+- `docker-compose.yml` — pgvector/pgvector:pg16 + valkey/valkey:8
+- `.golangci.yml` — 17 linters con reglas ADR-003 y ADR-004
+- `atlas.hcl` — configuración mínima apuntando a ent/schema/ y migrations/
+- `.env.example` — variables para docker-compose y servicios
+- `libs/domain/doc.go`, `libs/ports/doc.go`, `libs/schemas/doc.go`, `libs/utils/doc.go`
+- `adapters/storage/doc.go`, `adapters/eventbus/doc.go`, `adapters/auth/doc.go`
+- `adapters/llm/doc.go`, `adapters/metrics/doc.go`
+- `services/*/cmd/main.go` × 8 servicios
+- `tests/smoke/build_test.go` — 5 smoke tests con build tag smoke
+- `docs/index.md` — actualizado con artefactos de SPRINT-001
+
+### Verificaciones finales
+
+```
+go mod verify         → all modules verified
+go build ./...        → 0 errores
+go vet ./...          → 0 problemas
+golangci-lint run     → 0 errores
+make test-smoke       → 13/13 PASS
+make ci               → lint + build-all + test: todos en 0
+make build-all        → 8 binarios en bin/
+```
 
 ### Decisiones tomadas durante el sprint
 
-_Cualquier decisión no prevista que requiera un ADR o nota se documenta aquí._
+- Se usa `gopkg.in/yaml.v3` para parsear docker-compose.yml en el smoke test
+  (alternativa sin dependencias externas requeriría regexp frágil).
+- La dependencia `valkey-io/valkey-go` se usó en lugar de `go-redis` (ADR-008).
+- Se excluyeron `wrapcheck`, `exhaustive` y `funlen` de archivos `_test.go`
+  para evitar falsos positivos en table-driven tests.
+- `go mod tidy` pruna deps no importadas; deps se reincorporarán en SPRINT-002+.
 
 ### Observaciones del reviewer
 
