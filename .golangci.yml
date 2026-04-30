@@ -1,0 +1,53 @@
+run:
+  timeout: 5m
+  go: "1.23"
+
+linters:
+  enable:
+    - goimports
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+    - godot
+    - misspell
+    - gocognit
+    - funlen
+    - gocritic
+    - noctx
+    - wrapcheck
+    - exhaustive
+    - revive
+
+linters-settings:
+  funlen:
+    lines: 20
+    statements: 20
+  gocognit:
+    min-complexity: 15
+  goimports:
+    local-prefixes: github.com/aescanero/dago
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+  revive:
+    rules:
+      - name: exported
+      - name: var-naming
+      - name: error-return
+      - name: error-naming
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-rules:
+    - path: "_test\\.go"
+      linters:
+        - funlen
+        - wrapcheck
+        - exhaustive
