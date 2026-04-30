@@ -33,7 +33,7 @@
 
 | Sprint | Título | Estado |
 |--------|--------|--------|
-| [SPRINT-001](sprints/SPRINT-001-bootstrap-monorepo.md) | Bootstrap del monorepo Go | planificado |
+| [SPRINT-001](sprints/SPRINT-001-bootstrap-monorepo.md) | Bootstrap del monorepo Go | completado |
 | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Schemas Ent: Graph, Node, Execution | planificado |
 | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | API REST orchestrator: CRUD grafos + ejecuciones | planificado |
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: login local argon2id, JWT RS256, JWKS, middleware | planificado |
@@ -114,9 +114,26 @@
 | Atlas config | `atlas.hcl` | Migraciones Ent → PostgreSQL (ADR-007) |
 | Variables | `.env.example` | Variables de entorno para desarrollo local |
 
-_Artefactos planificados en SPRINT-001. Estado: pendiente de implementación._
+_Artefactos creados en SPRINT-001. Estado: completado (2026-04-30)._
+
+## Estructura Go (creada en SPRINT-001)
+
+| Directorio | Paquete Go | Descripción |
+|------------|-----------|-------------|
+| `libs/domain/` | `domain` | Tipos y lógica de negocio del dominio |
+| `libs/ports/` | `ports` | Interfaces de puerto (arquitectura hexagonal) |
+| `libs/schemas/` | `schemas` | Helpers de validación JSON Schema |
+| `libs/utils/` | `utils` | Utilidades compartidas |
+| `adapters/storage/` | `storage` | Adaptador de base de datos (Ent) |
+| `adapters/eventbus/` | `eventbus` | Adaptador de event bus (Valkey Streams) |
+| `adapters/auth/` | `auth` | Adaptador de autenticación |
+| `adapters/llm/` | `llm` | Adaptadores de proveedores LLM |
+| `adapters/metrics/` | `metrics` | Adaptador de métricas |
+| `services/*/cmd/main.go` | `main` | Puntos de entrada para los 8 servicios |
 
 ## Dominio — Schemas Ent
+
+_Nota: Los schemas Ent se crean en SPRINT-002. El directorio `ent/schema/` existe pero está vacío._
 
 | Entidad | Schema Ent | Estado | Sprint |
 |---------|------------|--------|--------|
