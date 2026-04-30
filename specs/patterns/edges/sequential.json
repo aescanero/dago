@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/edges/sequential.json",
+  "title": "Sequential Edge",
+  "description": "Arista secuencial: un nodo sigue a otro sin condición",
+  "type": "object",
+  "required": ["type", "from", "to"],
+  "properties": {
+    "type": { "type": "string", "const": "sequential" },
+    "from": { "type": "string", "description": "ID del nodo origen" },
+    "to": { "type": "string", "description": "ID del nodo destino" }
+  },
+  "additionalProperties": false
+}

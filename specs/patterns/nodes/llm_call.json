@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/nodes/llm_call.json",
+  "title": "LLM Call Pattern",
+  "description": "Envía un prompt a un LLM y devuelve la respuesta",
+  "type": "object",
+  "required": ["pattern", "config"],
+  "properties": {
+    "pattern": { "type": "string", "const": "llm_call" },
+    "config": {
+      "type": "object",
+      "required": ["model"],
+      "properties": {
+        "model": { "type": "string", "description": "Modelo LLM a usar" },
+        "system_prompt": { "type": "string" },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 2, "default": 0.7 },
+        "max_tokens": { "type": "integer", "minimum": 1, "default": 2048 },
+        "input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Mapeo de estado del grafo → input del LLM"
+        },
+        "output_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Mapeo de output del LLM → estado del grafo"
+        }
+      }
+    }
+  }
+}

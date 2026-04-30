@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/edges/loop.json",
+  "title": "Loop Edge",
+  "description": "Repetir hasta condición de salida (criterio de parada obligatorio)",
+  "type": "object",
+  "required": ["type", "from", "target", "exit_condition", "exit_target"],
+  "properties": {
+    "type": { "type": "string", "const": "loop" },
+    "from": { "type": "string", "description": "Nodo que evalúa la condición" },
+    "target": { "type": "string", "description": "Nodo al que se vuelve" },
+    "exit_condition": {
+      "type": "object",
+      "properties": {
+        "expression": { "type": "string" },
+        "max_iterations": { "type": "integer", "minimum": 1 },
+        "timeout_seconds": { "type": "integer", "minimum": 1 }
+      },
+      "anyOf": [
+        { "required": ["max_iterations"] },
+        { "required": ["timeout_seconds"] }
+      ]
+    },
+    "exit_target": { "type": "string", "description": "Nodo destino cuando se cumple la condición de salida" }
+  },
+  "additionalProperties": false
+}

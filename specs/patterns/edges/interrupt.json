@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/edges/interrupt.json",
+  "title": "Interrupt Edge",
+  "description": "Pausar ejecución y esperar input externo (human-in-the-loop)",
+  "type": "object",
+  "required": ["type", "from", "resume_target"],
+  "properties": {
+    "type": { "type": "string", "const": "interrupt" },
+    "from": { "type": "string" },
+    "resume_target": { "type": "string", "description": "Nodo destino si se aprueba/continúa" },
+    "reject_target": { "type": "string", "description": "Nodo destino si se rechaza" },
+    "prompt": { "type": "string", "description": "Mensaje mostrado al usuario" },
+    "timeout_seconds": { "type": "integer", "minimum": 1 },
+    "timeout_target": { "type": "string", "description": "Nodo destino si expira el timeout" }
+  },
+  "additionalProperties": false
+}
