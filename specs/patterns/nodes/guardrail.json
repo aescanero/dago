@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/nodes/guardrail.json",
+  "title": "Guardrail Pattern",
+  "description": "Valida input o output contra reglas. Acepta o rechaza.",
+  "type": "object",
+  "required": ["pattern", "config"],
+  "properties": {
+    "pattern": { "type": "string", "const": "guardrail" },
+    "config": {
+      "type": "object",
+      "required": ["mode", "checks"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["input", "output"] },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["json_schema", "llm_safety", "regex", "custom_function"] },
+              "schema": { "type": "object" },
+              "model": { "type": "string" },
+              "policy": { "type": "string" },
+              "pattern": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          },
+          "minItems": 1
+        },
+        "on_fail": { "type": "string", "enum": ["reject", "warn", "fallback"], "default": "reject" },
+        "on_fail_target": { "type": "string" }
+      }
+    }
+  }
+}

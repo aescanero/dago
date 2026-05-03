@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/nodes/subgraph.json",
+  "title": "Subgraph Pattern",
+  "description": "Encapsula un grafo completo como nodo atómico (composición jerárquica)",
+  "type": "object",
+  "required": ["pattern", "config"],
+  "properties": {
+    "pattern": { "type": "string", "const": "subgraph" },
+    "config": {
+      "type": "object",
+      "required": ["graph_id"],
+      "properties": {
+        "graph_id": { "type": "string", "format": "uuid", "description": "ID del grafo hijo" },
+        "input_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Mapeo estado padre → estado hijo"
+        },
+        "output_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Mapeo estado hijo → estado padre"
+        },
+        "timeout_seconds": { "type": "integer", "minimum": 1 },
+        "on_failure": {
+          "type": "string",
+          "enum": ["propagate", "isolate"],
+          "default": "propagate"
+        }
+      }
+    }
+  }
+}

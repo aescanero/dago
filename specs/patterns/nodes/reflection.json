@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/nodes/reflection.json",
+  "title": "Reflection Pattern",
+  "description": "Genera → evalúa críticamente → mejora iterativamente",
+  "type": "object",
+  "required": ["pattern", "config"],
+  "properties": {
+    "pattern": { "type": "string", "const": "reflection" },
+    "config": {
+      "type": "object",
+      "required": ["generator", "critic", "max_iterations"],
+      "properties": {
+        "generator": {
+          "type": "object",
+          "required": ["model"],
+          "properties": {
+            "model": { "type": "string" },
+            "system_prompt": { "type": "string" }
+          }
+        },
+        "critic": {
+          "type": "object",
+          "required": ["model"],
+          "properties": {
+            "model": { "type": "string" },
+            "system_prompt": { "type": "string" },
+            "criteria": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "max_iterations": { "type": "integer", "minimum": 1 },
+        "acceptance_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "output_mapping": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    }
+  }
+}

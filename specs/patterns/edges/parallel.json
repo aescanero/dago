@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/edges/parallel.json",
+  "title": "Parallel Edge",
+  "description": "Fan-out / fan-in: ejecutar ramas simultáneamente",
+  "type": "object",
+  "required": ["type", "from", "branches", "join"],
+  "properties": {
+    "type": { "type": "string", "const": "parallel" },
+    "from": { "type": "string" },
+    "branches": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 2,
+      "description": "IDs de los nodos que se ejecutan en paralelo"
+    },
+    "join": {
+      "type": "object",
+      "required": ["target", "policy"],
+      "properties": {
+        "target": { "type": "string", "description": "Nodo destino tras convergencia" },
+        "policy": { "type": "string", "enum": ["all", "any", "n_of_m"] },
+        "n": { "type": "integer", "minimum": 1, "description": "N para política n_of_m" },
+        "timeout_seconds": { "type": "integer", "minimum": 1 }
+      }
+    }
+  },
+  "additionalProperties": false
+}

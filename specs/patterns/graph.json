@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/graph.json",
+  "title": "Dago Graph",
+  "description": "Definición completa de un grafo de ejecución",
+  "type": "object",
+  "required": ["id", "name", "version", "entry_node", "nodes", "edges"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identificador único del grafo"
+    },
+    "name": {
+      "type": "string",
+      "description": "Nombre descriptivo"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Versión semántica"
+    },
+    "entry_node": {
+      "type": "string",
+      "description": "ID del nodo de entrada"
+    },
+    "nodes": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/NodeDefinition"
+      },
+      "description": "Mapa de nodos del grafo"
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/EdgeDefinition"
+      },
+      "description": "Lista de aristas del grafo"
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "semantic_search": { "type": "boolean", "default": false },
+        "episode_context": { "type": "integer", "minimum": 0, "default": 0 }
+      },
+      "description": "Configuración de memoria del grafo"
+    }
+  },
+  "$defs": {
+    "NodeDefinition": {
+      "type": "object",
+      "required": ["pattern", "config"],
+      "properties": {
+        "pattern": {
+          "type": "string",
+          "enum": ["llm_call", "tool_use", "react", "reflection", "router", "guardrail", "subgraph"]
+        },
+        "config": {
+          "type": "object",
+          "description": "Configuración específica del patrón (ver schema del patrón)"
+        }
+      }
+    },
+    "EdgeDefinition": {
+      "type": "object",
+      "required": ["type", "from"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["sequential", "conditional", "parallel", "loop", "interrupt"]
+        },
+        "from": { "type": "string" },
+        "to": { "type": "string" }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/edges/conditional.json",
+  "title": "Conditional Edge",
+  "description": "Arista condicional: branch según estado del grafo",
+  "type": "object",
+  "required": ["type", "from", "conditions"],
+  "properties": {
+    "type": { "type": "string", "const": "conditional" },
+    "from": { "type": "string" },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["expression", "target"],
+        "properties": {
+          "expression": { "type": "string", "description": "Expresión evaluada sobre el estado" },
+          "target": { "type": "string", "description": "ID del nodo destino si la condición se cumple" }
+        }
+      },
+      "minItems": 1
+    },
+    "default": { "type": "string", "description": "Nodo destino si ninguna condición se cumple" },
+    "mode": {
+      "type": "string",
+      "enum": ["rule", "llm", "hybrid"],
+      "default": "rule"
+    }
+  },
+  "additionalProperties": false
+}

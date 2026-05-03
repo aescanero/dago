@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dago.dev/schemas/patterns/nodes/tool_use.json",
+  "title": "Tool Use Pattern",
+  "description": "Invoca herramientas externas (MCP, APIs)",
+  "type": "object",
+  "required": ["pattern", "config"],
+  "properties": {
+    "pattern": { "type": "string", "const": "tool_use" },
+    "config": {
+      "type": "object",
+      "required": ["mode", "tools"],
+      "properties": {
+        "mode": { "type": "string", "enum": ["direct", "llm_selected"] },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": { "type": "string", "enum": ["mcp", "api"] },
+              "server": { "type": "string" },
+              "allowed_tools": { "type": "array", "items": { "type": "string" } },
+              "endpoint": { "type": "string", "format": "uri" },
+              "method": { "type": "string", "enum": ["GET", "POST", "PUT", "DELETE"] }
+            }
+          }
+        },
+        "model": { "type": "string", "description": "Modelo para modo llm_selected" },
+        "max_tool_calls": { "type": "integer", "minimum": 1, "default": 5 },
+        "timeout_seconds": { "type": "integer", "minimum": 1, "default": 30 }
+      }
+    }
+  }
+}

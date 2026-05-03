@@ -1,0 +1,178 @@
+asyncapi: 3.0.0
+info:
+  title: Dago Event API
+  description: |
+    API asíncrona del sistema de orquestación de grafos de IA.
+    Los eventos fluyen por Valkey Streams (Event-Carried State Transfer)
+    y Valkey Pub/Sub (Event Notification).
+  version: 1.0.0
+  license:
+    name: MIT
+
+defaultContentType: application/json
+
+channels:
+  # === Orquestación de grafos ===
+  graphSubmitted:
+    address: graph.submitted
+    messages:
+      graphSubmittedMessage:
+        $ref: '#/components/messages/GraphSubmitted'
+
+  graphCompleted:
+    address: graph.completed
+    messages:
+      graphCompletedMessage:
+        $ref: '#/components/messages/GraphCompleted'
+
+  graphFailed:
+    address: graph.failed
+    messages:
+      graphFailedMessage:
+        $ref: '#/components/messages/GraphFailed'
+
+  graphPaused:
+    address: graph.paused
+    messages:
+      graphPausedMessage:
+        $ref: '#/components/messages/GraphPaused'
+
+  graphResumed:
+    address: graph.resumed
+    messages:
+      graphResumedMessage:
+        $ref: '#/components/messages/GraphResumed'
+
+  graphPlanned:
+    address: graph.planned
+    messages:
+      graphPlannedMessage:
+        $ref: '#/components/messages/GraphPlanned'
+
+  # === Ejecución de nodos ===
+  nodeExecuteRequested:
+    address: node.execute.requested
+    messages:
+      nodeExecuteRequestedMessage:
+        $ref: '#/components/messages/NodeExecuteRequested'
+
+  nodeExecuted:
+    address: node.executed
+    messages:
+      nodeExecutedMessage:
+        $ref: '#/components/messages/NodeExecuted'
+
+  nodeExecuteFailed:
+    address: node.execute.failed
+    messages:
+      nodeExecuteFailedMessage:
+        $ref: '#/components/messages/NodeExecuteFailed'
+
+  # === Routing ===
+  nodeRouteRequested:
+    address: node.route.requested
+    messages:
+      nodeRouteRequestedMessage:
+        $ref: '#/components/messages/NodeRouteRequested'
+
+  nodeRouted:
+    address: node.routed
+    messages:
+      nodeRoutedMessage:
+        $ref: '#/components/messages/NodeRouted'
+
+  # === MCP Tools ===
+  mcpToolInvoked:
+    address: mcp.tool.invoked
+    messages:
+      mcpToolInvokedMessage:
+        $ref: '#/components/messages/McpToolInvoked'
+
+  mcpToolResult:
+    address: mcp.tool.result
+    messages:
+      mcpToolResultMessage:
+        $ref: '#/components/messages/McpToolResult'
+
+operations:
+  # Se definen las operaciones (publish/subscribe) por servicio
+  # Ejemplo:
+  # orchestratorPublishNodeExecuteRequested:
+  #   action: send
+  #   channel:
+  #     $ref: '#/channels/nodeExecuteRequested'
+
+components:
+  messages:
+    GraphSubmitted:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    GraphCompleted:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    GraphFailed:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    GraphPaused:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    GraphResumed:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    GraphPlanned:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    NodeExecuteRequested:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    NodeExecuted:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    NodeExecuteFailed:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    NodeRouteRequested:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    NodeRouted:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    McpToolInvoked:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+    McpToolResult:
+      payload:
+        $ref: '#/components/schemas/EventEnvelope'
+
+  schemas:
+    EventEnvelope:
+      type: object
+      required:
+        - id
+        - type
+        - source
+        - timestamp
+        - data
+      properties:
+        id:
+          type: string
+          description: ID único del evento (formato evt_{ulid})
+          example: evt_01HX7Y8K2P3Q4R5S6T7U8V9W
+        type:
+          type: string
+          description: Tipo del evento (dominio.acción en pasado)
+          example: node.executed
+        source:
+          type: string
+          description: Servicio que produce el evento
+          example: executor
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp UTC
+        data:
+          type: object
+          description: Payload específico del evento
+        auth:
+          type: string
+          description: Token JWT propagado para trazabilidad y autorización

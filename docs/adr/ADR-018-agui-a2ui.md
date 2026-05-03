@@ -1,0 +1,162 @@
+# ADR-018: AG-UI as the agent-user protocol and A2UI for generative UI
+
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
+
+## Context
+
+The dago dashboard needs to communicate in real time with agents
+during graph execution: token streaming, tool call visualisation,
+human-in-the-loop, state synchronisation. Additionally, packages
+(ADR-017) can include UI components that agents request to render
+during execution.
+
+Two complementary protocols exist that cover these needs,
+completing the "trident" of agentic protocols alongside MCP
+(agent↔tool) and A2A (agent↔agent).
+
+## Decision
+
+Two complementary protocols are adopted:
+
+- **AG-UI** as the agent-user communication protocol.
+- **A2UI** as the declarative generative UI format.
+
+### AG-UI — Agent-User Interaction Protocol
+
+AG-UI is an open, event-based protocol that standardises how agents
+connect to user-facing applications. MIT license, created by CopilotKit,
+with support from Amazon Bedrock, Microsoft Agent Framework, and over
+13k GitHub stars.
+
+AG-UI defines ~16 standard event types:
+
+```
+Lifecycle:     RUN_STARTED, RUN_FINISHED, RUN_ERROR
+Text:          TEXT_MESSAGE_START, TEXT_MESSAGE_CONTENT, TEXT_MESSAGE_END
+Tool calls:    TOOL_CALL_START, TOOL_CALL_ARGS, TOOL_CALL_RESULT, TOOL_CALL_END
+State:         STATE_SNAPSHOT, STATE_DELTA
+Custom:        CUSTOM
+```
+
+**Transport:** AG-UI works over WebSocket (already decided) or SSE.
+It does not replace WebSocket — it is a protocol layer on top of the
+transport that standardises the message format.
+
+**Role in dago:** The orchestrator emits AG-UI events to the
+dashboard during graph execution:
+
+```
+Orchestrator                          Dashboard
+    │                                      │
+    ├── RUN_STARTED ──────────────────────▶│ Shows "executing..."
+    ├── TEXT_MESSAGE_CONTENT (token) ─────▶│ Text streaming
+    ├── TOOL_CALL_START ──────────────────▶│ Shows tool activity
+    ├── TOOL_CALL_RESULT ─────────────────▶│ Shows result
+    ├── STATE_DELTA ──────────────────────▶│ Updates graph state
+    ├── (user approval request) ◀─────────│ Human-in-the-loop
+    ├── RUN_FINISHED ─────────────────────▶│ Shows final result
+    │                                      │
+```
+
+### A2UI — Declarative UI for Agents
+
+A2UI solves how agents can request rich UIs safely. Instead of
+generating HTML or executing code, the agent sends a declarative
+description of what it wants to display and the frontend renders it
+with pre-approved components from the catalogue.
+
+```json
+{
+  "type": "form",
+  "id": "satisfaction_survey",
+  "fields": [
+    {"type": "rating", "label": "Satisfaction", "min": 1, "max": 5},
+    {"type": "text", "label": "Comments", "multiline": true}
+  ],
+  "actions": [
+    {"type": "submit", "label": "Send feedback"}
+  ]
+}
+```
+
+**Security:** Agents can only use components from the registered
+catalogue. There is no UI injection, no arbitrary code execution.
+The dashboard validates the A2UI descriptor against a catalogue of
+allowed components before rendering.
+
+**Role in dago:** Graph nodes can emit A2UI descriptors as part of
+their output. The orchestrator sends them to the dashboard via
+AG-UI (using CUSTOM events). The dashboard renders them with
+shadcn/ui components (ADR-019).
+
+### The agentic protocol trident in dago
+
+```
+MCP     → Agent ↔ Tools       (executor → mcp-registry → tools)
+A2A     → Agent ↔ Agent       (agent-registry → Agent Cards)
+AG-UI   → Agent ↔ User        (orchestrator → dashboard, runtime)
+A2UI    → Agent → UI widgets  (node → dashboard, declarative)
+```
+
+### Concrete rules
+
+1. **AG-UI over WebSocket.** The orchestrator exposes a WebSocket
+   endpoint that emits AG-UI events. The dashboard consumes these
+   events with an AG-UI compatible client.
+
+2. **AG-UI events for all real-time communication.** Token streaming,
+   tool calls, state sync, human-in-the-loop — all use the AG-UI
+   event format, not a proprietary format.
+
+3. **A2UI for dynamic UI.** When a node needs to display a form,
+   a table, a chart, or any interactive widget, it emits an A2UI
+   descriptor. The dashboard renders it with catalogue components.
+
+4. **Registered A2UI component catalogue.** Only component types
+   registered in the catalogue are rendered. Unknown components
+   are ignored with an informative fallback.
+
+5. **A2UI descriptors are included in packages.** Each package
+   (ADR-017) can declare which A2UI components it uses in its
+   `ui.a2ui_catalog` section.
+
+## Considered Alternatives
+
+- **Proprietary WebSocket protocol:** Maximum flexibility but zero
+  interoperability. Every change requires updating both client and
+  server. Discarded.
+
+- **A2UI only without AG-UI:** A2UI only covers widget generation,
+  not text streaming, state sync, or human-in-the-loop. Insufficient.
+
+- **AG-UI only without A2UI:** AG-UI covers communication but has
+  no standard format for describing UI widgets. A proprietary format
+  would be needed for that.
+
+- **HTML/JS generated by the agent:** High security risk
+  (XSS, injection). Discarded.
+
+## Consequences
+
+**Positive:**
+- Interoperability with any AG-UI compatible frontend.
+- Security: A2UI is declarative, not executable.
+- Standard protocol with growing adoption (AWS, Microsoft, CopilotKit).
+- Packages can include UI definitions.
+- Standardised human-in-the-loop.
+
+**Negative:**
+- AG-UI is relatively young — possible protocol changes.
+- A2UI limits UI expressiveness to catalogue components.
+- Two UI protocols add conceptual complexity.
+
+## Notes for Claude Code
+
+- The orchestrator WebSocket endpoint emits AG-UI events.
+- AG-UI event types are defined in `libs/domain/events/agui.go`.
+- A2UI descriptors are validated against the catalogue in the dashboard.
+- When creating a node pattern that needs UI, include the A2UI definition
+  in the package and the AG-UI handler in the orchestrator.
+- The AG-UI client in the dashboard lives in `dashboard/src/api/agui/`.
