@@ -1,105 +1,105 @@
-# SPRINT-010: Orchestrator state machine — Submit, validar, ejecutar, transicionar, completar
+# SPRINT-010: Orchestrator state machine — Submit, validate, execute, transition, complete
 
 ## Metadata
 
-- **Fecha inicio:** 2026-05-05
-- **Fecha fin estimada:** 2026-05-07
-- **Estado:** planificado
-- **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-008, ADR-011, ADR-014, ADR-016, ADR-020
-- **Specs afectadas:** specs/asyncapi.yaml (operaciones orchestrator), specs/paths/executions.yaml (422)
-- **Agente planificador:** planner
-- **Revisado por:** pendiente
-- **Bloqueado por:** SPRINT-003 (ExecutionRepository, StartExecution, Ent), SPRINT-007 (event bus), SPRINT-009 (formatos de evento)
-- **Bloquea:** SPRINT-011 (executor tool_use), SPRINT-015 (memoria episódica)
+- **Start date:** 2026-05-05
+- **Estimated end date:** 2026-05-07
+- **Status:** planned
+- **Applied ADRs:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-008, ADR-011, ADR-014, ADR-016, ADR-020
+- **Affected specs:** specs/asyncapi.yaml (orchestrator operations), specs/paths/executions.yaml (422)
+- **Planning agent:** planner
+- **Reviewed by:** pending
+- **Blocked by:** SPRINT-003 (ExecutionRepository, StartExecution, Ent), SPRINT-007 (event bus), SPRINT-009 (event formats)
+- **Blocks:** SPRINT-011 (executor tool_use), SPRINT-015 (episodic memory)
 
-## Objetivo
+## Objective
 
-Conectar el orchestrator con el event bus: validar el grafo al someter una ejecución,
-publicar el primer evento `node.execute.requested`, consumir `node.executed` /
-`node.execute.failed`, actualizar estado y transicionar hasta completar o fallar.
-Solo se soportan grafos con aristas `sequential` en este sprint.
+Connect the orchestrator with the event bus: validate the graph when submitting an execution,
+publish the first `node.execute.requested` event, consume `node.executed` /
+`node.execute.failed`, update state and transition until completion or failure.
+Only graphs with `sequential` edges are supported in this sprint.
 
-## Alcance
+## Scope
 
-- **AsyncAPI** — nuevas operaciones del orchestrator: publicar `node.execute.requested`,
-  consumir `node.executed` y `node.execute.failed`, publicar `graphCompleted` y `graphFailed`.
-- **OpenAPI** — respuesta `422 GRAPH_VALIDATION_ERROR` en `POST /api/v1/executions`.
-- **Domain** — `ErrGraphValidation` en `libs/domain/errors.go`. `GraphDefinition` struct
-  con `EntryNode`, `Nodes map[string]NodeDefinition`, `Edges []EdgeDefinition`.
-- **Port** — añadir `UpdateExecution` a `ExecutionRepository`.
-- **State machine** en `services/orchestrator/internal/statemachine/`:
-  - `graph_validator.go`: `ValidateGraph(g GraphDefinition) error` con `dominikbraun/graph`.
+- **AsyncAPI** — new orchestrator operations: publish `node.execute.requested`,
+  consume `node.executed` and `node.execute.failed`, publish `graphCompleted` and `graphFailed`.
+- **OpenAPI** — `422 GRAPH_VALIDATION_ERROR` response on `POST /api/v1/executions`.
+- **Domain** — `ErrGraphValidation` in `libs/domain/errors.go`. `GraphDefinition` struct
+  with `EntryNode`, `Nodes map[string]NodeDefinition`, `Edges []EdgeDefinition`.
+- **Port** — add `UpdateExecution` to `ExecutionRepository`.
+- **State machine** in `services/orchestrator/internal/statemachine/`:
+  - `graph_validator.go`: `ValidateGraph(g GraphDefinition) error` with `dominikbraun/graph`.
   - `traversal.go`: `NextNode(g GraphDefinition, currentNode string) (string, error)`.
-  - `execution_sm.go`: `ExecutionStateMachine` con `HandleNodeExecuted` y `HandleNodeExecuteFailed`.
-- **Consumer** `node_result.go` en `services/orchestrator/internal/consumer/` —
-  consume `node.executed` y `node.execute.failed`, delega en `ExecutionStateMachine`.
-- **StartExecution extendido** — valida grafo, publica `node.execute.requested`, pone
-  estado `running` (antes quedaba `pending`).
-- **ErrRetryable** — sentinel en `libs/domain/errors.go` para que el consumer propague NACK.
-- Tests: 4 unitarios (ValidateGraph, NextNode, HandleNodeExecuted, HandleNodeExecuteFailed),
-  2 de integración con Valkey real (build tag `integration`).
+  - `execution_sm.go`: `ExecutionStateMachine` with `HandleNodeExecuted` and `HandleNodeExecuteFailed`.
+- **Consumer** `node_result.go` in `services/orchestrator/internal/consumer/` —
+  consumes `node.executed` and `node.execute.failed`, delegates to `ExecutionStateMachine`.
+- **Extended StartExecution** — validates graph, publishes `node.execute.requested`, sets
+  status to `running` (previously remained `pending`).
+- **ErrRetryable** — sentinel in `libs/domain/errors.go` for the consumer to propagate NACK.
+- Tests: 4 unit (ValidateGraph, NextNode, HandleNodeExecuted, HandleNodeExecuteFailed),
+  2 integration with real Valkey (build tag `integration`).
 
-## Dependencias
+## Dependencies
 
-- **Bloqueado por:** SPRINT-003 (ExecutionRepository, StartExecution, Ent), SPRINT-007 (event bus),
-  SPRINT-009 (executor llm_call, formatos de evento).
-- **Bloquea:** SPRINT-011 (executor tool_use), SPRINT-015 (memoria episódica).
+- **Blocked by:** SPRINT-003 (ExecutionRepository, StartExecution, Ent), SPRINT-007 (event bus),
+  SPRINT-009 (executor llm_call, event formats).
+- **Blocks:** SPRINT-011 (executor tool_use), SPRINT-015 (episodic memory).
 
-## Contratos de comportamiento
+## Behavior Contracts
 
-### C1 — `ValidateGraph` — grafo con solo aristas sequential
+### C1 — `ValidateGraph` — graph with only sequential edges
 
 ```
-Given: GraphDefinition con entry_node="a", nodes={"a":{},"b":{}}, edges=[{type:"sequential",from:"a",to:"b"}]
+Given: GraphDefinition with entry_node="a", nodes={"a":{},"b":{}}, edges=[{type:"sequential",from:"a",to:"b"}]
 When: ValidateGraph(graph)
-Then: Retorna nil (sin error)
-      Todos los nodos son alcanzables desde entry_node
+Then: Returns nil (no error)
+      All nodes are reachable from entry_node
 ```
 
-### C2 — `ValidateGraph` — arista no soportada
+### C2 — `ValidateGraph` — unsupported edge
 
 ```
-Given: GraphDefinition con edge de tipo "conditional"
+Given: GraphDefinition with an edge of type "conditional"
 When: ValidateGraph(graph)
-Then: Retorna error tal que errors.Is(err, domain.ErrGraphValidation) == true
-      El mensaje del error contiene "unsupported edge type: conditional"
+Then: Returns error such that errors.Is(err, domain.ErrGraphValidation) == true
+      Error message contains "unsupported edge type: conditional"
 ```
 
-### C3 — `ExecutionStateMachine.HandleNodeExecuted` — nodo terminal
+### C3 — `ExecutionStateMachine.HandleNodeExecuted` — terminal node
 
 ```
-Given: Execution en status="running", GraphDefinition donde currentNode no tiene aristas de salida
+Given: Execution with status="running", GraphDefinition where currentNode has no outgoing edges
 When: HandleNodeExecuted(ctx, exec, graph, currentNode, output, auth)
-Then: Se publica evento graph.completed en el stream correspondiente
-      exec.Status se actualiza a "completed"
-      UpdateExecution es llamado con el exec actualizado
-      Handler retorna nil
+Then: graph.completed event is published to the corresponding stream
+      exec.Status is updated to "completed"
+      UpdateExecution is called with the updated exec
+      Handler returns nil
 ```
 
-### C4 — `StartExecution` extendido — grafo inválido → 422
+### C4 — Extended `StartExecution` — invalid graph → 422
 
 ```
-Given: Graph con aristas "conditional" en su campo definition
-When: POST /api/v1/executions con graph_id de ese grafo
-Then: HTTP 422, ErrorResponse con code="GRAPH_VALIDATION_ERROR"
-      No se persiste ninguna Execution en base de datos
-      No se publica ningún evento en Valkey
+Given: Graph with "conditional" edges in its definition field
+When: POST /api/v1/executions with that graph's graph_id
+Then: HTTP 422, ErrorResponse with code="GRAPH_VALIDATION_ERROR"
+      No Execution is persisted in the database
+      No event is published in Valkey
 ```
 
-## Nota sobre orden TDD
+## Note on TDD order
 
-> Los TODOs #14 y #15 (tests de integración) deben ejecutarse en Red ANTES de los TODOs de implementación (#7–#12). El orden correcto de ejecución es:
+> TODOs #14 and #15 (integration tests) must be written in Red BEFORE the implementation TODOs (#7–#12). The correct execution order is:
 > `#1 → #2 → #3 → #4 → #14 → #15 → #5 → #6 → #7 → #8 → #9 → #10 → #11 → #12 → #16 → #13 → #17`
 
 ## TODOs
 
-### TODO #1 — spec: AsyncAPI — operaciones orchestrator [spec]
+### TODO #1 — spec: AsyncAPI — orchestrator operations [spec]
 
 **Agente:** @developer
 
-**Objetivo:** Registrar las operaciones del orchestrator en `specs/asyncapi.yaml`.
+**Objective:** Register the orchestrator operations in `specs/asyncapi.yaml`.
 
-Añadir en `operations`:
+Add to `operations`:
 ```yaml
 orchestratorPublishNodeExecuteRequested:
   action: send
@@ -125,19 +125,19 @@ orchestratorPublishGraphFailed:
   channel: $ref: '#/channels/graphFailed'
 ```
 
-Añadir schemas si no existen: `GraphCompletedData` (executionId, graphId, durationMs),
+Add schemas if they don't exist: `GraphCompletedData` (executionId, graphId, durationMs),
 `GraphFailedData` (executionId, graphId, error, errorCode).
 
-**Ficheros:** `specs/asyncapi.yaml`
+**Files:** `specs/asyncapi.yaml`
 
 ---
 
-### TODO #2 — spec: OpenAPI — 422 en POST /executions [spec]
+### TODO #2 — spec: OpenAPI — 422 on POST /executions [spec]
 
 **Agente:** @developer
 
-**Objetivo:** Documentar la respuesta `422` con código `GRAPH_VALIDATION_ERROR` en
-`POST /api/v1/executions` (en `specs/paths/executions.yaml`).
+**Objective:** Document the `422` response with code `GRAPH_VALIDATION_ERROR` on
+`POST /api/v1/executions` (in `specs/paths/executions.yaml`).
 
 ```yaml
 '422':
@@ -151,7 +151,7 @@ Añadir schemas si no existen: `GraphCompletedData` (executionId, graphId, durat
         message: "graph contains unsupported edge type: conditional"
 ```
 
-**Ficheros:** `specs/paths/executions.yaml`
+**Files:** `specs/paths/executions.yaml`
 
 ---
 
@@ -159,15 +159,15 @@ Añadir schemas si no existen: `GraphCompletedData` (executionId, graphId, durat
 
 **Agente:** @qa
 
-**Objetivo:** Tests unitarios para `ValidateGraph` antes de implementar.
+**Objective:** Unit tests for `ValidateGraph` before implementing.
 
-Casos:
-1. Grafo válido (3 nodos sequential) → `nil`.
-2. `entry_node` no existe en `nodes` → `ErrGraphValidation`.
-3. Arista `conditional` → `ErrGraphValidation` ("unsupported edge type: conditional").
-4. Nodo inalcanzable desde `entry_node` → `ErrGraphValidation`.
+Cases:
+1. Valid graph (3 sequential nodes) → `nil`.
+2. `entry_node` does not exist in `nodes` → `ErrGraphValidation`.
+3. `conditional` edge → `ErrGraphValidation` ("unsupported edge type: conditional").
+4. Node unreachable from `entry_node` → `ErrGraphValidation`.
 
-**Fichero:** `services/orchestrator/internal/statemachine/graph_validator_test.go`
+**File:** `services/orchestrator/internal/statemachine/graph_validator_test.go`
 
 ---
 
@@ -175,21 +175,21 @@ Casos:
 
 **Agente:** @qa
 
-**Objetivo:** Tests unitarios antes de implementar `traversal.go` y `execution_sm.go`.
+**Objective:** Unit tests before implementing `traversal.go` and `execution_sm.go`.
 
 `NextNode`:
-1. Nodo con sucesor sequential → devuelve clave del siguiente.
-2. Nodo sin salida (terminal) → `("", nil)`.
+1. Node with sequential successor → returns the key of the next node.
+2. Node with no outgoing edges (terminal) → `("", nil)`.
 
 `HandleNodeExecuted`:
-3. Nodo intermedio → publica `node.execute.requested` y actualiza estado.
-4. Nodo terminal → publica `graph.completed` y pone ejecución en `completed`.
+3. Intermediate node → publishes `node.execute.requested` and updates state.
+4. Terminal node → publishes `graph.completed` and sets execution to `completed`.
 
 `HandleNodeExecuteFailed`:
-5. `retryable=false` → publica `graph.failed`, pone ejecución en `failed`, retorna nil.
-6. `retryable=true` → retorna `ErrRetryable` (consumer debe NACK).
+5. `retryable=false` → publishes `graph.failed`, sets execution to `failed`, returns nil.
+6. `retryable=true` → returns `ErrRetryable` (consumer must NACK).
 
-**Ficheros:** `services/orchestrator/internal/statemachine/traversal_test.go`,
+**Files:** `services/orchestrator/internal/statemachine/traversal_test.go`,
 `services/orchestrator/internal/statemachine/execution_sm_test.go`
 
 ---
@@ -198,15 +198,15 @@ Casos:
 
 **Agente:** @developer
 
-**Objetivo:** Añadir al dominio compartido los nuevos tipos y errores.
+**Objective:** Add the new types and errors to the shared domain.
 
-En `libs/domain/errors.go`:
+In `libs/domain/errors.go`:
 ```go
 var ErrGraphValidation = errors.New("domain: graph validation failed")
 var ErrRetryable      = errors.New("domain: retryable — consumer must NACK")
 ```
 
-En `libs/domain/graph.go` (nuevo archivo si no existe):
+In `libs/domain/graph.go` (new file if it doesn't exist):
 ```go
 type GraphDefinition struct {
     EntryNode string                     `json:"entry_node"`
@@ -226,51 +226,51 @@ type EdgeDefinition struct {
 }
 ```
 
-**Ficheros:** `libs/domain/errors.go`, `libs/domain/graph.go`
+**Files:** `libs/domain/errors.go`, `libs/domain/graph.go`
 
 ---
 
-### TODO #6 — impl: UpdateExecution en ExecutionRepository [impl]
+### TODO #6 — impl: UpdateExecution in ExecutionRepository [impl]
 
 **Agente:** @developer
 
-**Objetivo:** Añadir `UpdateExecution` al puerto `ExecutionRepository`.
+**Objective:** Add `UpdateExecution` to the `ExecutionRepository` port.
 
 ```go
 type ExecutionRepository interface {
     Create(ctx context.Context, exec *domain.Execution) error
     FindByID(ctx context.Context, id string) (*domain.Execution, error)
     CountActiveByGraph(ctx context.Context, graphID string) (int, error)
-    UpdateExecution(ctx context.Context, exec *domain.Execution) error  // nuevo
+    UpdateExecution(ctx context.Context, exec *domain.Execution) error  // new
 }
 ```
 
-El campo `CurrentNode` se añade a `domain.Execution` si no existe.
+The `CurrentNode` field is added to `domain.Execution` if it doesn't exist.
 
-**Ficheros:** `libs/ports/storage.go`, `libs/domain/execution.go`
+**Files:** `libs/ports/storage.go`, `libs/domain/execution.go`
 
 ---
 
-### TODO #7 — impl: ValidateGraph con dominikbraun/graph [impl]
+### TODO #7 — impl: ValidateGraph with dominikbraun/graph [impl]
 
 **Agente:** @developer
 
-**Objetivo:** Implementar `ValidateGraph` en Green.
+**Objective:** Implement `ValidateGraph` in Green.
 
 ```go
 // services/orchestrator/internal/statemachine/graph_validator.go
 func ValidateGraph(g domain.GraphDefinition) error {
-    // 1. entry_node existe en nodes
-    // 2. todos los edges son "sequential"
-    // 3. construir dominikbraun/graph y verificar alcanzabilidad
-    //    desde entry_node a todos los nodos
+    // 1. entry_node exists in nodes
+    // 2. all edges are "sequential"
+    // 3. build dominikbraun/graph and verify reachability
+    //    from entry_node to all nodes
 }
 ```
 
-Usar `github.com/dominikbraun/graph` para construir el DAG y verificar que todos
-los vértices son alcanzables desde `entry_node`.
+Use `github.com/dominikbraun/graph` to build the DAG and verify that all
+vertices are reachable from `entry_node`.
 
-**Fichero:** `services/orchestrator/internal/statemachine/graph_validator.go`
+**File:** `services/orchestrator/internal/statemachine/graph_validator.go`
 
 ---
 
@@ -278,7 +278,7 @@ los vértices son alcanzables desde `entry_node`.
 
 **Agente:** @developer
 
-**Objetivo:** Implementar `NextNode` en Green.
+**Objective:** Implement `NextNode` in Green.
 
 ```go
 // traversal.go
@@ -288,11 +288,11 @@ func NextNode(g domain.GraphDefinition, currentNode string) (string, error) {
             return e.To, nil
         }
     }
-    return "", nil  // nodo terminal
+    return "", nil  // terminal node
 }
 ```
 
-**Fichero:** `services/orchestrator/internal/statemachine/traversal.go`
+**File:** `services/orchestrator/internal/statemachine/traversal.go`
 
 ---
 
@@ -300,7 +300,7 @@ func NextNode(g domain.GraphDefinition, currentNode string) (string, error) {
 
 **Agente:** @developer
 
-**Objetivo:** Implementar la máquina de estados en Green.
+**Objective:** Implement the state machine in Green.
 
 ```go
 type ExecutionStateMachine struct {
@@ -326,16 +326,16 @@ func (sm *ExecutionStateMachine) HandleNodeExecuteFailed(
 ) error
 ```
 
-- `HandleNodeExecuted`: si `NextNode` devuelve nodo → publica `node.execute.requested`
-  (nuevo nodo), actualiza `exec.CurrentNode` y llama `UpdateExecution`.
-  Si terminal → publica `graph.completed`, pone `exec.Status = "completed"`,
-  llama `UpdateExecution`.
-- `HandleNodeExecuteFailed`: si `!retryable` → publica `graph.failed`, pone
-  `exec.Status = "failed"`, llama `UpdateExecution`, retorna nil.
-  Si `retryable` → retorna `domain.ErrRetryable` (consumer debe NACK).
-- Idempotencia: `CanTransitionTo(current, next Status) bool` evita doble transición.
+- `HandleNodeExecuted`: if `NextNode` returns a node → publish `node.execute.requested`
+  (new node), update `exec.CurrentNode` and call `UpdateExecution`.
+  If terminal → publish `graph.completed`, set `exec.Status = "completed"`,
+  call `UpdateExecution`.
+- `HandleNodeExecuteFailed`: if `!retryable` → publish `graph.failed`, set
+  `exec.Status = "failed"`, call `UpdateExecution`, return nil.
+  If `retryable` → return `domain.ErrRetryable` (consumer must NACK).
+- Idempotency: `CanTransitionTo(current, next Status) bool` prevents double transitions.
 
-**Fichero:** `services/orchestrator/internal/statemachine/execution_sm.go`
+**File:** `services/orchestrator/internal/statemachine/execution_sm.go`
 
 ---
 
@@ -343,7 +343,7 @@ func (sm *ExecutionStateMachine) HandleNodeExecuteFailed(
 
 **Agente:** @developer
 
-**Objetivo:** Consumer que consume `node.executed` y `node.execute.failed`.
+**Objective:** Consumer that consumes `node.executed` and `node.execute.failed`.
 
 ```go
 // services/orchestrator/internal/consumer/node_result.go
@@ -357,51 +357,51 @@ func (c *NodeResultConsumer) HandleNodeExecuted(ctx context.Context, evt domain.
 func (c *NodeResultConsumer) HandleNodeExecuteFailed(ctx context.Context, evt domain.Event) error
 ```
 
-- Carga `Execution` por `executionID` del evento.
-- Carga `GraphDefinition` del campo `definition` de la entidad Graph.
-- Delega en `ExecutionStateMachine`.
-- Si retorna `domain.ErrRetryable` → retorna error (el adaptador Valkey hace NACK).
-- Si retorna nil → el adaptador hace ACK.
+- Loads `Execution` by `executionID` from the event.
+- Loads `GraphDefinition` from the `definition` field of the Graph entity.
+- Delegates to `ExecutionStateMachine`.
+- If it returns `domain.ErrRetryable` → returns error (the Valkey adapter NACKs).
+- If it returns nil → the adapter ACKs.
 
-**Fichero:** `services/orchestrator/internal/consumer/node_result.go`
+**File:** `services/orchestrator/internal/consumer/node_result.go`
 
 ---
 
-### TODO #11 — impl: StartExecution extendido [impl]
+### TODO #11 — impl: Extended StartExecution [impl]
 
 **Agente:** @developer
 
-**Objetivo:** Extender `StartExecution` (use case SPRINT-003) para validar + publicar + running.
+**Objective:** Extend `StartExecution` (SPRINT-003 use case) to validate + publish + running.
 
-Flujo actualizado:
-1. Cargar Graph de repositorio.
-2. Deserializar `definition` a `domain.GraphDefinition`.
-3. `ValidateGraph(graphDef)` — si falla → retorna `ErrGraphValidation` (handler devuelve 422).
-4. `CountActiveByGraph` — si > 0 → retorna `ErrConflict`.
-5. `Create(execution)` con `status = "running"` (ya no `pending`).
-6. Publicar `node.execute.requested` para `entry_node`.
+Updated flow:
+1. Load Graph from repository.
+2. Deserialize `definition` to `domain.GraphDefinition`.
+3. `ValidateGraph(graphDef)` — if fails → return `ErrGraphValidation` (handler returns 422).
+4. `CountActiveByGraph` — if > 0 → return `ErrConflict`.
+5. `Create(execution)` with `status = "running"` (no longer `pending`).
+6. Publish `node.execute.requested` for `entry_node`.
 
-Añadir `ErrGraphValidation` al handler HTTP como 422.
+Add `ErrGraphValidation` to the HTTP handler as 422.
 
-**Ficheros:** `services/orchestrator/internal/usecase/start_execution.go`,
+**Files:** `services/orchestrator/internal/usecase/start_execution.go`,
 `services/orchestrator/internal/handler/execution_handler.go`
 
 ---
 
-### TODO #12 — impl: Wiring en main.go del orchestrator [impl]
+### TODO #12 — impl: Wiring in orchestrator main.go [impl]
 
 **Agente:** @developer
 
-**Objetivo:** Cablear los nuevos consumers y la state machine en
+**Objective:** Wire the new consumers and state machine in
 `services/orchestrator/main.go`.
 
-- Construir `ExecutionStateMachine` con repo y publisher.
-- Construir `NodeResultConsumer` con repos y state machine.
-- Registrar handlers para `node.executed` y `node.execute.failed` en el EventConsumer.
-- Arrancar los consumers en goroutines.
-- Manejar shutdown graceful (context cancel).
+- Build `ExecutionStateMachine` with repo and publisher.
+- Build `NodeResultConsumer` with repos and state machine.
+- Register handlers for `node.executed` and `node.execute.failed` in the EventConsumer.
+- Start consumers in goroutines.
+- Handle graceful shutdown (context cancel).
 
-**Fichero:** `services/orchestrator/main.go`
+**File:** `services/orchestrator/main.go`
 
 ---
 
@@ -409,59 +409,59 @@ Añadir `ErrGraphValidation` al handler HTTP como 422.
 
 **Agente:** @devops
 
-**Objetivo:** Añadir la dependencia al módulo.
+**Objective:** Add the dependency to the module.
 
 ```
 go get github.com/dominikbraun/graph
 ```
 
-Verificar que es Apache 2.0 (compatible con open source del proyecto).
+Verify it is Apache 2.0 (compatible with the project's open source license).
 
-**Fichero:** `go.mod`, `go.sum`
+**Files:** `go.mod`, `go.sum`
 
 ---
 
-### TODO #14 — test: integración state machine con Valkey real [test]
+### TODO #14 — test: state machine integration with real Valkey [test]
 
 **Agente:** @qa
 
-**Nota TDD:** Este test debe escribirse en Red ANTES de los TODOs de implementación (#7–#12). Ver "Nota sobre orden TDD" al inicio de los TODOs.
+**TDD Note:** This test must be written in Red BEFORE the implementation TODOs (#7–#12). See "Note on TDD order" at the start of the TODOs.
 
-**Objetivo:** Tests de integración con Valkey real (build tag `integration`).
+**Objective:** Integration tests with real Valkey (build tag `integration`).
 
-Caso 1: Submit execution válido → estado `running`, evento `node.execute.requested`
-publicado en stream correcto.
+Case 1: Submit valid execution → status `running`, `node.execute.requested` event
+published to the correct stream.
 
-Caso 2: Consume `node.executed` (nodo terminal) → estado `completed`, evento
-`graph.completed` publicado.
+Case 2: Consume `node.executed` (terminal node) → status `completed`, `graph.completed`
+event published.
 
-Usar Testcontainers para Valkey. Mínimo datos reales en PostgreSQL (puede ser SQLite
-en memoria con Ent para aislar de infra completa).
+Use Testcontainers for Valkey. Minimal real data in PostgreSQL (can use in-memory SQLite
+with Ent to isolate from full infrastructure).
 
-**Fichero:** `services/orchestrator/internal/statemachine/integration_test.go`
+**File:** `services/orchestrator/internal/statemachine/integration_test.go`
 
 ---
 
-### TODO #15 — test: integración consumer node_result [test]
+### TODO #15 — test: node_result consumer integration [test]
 
 **Agente:** @qa
 
-**Nota TDD:** Este test debe escribirse en Red ANTES de los TODOs de implementación (#7–#12). Ver "Nota sobre orden TDD" al inicio de los TODOs.
+**TDD Note:** This test must be written in Red BEFORE the implementation TODOs (#7–#12). See "Note on TDD order" at the start of the TODOs.
 
-**Objetivo:** Test de integración end-to-end del consumer con Valkey real.
+**Objective:** End-to-end integration test of the consumer with real Valkey.
 
-Publicar evento `node.executed` en el stream → verificar que el consumer llama
-`HandleNodeExecuted` → verificar ACK y estado actualizado.
+Publish `node.executed` event to the stream → verify the consumer calls
+`HandleNodeExecuted` → verify ACK and updated state.
 
-**Fichero:** `services/orchestrator/internal/consumer/node_result_integration_test.go`
+**File:** `services/orchestrator/internal/consumer/node_result_integration_test.go`
 
 ---
 
-### TODO #16 — impl: Adaptador Ent para UpdateExecution [impl]
+### TODO #16 — impl: Ent adapter for UpdateExecution [impl]
 
 **Agente:** @developer
 
-**Objetivo:** Implementar `UpdateExecution` en el adaptador Ent de orchestrator.
+**Objective:** Implement `UpdateExecution` in the orchestrator's Ent adapter.
 
 ```go
 func (r *ExecutionRepo) UpdateExecution(ctx context.Context, exec *domain.Execution) error {
@@ -474,27 +474,27 @@ func (r *ExecutionRepo) UpdateExecution(ctx context.Context, exec *domain.Execut
 }
 ```
 
-**Fichero:** `adapters/storage/ent/execution_repo.go`
+**File:** `adapters/storage/ent/execution_repo.go`
 
 ---
 
-### TODO #17 — docs: actualizar documentación [docs]
+### TODO #17 — docs: update documentation [docs]
 
 **Agente:** @docs
 
-**Objetivo:** Actualizar artefactos de documentación al cerrar el sprint.
+**Objective:** Update documentation artifacts on sprint close.
 
-- `docs/index.md` — estado SPRINT-010: completado.
-- `docs/log.md` — entrada de cierre.
-- `docs/views/process/` — diagrama de estado de Execution (pending→running→completed/failed).
-- Comentario en `execution_sm.go` explicando la limitación: solo aristas `sequential`
-  (timeout por nodo excluido, documentado como TODO futuro).
+- `docs/index.md` — SPRINT-010 status: completed.
+- `docs/log.md` — closing entry.
+- `docs/views/process/` — Execution state diagram (pending→running→completed/failed).
+- Comment in `execution_sm.go` explaining the limitation: only `sequential` edges
+  (per-node timeout excluded, documented as future TODO).
 
-**Ficheros:** `docs/index.md`, `docs/log.md`, `docs/views/process/`
+**Files:** `docs/index.md`, `docs/log.md`, `docs/views/process/`
 
 ---
 
-## Matriz de trazabilidad
+## Traceability Matrix
 
 | TODO | Spec | Test | Impl | Docs |
 |------|------|------|------|------|
@@ -508,34 +508,34 @@ func (r *ExecutionRepo) UpdateExecution(ctx context.Context, exec *domain.Execut
 | #8 NextNode impl | ADR-016 | #4 | traversal.go | — |
 | #9 ExecutionStateMachine | ADR-014 | #4 | execution_sm.go | — |
 | #10 Consumer node_result | ADR-014 | — | consumer/node_result.go | — |
-| #11 StartExecution extendido | OpenAPI | — | usecase/, handler/ | — |
+| #11 Extended StartExecution | OpenAPI | — | usecase/, handler/ | — |
 | #12 Wiring main.go | — | — | orchestrator/main.go | — |
 | #13 go.mod dominikbraun | — | — | go.mod | — |
-| #14 Integración SM | ADR-007, ADR-008 | integration_test.go | — | — |
-| #15 Integración consumer | ADR-008, ADR-014 | node_result_integration_test.go | — | — |
+| #14 SM integration | ADR-007, ADR-008 | integration_test.go | — | — |
+| #15 Consumer integration | ADR-008, ADR-014 | node_result_integration_test.go | — | — |
 | #16 UpdateExecution Ent | ADR-007 | — | ent/execution_repo.go | — |
 | #17 Docs | — | — | — | index.md, log.md, views/ |
 
-## Decisiones clave
+## Key decisions
 
-- **Solo aristas `sequential`** en este sprint. Aristas `conditional`, `parallel`, `loop`,
-  `interrupt` → `ErrGraphValidation`. Se documentan como limitación conocida y TODO futuro.
-- **Timeout por nodo excluido** explícitamente. El context de Go se propaga pero no se
-  añade deadline por nodo; se documenta como TODO futuro.
-- **`ErrRetryable`** como sentinel en `libs/domain/` permite que el consumer Valkey haga
-  NACK sin importar detalles del adaptador.
-- **Idempotencia obligatoria** (ADR-014): `CanTransitionTo` evita doble transición si el
-  consumer recibe el mismo evento dos veces.
-- **Checkpointing** (ADR-014): `UpdateExecution` se llama tras cada transición antes de
-  publicar el siguiente evento, garantizando consistencia eventual.
-- **`StartExecution`** pasa directamente de validar a `running` (no `pending`), simplificando
-  el flujo ya que la publicación del primer evento es síncrona en este sprint.
+- **Only `sequential` edges** in this sprint. `conditional`, `parallel`, `loop`,
+  `interrupt` edges → `ErrGraphValidation`. Documented as a known limitation and future TODO.
+- **Per-node timeout explicitly excluded.** Go context is propagated but no per-node
+  deadline is added; documented as a future TODO.
+- **`ErrRetryable`** as a sentinel in `libs/domain/` allows the Valkey consumer to NACK
+  without importing adapter details.
+- **Mandatory idempotency** (ADR-014): `CanTransitionTo` prevents double transitions if the
+  consumer receives the same event twice.
+- **Checkpointing** (ADR-014): `UpdateExecution` is called after each transition before
+  publishing the next event, guaranteeing eventual consistency.
+- **`StartExecution`** goes directly from validation to `running` (not `pending`), simplifying
+  the flow since the first event publication is synchronous in this sprint.
 
-## Resultado
+## Result
 
-> _Completar al cerrar el sprint._
+> _Complete on sprint close._
 
-- TODOs completados: —/17
-- Tests pasando: —
-- Decisiones revisadas: —
-- Artefactos entregados: —
+- TODOs completed: —/17
+- Tests passing: —
+- Decisions reviewed: —
+- Artifacts delivered: —

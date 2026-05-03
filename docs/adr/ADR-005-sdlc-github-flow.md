@@ -1,102 +1,102 @@
-# ADR-005: GitHub Flow, versionado semántico y changelog
+# ADR-005: GitHub Flow, semantic versioning and changelog
 
-**Estado:** Aceptado (revisado: changelog, releases, trazabilidad)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: changelog, releases, traceability)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El equipo necesita un flujo de trabajo estandarizado para el ciclo de
-vida del desarrollo. Adicionalmente, tras la adopción de sprints con
-trazabilidad (ADR-020), se necesita una cadena completa desde el
-requisito hasta la release:
+The team needs a standardized workflow for the development
+lifecycle. Additionally, following the adoption of sprints with
+traceability (ADR-020), a complete chain is needed from
+requirement to release:
 
 ```
 ADR → Spec → Sprint → TODO → Commit → PR → Changelog → Release → Tag
 ```
 
-## Decisión
+## Decision
 
-Se adopta **GitHub Flow** como estrategia de branching, **Conventional
-Commits** como formato estricto de commits, **Semantic Versioning**
-como esquema de versionado, y **generación automática de changelog**
-como mecanismo de comunicación de cambios.
+**GitHub Flow** is adopted as the branching strategy, **Conventional
+Commits** as the strict commit format, **Semantic Versioning**
+as the versioning scheme, and **automatic changelog generation**
+as the mechanism for communicating changes.
 
 ### GitHub Flow
 
 ```
-main (siempre desplegable)
+main (always deployable)
   │
-  ├── sprint/001-bootstrap-monorepo    ← rama de sprint
-  ├── feature/add-graph-validation     ← rama de funcionalidad
-  ├── fix/shipping-cost-calculation    ← rama de corrección
-  └── hotfix/critical-auth-bypass      ← rama de corrección urgente
+  ├── sprint/001-bootstrap-monorepo    ← sprint branch
+  ├── feature/add-graph-validation     ← feature branch
+  ├── fix/shipping-cost-calculation    ← fix branch
+  └── hotfix/critical-auth-bypass      ← urgent fix branch
 ```
 
-### Reglas concretas
+### Concrete rules
 
-#### Ramas y PRs
+#### Branches and PRs
 
-1. **`main` es sagrada.** Siempre desplegable. Protegida: sin push
-   directo. Todo entra vía PR aprobado.
+1. **`main` is sacred.** Always deployable. Protected: no direct push.
+   Everything enters via an approved PR.
 
-2. **Una rama por sprint o cambio.** Las ramas son efímeras — se
-   eliminan tras merge.
+2. **One branch per sprint or change.** Branches are ephemeral — they are
+   deleted after merge.
 
-3. **Nomenclatura de ramas:**
+3. **Branch naming:**
 
    ```
-   sprint/<NNN>-<descripción>     → sprints planificados (ADR-020)
-   feature/<descripción>          → funcionalidades fuera de sprint
-   fix/<descripción>              → correcciones no urgentes
-   hotfix/<descripción>           → correcciones críticas en producción
-   refactor/<descripción>         → mejoras sin cambio funcional
-   docs/<descripción>             → cambios en documentación
+   sprint/<NNN>-<description>     → planned sprints (ADR-020)
+   feature/<description>          → features outside a sprint
+   fix/<description>              → non-urgent fixes
+   hotfix/<description>           → critical production fixes
+   refactor/<description>         → improvements without functional change
+   docs/<description>             → documentation changes
    ```
 
-4. **Un PR por sprint.** El sprint completo se envía como un PR que
-   referencia el documento de sprint. El PR incluye: descripción del
-   sprint, enlace al documento, y la matriz de trazabilidad.
+4. **One PR per sprint.** The complete sprint is submitted as a PR that
+   references the sprint document. The PR includes: sprint description,
+   link to the document, and the traceability matrix.
 
-5. **Protecciones de `main`:**
-   - Require pull request reviews (mínimo 1).
+5. **`main` protections:**
+   - Require pull request reviews (minimum 1).
    - Require status checks to pass (lint, test, build).
    - Require branches to be up to date.
    - No force pushes. No deletions.
 
-#### Conventional Commits (estricto)
+#### Conventional Commits (strict)
 
-6. **Formato obligatorio de commits:**
+6. **Mandatory commit format:**
 
    ```
-   <tipo>(<scope>): <descripción imperativa> [SPRINT-XXX #N]
+   <type>(<scope>): <imperative description> [SPRINT-XXX #N]
 
-   [cuerpo opcional con contexto]
+   [optional body with context]
 
    [Refs: #issue, ADR-xxx]
-   [BREAKING CHANGE: descripción del breaking change]
+   [BREAKING CHANGE: description of the breaking change]
    ```
 
-   **Tipos:**
+   **Types:**
 
-   | Tipo | Uso | Aparece en changelog |
+   | Type | Use | Appears in changelog |
    |------|-----|---------------------|
-   | `feat` | Nueva funcionalidad | ✅ (Features) |
-   | `fix` | Corrección de bug | ✅ (Bug Fixes) |
-   | `perf` | Mejora de rendimiento | ✅ (Performance) |
-   | `refactor` | Refactorización sin cambio funcional | ❌ |
-   | `test` | Añadir o modificar tests | ❌ |
-   | `docs` | Documentación | ❌ |
-   | `ci` | Cambios en CI/CD | ❌ |
-   | `chore` | Tareas de mantenimiento | ❌ |
-   | `build` | Cambios en build system | ❌ |
+   | `feat` | New feature | Yes (Features) |
+   | `fix` | Bug fix | Yes (Bug Fixes) |
+   | `perf` | Performance improvement | Yes (Performance) |
+   | `refactor` | Refactoring without functional change | No |
+   | `test` | Adding or modifying tests | No |
+   | `docs` | Documentation | No |
+   | `ci` | CI/CD changes | No |
+   | `chore` | Maintenance tasks | No |
+   | `build` | Build system changes | No |
 
-   **Scopes:** nombre del servicio o componente afectado:
+   **Scopes:** name of the affected service or component:
    `orchestrator`, `executor`, `router`, `planner`, `auth-server`,
    `catalog`, `mcp-registry`, `agent-registry`, `dashboard`, `libs`,
    `adapters`, `specs`, `docs`.
 
-   **Ejemplos:**
+   **Examples:**
 
    ```
    feat(orchestrator): add graph validation endpoint [SPRINT-001 #6]
@@ -110,18 +110,18 @@ main (siempre desplegable)
    Clients must update their base URLs.
    ```
 
-7. **El scope referencia al sprint y TODO.** Esto cierra la cadena
-   de trazabilidad: desde el changelog se llega al commit, del commit
-   al sprint, del sprint a la spec, de la spec al ADR.
+7. **The scope references the sprint and TODO.** This closes the
+   traceability chain: from the changelog you reach the commit, from the commit
+   the sprint, from the sprint the spec, from the spec the ADR.
 
-8. **`BREAKING CHANGE` en el footer** para cambios incompatibles.
-   Esto dispara un bump de versión major en semver.
+8. **`BREAKING CHANGE` in the footer** for incompatible changes.
+   This triggers a major version bump in semver.
 
 #### Squash merge
 
-9. **Squash and merge como estrategia.** Los PRs se mergean con
-   squash. El mensaje del squash sigue Conventional Commits y
-   resume el sprint:
+9. **Squash and merge as strategy.** PRs are merged with
+   squash. The squash message follows Conventional Commits and
+   summarizes the sprint:
 
    ```
    feat(orchestrator): implement graph CRUD and validation [SPRINT-001]
@@ -136,35 +136,35 @@ main (siempre desplegable)
 
 #### Semantic Versioning
 
-10. **Versionado semántico del sistema:**
+10. **Semantic versioning of the system:**
 
     ```
     vMAJOR.MINOR.PATCH
 
-    MAJOR → Breaking change en la API pública (OpenAPI)
-    MINOR → Nuevo endpoint, nuevo patrón, nueva funcionalidad
-    PATCH → Corrección de bugs, mejoras de rendimiento
+    MAJOR → Breaking change in the public API (OpenAPI)
+    MINOR → New endpoint, new pattern, new feature
+    PATCH → Bug fixes, performance improvements
     ```
 
-11. **Dos niveles de versionado:**
+11. **Two levels of versioning:**
 
-    - **Sistema (dago):** Versión global que refleja la API pública.
+    - **System (dago):** Global version reflecting the public API.
       Tag: `v1.2.3`.
-    - **Paquetes del catálogo:** Cada paquete tiene su propio semver
-      independiente (ADR-017). Versión del paquete ≠ versión del sistema.
+    - **Catalog packages:** Each package has its own independent semver
+      (ADR-017). Package version != system version.
 
-12. **El versionado se deriva de los commits.** Un commit `feat:` →
-    bump minor. Un commit `fix:` → bump patch. Un commit con
-    `BREAKING CHANGE` → bump major. No se elige la versión
-    manualmente.
+12. **Versioning is derived from commits.** A `feat:` commit →
+    minor bump. A `fix:` commit → patch bump. A commit with
+    `BREAKING CHANGE` → major bump. The version is not chosen
+    manually.
 
 #### Changelog
 
-13. **Changelog generado automáticamente** desde los commits con
-    Conventional Commits. Se usa **git-cliff** (open source, Rust,
-    configurable) o equivalente.
+13. **Changelog generated automatically** from commits with
+    Conventional Commits. **git-cliff** is used (open source, Rust,
+    configurable) or equivalent.
 
-14. **Formato del changelog:**
+14. **Changelog format:**
 
     ```markdown
     # Changelog
@@ -188,101 +188,100 @@ main (siempre desplegable)
     ...
     ```
 
-15. **Cada entrada referencia el sprint y TODO.** Un auditor puede
-    seguir la cadena: changelog entry → commit → sprint doc →
+15. **Each entry references the sprint and TODO.** An auditor can
+    follow the chain: changelog entry → commit → sprint doc →
     spec → ADR.
 
-16. **El changelog vive en `CHANGELOG.md` en la raíz** del repo.
-    Se actualiza automáticamente en cada release.
+16. **The changelog lives in `CHANGELOG.md` at the root** of the repo.
+    It is updated automatically at each release.
 
 #### Releases
 
-17. **Release = tag + changelog + GitHub Release.** Cuando se decide
-    hacer una release:
+17. **Release = tag + changelog + GitHub Release.** When a release is decided:
 
     ```
-    1. git-cliff genera el changelog actualizado.
-    2. Se commitea CHANGELOG.md.
-    3. Se crea tag semver (v1.2.0).
-    4. GitHub Release se genera desde el tag con el changelog.
-    5. CI/CD despliega los servicios afectados.
+    1. git-cliff generates the updated changelog.
+    2. CHANGELOG.md is committed.
+    3. A semver tag is created (v1.2.0).
+    4. GitHub Release is generated from the tag with the changelog.
+    5. CI/CD deploys the affected services.
     ```
 
-18. **Frecuencia de releases.** No se acumulan cambios indefinidamente.
-    Se hace release cuando se completa un sprint con funcionalidad
-    significativa o cuando hay fixes críticos. Mínimo una release
-    por sprint productivo.
+18. **Release frequency.** Changes are not accumulated indefinitely.
+    A release is made when a sprint with significant functionality is
+    completed or when there are critical fixes. At minimum one release
+    per productive sprint.
 
-19. **Releases de servicios individuales.** Aunque hay una versión
-    global del sistema, cada servicio puede tener releases
-    independientes vía path-based triggers (ADR-013). El changelog
-    global refleja todos los cambios; los deploy son selectivos.
+19. **Individual service releases.** Although there is a global system
+    version, each service can have independent releases
+    via path-based triggers (ADR-013). The global changelog reflects all
+    changes; deploys are selective.
 
-### Cadena completa de trazabilidad
+### Complete traceability chain
 
 ```
-ADR-016 (decisión: patrones de nodo)
-  → specs/patterns/nodes/react.json (spec del patrón)
-    → SPRINT-003 (plan: implementar patrón react)
-      → SPRINT-003 #2 (TODO: tests del patrón react)
+ADR-016 (decision: node patterns)
+  → specs/patterns/nodes/react.json (pattern spec)
+    → SPRINT-003 (plan: implement react pattern)
+      → SPRINT-003 #2 (TODO: react pattern tests)
         → test(executor): add react pattern tests [SPRINT-003 #2] (commit)
-      → SPRINT-003 #4 (TODO: implementar handler react)
+      → SPRINT-003 #4 (TODO: implement react handler)
         → feat(executor): implement react pattern handler [SPRINT-003 #4] (commit)
           → PR "SPRINT-003: Implement react pattern" (review)
-            → CHANGELOG.md: "**executor:** Implement react pattern" (comunicación)
+            → CHANGELOG.md: "**executor:** Implement react pattern" (communication)
               → v1.3.0 (release)
                 → Tag + GitHub Release + Deploy executor
 ```
 
-Cualquier analista puede recorrer esta cadena en ambas direcciones:
-desde el ADR hasta la release, o desde la release hasta el ADR.
+Any analyst can traverse this chain in both directions:
+from the ADR to the release, or from the release to the ADR.
 
-### Integración con sprints (ADR-020)
+### Integration with sprints (ADR-020)
 
 ```
-1. planner genera documento de sprint con TODOs.
-2. Se crea rama sprint/NNN-descripción desde main.
-3. Se ejecutan los TODOs en orden (specs → tests → impl → docs).
-4. Cada commit sigue Conventional Commits con [SPRINT-NNN #TODO].
-5. Se abre PR con referencia al documento de sprint.
-6. reviewer (CI o humano) revisa contra plan y ADRs.
-7. Squash merge con mensaje resumen del sprint.
-8. git-cliff actualiza CHANGELOG.md.
-9. Se crea release si corresponde (tag + GitHub Release).
-10. Se cierra el documento de sprint con resultado.
+1. planner generates sprint document with TODOs.
+2. Branch sprint/NNN-description is created from main.
+3. TODOs are executed in order (specs → tests → impl → docs).
+4. Each commit follows Conventional Commits with [SPRINT-NNN #TODO].
+5. PR is opened with reference to the sprint document.
+6. reviewer (CI or human) reviews against plan and ADRs.
+7. Squash merge with sprint summary message.
+8. git-cliff updates CHANGELOG.md.
+9. Release is created if appropriate (tag + GitHub Release).
+10. Sprint document is closed with result.
 ```
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **GitFlow:** Descartado por complejidad innecesaria.
-- **Trunk-Based Development:** Considerado como evolución futura.
-- **Changelog manual:** Propenso a errores y olvidos. Descartado.
-- **release-please (Google):** Alternativa a git-cliff. Genera PRs
-  de release automáticamente. Más opinionado. Se evaluará.
+- **GitFlow:** Discarded for unnecessary complexity.
+- **Trunk-Based Development:** Considered as a future evolution.
+- **Manual changelog:** Error-prone and easily forgotten. Discarded.
+- **release-please (Google):** Alternative to git-cliff. Automatically generates
+  release PRs. More opinionated. Will be evaluated.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Trazabilidad completa: ADR → spec → sprint → commit → changelog → release.
-- Changelog generado, no escrito — siempre actualizado.
-- Versionado derivado de commits — sin decisiones manuales.
-- Auditable por humanos y máquinas.
-- Conventional Commits como estándar de la industria.
+**Positive:**
+- Complete traceability: ADR → spec → sprint → commit → changelog → release.
+- Changelog generated, not written — always up to date.
+- Versioning derived from commits — no manual decisions.
+- Auditable by humans and machines.
+- Conventional Commits as industry standard.
 
-**Negativas:**
-- Conventional Commits requiere disciplina en cada commit.
-- Tooling adicional (git-cliff) en el pipeline.
-- El squash merge pierde granularidad del sprint en el historial de
-  main (mitigado: el PR y el documento de sprint preservan el detalle).
+**Negative:**
+- Conventional Commits requires discipline in every commit.
+- Additional tooling (git-cliff) in the pipeline.
+- Squash merge loses sprint granularity in the main history (mitigated:
+  the PR and sprint document preserve the detail).
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Formato de commits: `<tipo>(<scope>): <desc> [SPRINT-XXX #N]`.
-- Tipos que van al changelog: `feat`, `fix`, `perf`.
-- Scope: nombre del servicio o componente.
-- `BREAKING CHANGE` en el footer para cambios incompatibles.
-- Una rama y un PR por sprint.
-- El mensaje del squash merge resume el sprint completo.
-- Nunca sugieras commits directos a `main`.
-- Si un cambio es >400 líneas, sugiere dividir en sprints más pequeños.
-- El changelog se genera con git-cliff — no se edita manualmente.
+- Commit format: `<type>(<scope>): <desc> [SPRINT-XXX #N]`.
+- Types that appear in the changelog: `feat`, `fix`, `perf`.
+- Scope: name of the service or component.
+- `BREAKING CHANGE` in the footer for incompatible changes.
+- One branch and one PR per sprint.
+- The squash merge message summarizes the complete sprint.
+- Never suggest direct commits to `main`.
+- If a change is >400 lines, suggest splitting into smaller sprints.
+- The changelog is generated with git-cliff — it is not edited manually.

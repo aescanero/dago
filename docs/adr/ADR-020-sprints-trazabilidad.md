@@ -1,29 +1,28 @@
-# ADR-020: Desarrollo por sprints reducidos con trazabilidad completa
+# ADR-020: Reduced sprints with full traceability
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El proyecto se desarrolla con asistencia de agentes IA (Claude Code).
-Se necesita que el proceso de desarrollo sea completamente trazable y
-auditable — que un analista humano o máquina pueda examinar cada sprint,
-entender qué se hizo, por qué, y verificar que el resultado cumple las
-especificaciones. Esto es especialmente importante cuando el código es
-generado o asistido por IA: la transparencia del proceso es tan
-relevante como la calidad del resultado.
+The project is developed with AI agent assistance (Claude Code).
+The development process must be fully traceable and auditable — a human
+or machine analyst must be able to examine each sprint, understand what
+was done, why, and verify that the result meets the specifications. This
+is especially important when code is generated or assisted by AI:
+the transparency of the process is as relevant as the quality of the
+result.
 
-## Decisión
+## Decision
 
-Se adopta un modelo de **sprints reducidos** donde cada sprint tiene
-alcance limitado, documentación explícita, tests derivados de
-especificaciones, y trazabilidad completa desde requisito hasta
-implementación.
+A **reduced sprints** model is adopted where each sprint has a limited
+scope, explicit documentation, tests derived from specifications, and
+full traceability from requirement to implementation.
 
-### Estructura de un sprint
+### Sprint structure
 
-Cada sprint se documenta en un fichero Markdown en `docs/sprints/`:
+Each sprint is documented in a Markdown file in `docs/sprints/`:
 
 ```
 docs/sprints/
@@ -33,152 +32,152 @@ docs/sprints/
 └── ...
 ```
 
-### Formato del documento de sprint
+### Sprint document format
 
 ```markdown
-# SPRINT-XXX: [Título descriptivo]
+# SPRINT-XXX: [Descriptive title]
 
 ## Metadata
-- **Fecha inicio:** YYYY-MM-DD
-- **Fecha fin:** YYYY-MM-DD
-- **Estado:** planificado | en progreso | completado | cancelado
-- **ADRs aplicados:** ADR-001, ADR-007, ADR-013
-- **Specs afectadas:** openapi.yaml (paths/graphs.yaml), asyncapi.yaml
-- **Agente planificador:** planner
-- **Revisado por:** [humano o agente reviewer]
+- **Start date:** YYYY-MM-DD
+- **End date:** YYYY-MM-DD
+- **Status:** planned | in progress | completed | cancelled
+- **Applied ADRs:** ADR-001, ADR-007, ADR-013
+- **Affected specs:** openapi.yaml (paths/graphs.yaml), asyncapi.yaml
+- **Planning agent:** planner
+- **Reviewed by:** [human or reviewer agent]
 
-## Objetivo del sprint
-[Descripción clara y concisa de qué se consigue al completar este sprint.
-Debe ser verificable — al terminar, se puede comprobar sin ambigüedad si
-se cumplió o no.]
+## Sprint objective
+[Clear and concise description of what is achieved when this sprint is
+completed. Must be verifiable — when finished, it can be checked
+unambiguously whether it was met or not.]
 
-## Alcance
-### Incluido
-- [Lista explícita de lo que se implementa]
+## Scope
+### Included
+- [Explicit list of what is implemented]
 
-### Excluido
-- [Lista explícita de lo que NO se implementa y por qué]
+### Excluded
+- [Explicit list of what is NOT implemented and why]
 
-## Dependencias
-- **Sprints previos requeridos:** SPRINT-XXX, SPRINT-YYY
-- **Specs que deben existir:** [specs que se asumen listas]
-- **Infraestructura requerida:** [PostgreSQL, Valkey, etc.]
+## Dependencies
+- **Required previous sprints:** SPRINT-XXX, SPRINT-YYY
+- **Specs that must exist:** [specs assumed to be ready]
+- **Required infrastructure:** [PostgreSQL, Valkey, etc.]
 
 ## TODOs
 
-### 1. [spec] Definir schemas en OpenAPI
-- **Agente:** developer
+### 1. [spec] Define schemas in OpenAPI
+- **Agent:** developer
 - **Skill:** new-endpoint
-- **Spec afectada:** specs/paths/graphs.yaml
-- **Criterio de aceptación:** El schema es válido y coherente con ADR-010.
-- **Depende de:** ninguno
+- **Affected spec:** specs/paths/graphs.yaml
+- **Acceptance criterion:** The schema is valid and consistent with ADR-010.
+- **Depends on:** none
 
-### 2. [test] Tests de contrato para GET /api/v1/graphs
-- **Agente:** qa
+### 2. [test] Contract tests for GET /api/v1/graphs
+- **Agent:** qa
 - **Skill:** contract-test
-- **Ubicación del test:** test/contract/graphs_test.go
-- **Qué verifica:** Que el endpoint devuelve 200 con el schema definido
-  en OpenAPI, 401 sin token, 403 sin tags ABAC adecuadas.
-- **Spec de referencia:** specs/paths/graphs.yaml
-- **Depende de:** #1
+- **Test location:** test/contract/graphs_test.go
+- **What it verifies:** That the endpoint returns 200 with the schema defined
+  in OpenAPI, 401 without a token, 403 without appropriate ABAC tags.
+- **Reference spec:** specs/paths/graphs.yaml
+- **Depends on:** #1
 
-### 3. [test] Tests unitarios del caso de uso CreateGraph
-- **Agente:** qa
+### 3. [test] Unit tests for the CreateGraph use case
+- **Agent:** qa
 - **Skill:** unit-test
-- **Ubicación del test:** libs/domain/graph/service_test.go
-- **Qué verifica:**
-  - Grafo válido se crea correctamente.
-  - Grafo sin entry_node devuelve error de validación.
-  - Grafo con ciclo sin max_iterations es rechazado.
-- **Spec de referencia:** specs/patterns/graph.json (validación)
-- **Depende de:** ninguno
+- **Test location:** libs/domain/graph/service_test.go
+- **What it verifies:**
+  - A valid graph is created correctly.
+  - A graph without entry_node returns a validation error.
+  - A graph with a cycle without max_iterations is rejected.
+- **Reference spec:** specs/patterns/graph.json (validation)
+- **Depends on:** none
 
-### 4. [data] Crear schema Ent para Graph
-- **Agente:** developer
+### 4. [data] Create Ent schema for Graph
+- **Agent:** developer
 - **Skill:** new-entity
-- **Ubicación:** ent/schema/graph.go
-- **Depende de:** ninguno
+- **Location:** ent/schema/graph.go
+- **Depends on:** none
 
-### 5. [impl] Implementar caso de uso CreateGraph
-- **Agente:** developer
+### 5. [impl] Implement CreateGraph use case
+- **Agent:** developer
 - **Skill:** new-endpoint
-- **Ubicación:** libs/domain/graph/service.go
-- **Cumple test:** #3
-- **Depende de:** #3, #4
+- **Location:** libs/domain/graph/service.go
+- **Satisfies test:** #3
+- **Depends on:** #3, #4
 
-### 6. [impl] Implementar handler Gin para POST /api/v1/graphs
-- **Agente:** developer
+### 6. [impl] Implement Gin handler for POST /api/v1/graphs
+- **Agent:** developer
 - **Skill:** new-endpoint
-- **Ubicación:** services/orchestrator/internal/handler/graph_handler.go
-- **Cumple test:** #2
-- **Depende de:** #2, #5
+- **Location:** services/orchestrator/internal/handler/graph_handler.go
+- **Satisfies test:** #2
+- **Depends on:** #2, #5
 
-### 7. [docs] Actualizar diagrama de componentes del orchestrator
-- **Agente:** docs
+### 7. [docs] Update orchestrator component diagram
+- **Agent:** docs
 - **Skill:** logical-view
-- **Ubicación:** docs/views/logical/components/orchestrator.md
-- **Depende de:** #6
+- **Location:** docs/views/logical/components/orchestrator.md
+- **Depends on:** #6
 
-## Matriz de trazabilidad
+## Traceability matrix
 
-| Spec | Test | Implementación | Ubicación |
-|------|------|----------------|-----------|
+| Spec | Test | Implementation | Location |
+|------|------|----------------|----------|
 | openapi.yaml#/paths/graphs | contract/graphs_test.go | handler/graph_handler.go | orchestrator |
 | patterns/graph.json | domain/graph/service_test.go | domain/graph/service.go | libs |
-| ent/schema/graph.go | (migración Atlas) | adapters/storage/graph_repo.go | adapters |
+| ent/schema/graph.go | (Atlas migration) | adapters/storage/graph_repo.go | adapters |
 
-## Resultado del sprint
-[Se completa al finalizar el sprint]
+## Sprint result
+[Completed when the sprint finishes]
 
-### Tests ejecutados
+### Tests executed
 - Total: X
 - Passed: X
 - Failed: 0
 
-### Ficheros creados/modificados
-[Lista generada automáticamente o manualmente]
+### Files created/modified
+[List generated automatically or manually]
 
-### Decisiones tomadas durante el sprint
-[Cualquier decisión no prevista que se tomó durante la implementación.
-Si es significativa, se propone como ADR.]
+### Decisions made during the sprint
+[Any unplanned decision made during implementation.
+If significant, it is proposed as an ADR.]
 
-### Observaciones del reviewer
-[Feedback del agente reviewer o del humano que revisó el sprint]
+### Reviewer observations
+[Feedback from the reviewer agent or the human who reviewed the sprint]
 ```
 
-### Reglas concretas
+### Concrete rules
 
-#### Planificación
+#### Planning
 
-1. **Sprints reducidos.** Cada sprint tiene un alcance que se puede
-   completar en 1-3 días de trabajo. Si el alcance es mayor, se
-   divide en sprints más pequeños.
+1. **Reduced sprints.** Each sprint has a scope that can be completed
+   in 1-3 days of work. If the scope is larger, it is split into
+   smaller sprints.
 
-2. **Tests primero en el plan.** Los TODOs de test se definen antes
-   que los TODOs de implementación. Cada test referencia la spec de
-   la que se deriva y describe exactamente qué verifica.
+2. **Tests first in the plan.** Test TODOs are defined before
+   implementation TODOs. Each test references the spec it is derived
+   from and describes exactly what it verifies.
 
-3. **Alcance explícito.** Se documenta tanto lo incluido como lo
-   excluido. "No se implementa autenticación en este sprint porque
-   depende de SPRINT-005" es información valiosa.
+3. **Explicit scope.** Both what is included and what is excluded are
+   documented. "Authentication is not implemented in this sprint because
+   it depends on SPRINT-005" is valuable information.
 
-4. **Dependencias entre TODOs.** Cada TODO indica de qué otros
-   depende. Esto define el orden de ejecución y permite
-   paralelización cuando no hay dependencias.
+4. **Dependencies between TODOs.** Each TODO indicates what others it
+   depends on. This defines the execution order and enables
+   parallelisation when there are no dependencies.
 
-5. **Matriz de trazabilidad obligatoria.** Cada spec → test →
-   implementación se mapea explícitamente. Si una spec no tiene
-   test, es una brecha. Si un test no referencia una spec, no
-   debería existir.
+5. **Mandatory traceability matrix.** Each spec → test →
+   implementation is mapped explicitly. If a spec has no test,
+   it is a gap. If a test does not reference a spec, it
+   should not exist.
 
-#### Ejecución
+#### Execution
 
-6. **Test-first dentro del sprint.** Los tests del sprint se
-   escriben (Red) antes de la implementación (Green). Los TODOs
-   se ejecutan en el orden definido por las dependencias.
+6. **Test-first within the sprint.** Sprint tests are written (Red)
+   before the implementation (Green). TODOs are executed in the order
+   defined by their dependencies.
 
-7. **Cada TODO se commitea por separado** con un mensaje que
-   referencia el sprint y el número de TODO:
+7. **Each TODO is committed separately** with a message that
+   references the sprint and the TODO number:
 
    ```
    feat: define graph schemas in OpenAPI [SPRINT-001 #1]
@@ -186,90 +185,87 @@ Si es significativa, se propone como ADR.]
    feat: implement CreateGraph use case [SPRINT-001 #5]
    ```
 
-8. **Un PR por sprint.** El sprint completo se envía como un único
-   PR que incluye todos los cambios. El PR referencia el documento
-   de sprint.
+8. **One PR per sprint.** The complete sprint is submitted as a single
+   PR that includes all changes. The PR references the sprint document.
 
-#### Cierre
+#### Closure
 
-9. **Resultado documentado.** Al cerrar el sprint se completa la
-   sección de resultado: tests ejecutados, ficheros modificados,
-   decisiones no previstas.
+9. **Documented result.** When closing the sprint, the result section
+   is completed: tests executed, modified files, unplanned decisions.
 
-10. **Review obligatorio.** El agente `reviewer` (en CI) o un
-    humano revisa el sprint completo contra el plan. Las
-    discrepancias se documentan.
+10. **Mandatory review.** The `reviewer` agent (in CI) or a human
+    reviews the complete sprint against the plan. Discrepancies
+    are documented.
 
-11. **Sprint cerrado es inmutable.** Una vez completado, el documento
-    de sprint no se modifica. Si hay correcciones, se crean en un
-    sprint nuevo que referencia al anterior.
+11. **Closed sprint is immutable.** Once completed, the sprint document
+    is not modified. If there are corrections, they are created in a
+    new sprint that references the previous one.
 
-### Cómo el agente planner genera sprints
+### How the planner agent generates sprints
 
-El agente `planner` recibe un requisito y genera el documento de
-sprint siguiendo esta secuencia:
+The `planner` agent receives a requirement and generates the sprint
+document following this sequence:
 
 ```
-1. Analizar el requisito contra ADRs y specs.
-2. Identificar qué specs se necesitan crear o modificar.
-3. Derivar tests de las specs (contract tests, unit tests).
-4. Definir la implementación que hará pasar los tests.
-5. Identificar documentación afectada.
-6. Construir la matriz de trazabilidad.
-7. Estimar si cabe en un sprint o hay que dividir.
-8. Generar el documento de sprint.
+1. Analyse the requirement against ADRs and specs.
+2. Identify which specs need to be created or modified.
+3. Derive tests from the specs (contract tests, unit tests).
+4. Define the implementation that will make the tests pass.
+5. Identify affected documentation.
+6. Build the traceability matrix.
+7. Estimate whether it fits in one sprint or needs to be split.
+8. Generate the sprint document.
 ```
 
-El orden de generación de TODOs dentro del sprint es siempre:
+The order of TODO generation within the sprint is always:
 
 ```
-specs → tests → datos (Ent) → implementación → documentación
+specs → tests → data (Ent) → implementation → documentation
 ```
 
-Esto garantiza que las specs gobiernan los tests, los tests gobiernan
-la implementación, y la documentación refleja el resultado — no al revés.
+This ensures that specs govern tests, tests govern implementation,
+and documentation reflects the result — not the other way around.
 
-## Alternativas consideradas
+## Considered Alternatives
 
-- **Sin sprints formales (desarrollo ad-hoc):** Máxima velocidad
-  inicial pero cero trazabilidad. Descartado porque la auditabilidad
-  del proceso es un requisito.
+- **No formal sprints (ad-hoc development):** Maximum initial velocity
+  but zero traceability. Discarded because process auditability is a
+  requirement.
 
-- **Sprints Scrum clásicos (2 semanas):** Demasiado largos para un
-  proyecto asistido por IA donde el throughput es mayor. Los sprints
-  reducidos (1-3 días) se adaptan mejor al ritmo de trabajo con
-  Claude Code.
+- **Classic Scrum sprints (2 weeks):** Too long for an AI-assisted
+  project where throughput is higher. Reduced sprints (1-3 days) adapt
+  better to the working pace with Claude Code.
 
-- **Kanban sin sprints:** Flujo continuo. Descartado porque pierde
-  la noción de "unidad de trabajo completada y revisada" que es
-  esencial para la trazabilidad.
+- **Kanban without sprints:** Continuous flow. Discarded because it
+  loses the notion of "completed and reviewed unit of work" that is
+  essential for traceability.
 
-- **Solo issues de GitHub:** Posible pero no captura el razonamiento
-  del plan ni la matriz de trazabilidad. Los issues se pueden usar
-  como complemento para tracking.
+- **GitHub issues only:** Possible but does not capture the reasoning
+  behind the plan or the traceability matrix. Issues can be used as
+  a complement for tracking.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Trazabilidad completa: spec → test → código → documentación.
-- Cualquier analista puede reconstruir el proceso de construcción.
-- Tests derivados de specs, no de la implementación.
-- Decisiones no previstas se documentan explícitamente.
-- Sprints reducidos permiten revisión frecuente y corrección temprana.
-- El agente planner genera planes auditables y reproducibles.
+**Positive:**
+- Full traceability: spec → test → code → documentation.
+- Any analyst can reconstruct the build process.
+- Tests derived from specs, not from the implementation.
+- Unplanned decisions are documented explicitly.
+- Reduced sprints allow frequent review and early correction.
+- The planner agent generates auditable and reproducible plans.
 
-**Negativas:**
-- Overhead de documentación por sprint (mitigado porque el planner
-  lo genera automáticamente).
-- Rigidez: cambios durante el sprint requieren actualizar el plan.
-- Acumulación de documentos de sprint (mitigable con archivado).
+**Negative:**
+- Documentation overhead per sprint (mitigated because the planner
+  generates it automatically).
+- Rigidity: changes during a sprint require updating the plan.
+- Accumulation of sprint documents (mitigable with archiving).
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Los documentos de sprint viven en `docs/sprints/`.
-- El agente `planner` genera el documento de sprint completo.
-- Orden de TODOs: specs → tests → datos → implementación → docs.
-- Cada commit referencia sprint y número de TODO.
-- Un PR por sprint. Review obligatorio antes de merge.
-- La matriz de trazabilidad es obligatoria en cada sprint.
-- Al cerrar el sprint, completar la sección de resultado.
+- Sprint documents live in `docs/sprints/`.
+- The `planner` agent generates the complete sprint document.
+- TODO order: specs → tests → data → implementation → docs.
+- Each commit references the sprint and the TODO number.
+- One PR per sprint. Mandatory review before merge.
+- The traceability matrix is mandatory in every sprint.
+- When closing the sprint, complete the result section.

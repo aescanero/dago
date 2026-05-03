@@ -1,36 +1,36 @@
-# ADR-018: AG-UI como protocolo agente↔usuario y A2UI para UI generativa
+# ADR-018: AG-UI as the agent-user protocol and A2UI for generative UI
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El dashboard de dago necesita comunicarse en tiempo real con los agentes
-durante la ejecución de grafos: streaming de tokens, visualización de
-tool calls, human-in-the-loop, sincronización de estado. Además, los
-paquetes (ADR-017) pueden incluir componentes de UI que los agentes
-solicitan renderizar durante la ejecución.
+The dago dashboard needs to communicate in real time with agents
+during graph execution: token streaming, tool call visualisation,
+human-in-the-loop, state synchronisation. Additionally, packages
+(ADR-017) can include UI components that agents request to render
+during execution.
 
-Existen dos protocolos complementarios que cubren estas necesidades,
-completando el "tridente" de protocolos agénticos junto con MCP
-(agente↔herramienta) y A2A (agente↔agente).
+Two complementary protocols exist that cover these needs,
+completing the "trident" of agentic protocols alongside MCP
+(agent↔tool) and A2A (agent↔agent).
 
-## Decisión
+## Decision
 
-Se adoptan dos protocolos complementarios:
+Two complementary protocols are adopted:
 
-- **AG-UI** como protocolo de comunicación agente↔usuario.
-- **A2UI** como formato de UI generativa declarativa.
+- **AG-UI** as the agent-user communication protocol.
+- **A2UI** as the declarative generative UI format.
 
 ### AG-UI — Agent-User Interaction Protocol
 
-AG-UI es un protocolo abierto, basado en eventos, que estandariza
-cómo los agentes se conectan a aplicaciones de usuario. Licencia MIT,
-creado por CopilotKit, con soporte de Amazon Bedrock, Microsoft
-Agent Framework y más de 13k estrellas en GitHub.
+AG-UI is an open, event-based protocol that standardises how agents
+connect to user-facing applications. MIT license, created by CopilotKit,
+with support from Amazon Bedrock, Microsoft Agent Framework, and over
+13k GitHub stars.
 
-AG-UI define ~16 tipos de eventos estándar:
+AG-UI defines ~16 standard event types:
 
 ```
 Lifecycle:     RUN_STARTED, RUN_FINISHED, RUN_ERROR
@@ -40,32 +40,32 @@ State:         STATE_SNAPSHOT, STATE_DELTA
 Custom:        CUSTOM
 ```
 
-**Transporte:** AG-UI funciona sobre WebSocket (que ya decidimos usar)
-o SSE. No reemplaza WebSocket — es una capa de protocolo encima del
-transporte que estandariza el formato de los mensajes.
+**Transport:** AG-UI works over WebSocket (already decided) or SSE.
+It does not replace WebSocket — it is a protocol layer on top of the
+transport that standardises the message format.
 
-**Rol en dago:** El orchestrator emite eventos AG-UI hacia el
-dashboard durante la ejecución de grafos:
+**Role in dago:** The orchestrator emits AG-UI events to the
+dashboard during graph execution:
 
 ```
 Orchestrator                          Dashboard
     │                                      │
-    ├── RUN_STARTED ──────────────────────▶│ Muestra "ejecutando..."
-    ├── TEXT_MESSAGE_CONTENT (token) ─────▶│ Streaming de texto
-    ├── TOOL_CALL_START ──────────────────▶│ Muestra tool activity
-    ├── TOOL_CALL_RESULT ─────────────────▶│ Muestra resultado
-    ├── STATE_DELTA ──────────────────────▶│ Actualiza estado del grafo
+    ├── RUN_STARTED ──────────────────────▶│ Shows "executing..."
+    ├── TEXT_MESSAGE_CONTENT (token) ─────▶│ Text streaming
+    ├── TOOL_CALL_START ──────────────────▶│ Shows tool activity
+    ├── TOOL_CALL_RESULT ─────────────────▶│ Shows result
+    ├── STATE_DELTA ──────────────────────▶│ Updates graph state
     ├── (user approval request) ◀─────────│ Human-in-the-loop
-    ├── RUN_FINISHED ─────────────────────▶│ Muestra resultado final
+    ├── RUN_FINISHED ─────────────────────▶│ Shows final result
     │                                      │
 ```
 
 ### A2UI — Declarative UI for Agents
 
-A2UI resuelve cómo los agentes pueden solicitar UIs ricas de forma
-segura. En vez de generar HTML o ejecutar código, el agente envía
-una descripción declarativa de lo que quiere mostrar y el frontend
-lo renderiza con componentes pre-aprobados del catálogo.
+A2UI solves how agents can request rich UIs safely. Instead of
+generating HTML or executing code, the agent sends a declarative
+description of what it wants to display and the frontend renders it
+with pre-approved components from the catalogue.
 
 ```json
 {
@@ -81,83 +81,82 @@ lo renderiza con componentes pre-aprobados del catálogo.
 }
 ```
 
-**Seguridad:** Los agentes solo pueden usar componentes del catálogo
-registrado. No hay inyección de UI, no hay ejecución de código
-arbitrario. El dashboard valida el descriptor A2UI contra un catálogo
-de componentes permitidos antes de renderizar.
+**Security:** Agents can only use components from the registered
+catalogue. There is no UI injection, no arbitrary code execution.
+The dashboard validates the A2UI descriptor against a catalogue of
+allowed components before rendering.
 
-**Rol en dago:** Los nodos del grafo pueden emitir descriptores A2UI
-como parte de su output. El orchestrator los envía al dashboard vía
-AG-UI (usando eventos CUSTOM). El dashboard los renderiza con
-componentes de shadcn/ui (ADR-019).
+**Role in dago:** Graph nodes can emit A2UI descriptors as part of
+their output. The orchestrator sends them to the dashboard via
+AG-UI (using CUSTOM events). The dashboard renders them with
+shadcn/ui components (ADR-019).
 
-### El tridente de protocolos agénticos en dago
+### The agentic protocol trident in dago
 
 ```
-MCP     → Agente ↔ Herramientas   (executor → mcp-registry → tools)
-A2A     → Agente ↔ Agente         (agent-registry → Agent Cards)
-AG-UI   → Agente ↔ Usuario        (orchestrator → dashboard, runtime)
-A2UI    → Agente → UI widgets     (nodo → dashboard, declarativo)
+MCP     → Agent ↔ Tools       (executor → mcp-registry → tools)
+A2A     → Agent ↔ Agent       (agent-registry → Agent Cards)
+AG-UI   → Agent ↔ User        (orchestrator → dashboard, runtime)
+A2UI    → Agent → UI widgets  (node → dashboard, declarative)
 ```
 
-### Reglas concretas
+### Concrete rules
 
-1. **AG-UI sobre WebSocket.** El orchestrator expone un endpoint
-   WebSocket que emite eventos AG-UI. El dashboard consume estos
-   eventos con un cliente AG-UI compatible.
+1. **AG-UI over WebSocket.** The orchestrator exposes a WebSocket
+   endpoint that emits AG-UI events. The dashboard consumes these
+   events with an AG-UI compatible client.
 
-2. **Eventos AG-UI para toda comunicación en tiempo real.** Streaming
-   de tokens, tool calls, state sync, human-in-the-loop — todo usa
-   el formato de eventos AG-UI, no un formato propietario.
+2. **AG-UI events for all real-time communication.** Token streaming,
+   tool calls, state sync, human-in-the-loop — all use the AG-UI
+   event format, not a proprietary format.
 
-3. **A2UI para UI dinámica.** Cuando un nodo necesita mostrar un
-   formulario, una tabla, un gráfico o cualquier widget interactivo,
-   emite un descriptor A2UI. El dashboard lo renderiza con
-   componentes del catálogo.
+3. **A2UI for dynamic UI.** When a node needs to display a form,
+   a table, a chart, or any interactive widget, it emits an A2UI
+   descriptor. The dashboard renders it with catalogue components.
 
-4. **Catálogo de componentes A2UI registrado.** Solo los tipos de
-   componentes registrados en el catálogo se renderizan. Componentes
-   desconocidos se ignoran con un fallback informativo.
+4. **Registered A2UI component catalogue.** Only component types
+   registered in the catalogue are rendered. Unknown components
+   are ignored with an informative fallback.
 
-5. **Los descriptores A2UI se incluyen en los paquetes.** Cada
-   paquete (ADR-017) puede declarar qué componentes A2UI utiliza
-   en su sección `ui.a2ui_catalog`.
+5. **A2UI descriptors are included in packages.** Each package
+   (ADR-017) can declare which A2UI components it uses in its
+   `ui.a2ui_catalog` section.
 
-## Alternativas consideradas
+## Considered Alternatives
 
-- **Protocolo WebSocket propietario:** Máxima flexibilidad pero cero
-  interoperabilidad. Cada cambio requiere actualizar cliente y
-  servidor. Descartado.
+- **Proprietary WebSocket protocol:** Maximum flexibility but zero
+  interoperability. Every change requires updating both client and
+  server. Discarded.
 
-- **Solo A2UI sin AG-UI:** A2UI solo cubre la generación de widgets,
-  no el streaming de texto, state sync ni human-in-the-loop. Insuficiente.
+- **A2UI only without AG-UI:** A2UI only covers widget generation,
+  not text streaming, state sync, or human-in-the-loop. Insufficient.
 
-- **Solo AG-UI sin A2UI:** AG-UI cubre la comunicación pero no tiene
-  un formato estándar para describir widgets de UI. Se necesitaría
-  un formato propietario para eso.
+- **AG-UI only without A2UI:** AG-UI covers communication but has
+  no standard format for describing UI widgets. A proprietary format
+  would be needed for that.
 
-- **HTML/JS generado por el agente:** Riesgo de seguridad alto
-  (XSS, inyección). Descartado.
+- **HTML/JS generated by the agent:** High security risk
+  (XSS, injection). Discarded.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Interoperabilidad con cualquier frontend AG-UI compatible.
-- Seguridad: A2UI es declarativo, no ejecutable.
-- Protocolo estándar con adopción creciente (AWS, Microsoft, CopilotKit).
-- Los paquetes pueden incluir definiciones de UI.
-- Human-in-the-loop estandarizado.
+**Positive:**
+- Interoperability with any AG-UI compatible frontend.
+- Security: A2UI is declarative, not executable.
+- Standard protocol with growing adoption (AWS, Microsoft, CopilotKit).
+- Packages can include UI definitions.
+- Standardised human-in-the-loop.
 
-**Negativas:**
-- AG-UI es relativamente joven — posibles cambios en el protocolo.
-- A2UI limita la expresividad de la UI a los componentes del catálogo.
-- Dos protocolos de UI añaden complejidad conceptual.
+**Negative:**
+- AG-UI is relatively young — possible protocol changes.
+- A2UI limits UI expressiveness to catalogue components.
+- Two UI protocols add conceptual complexity.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- El endpoint WebSocket del orchestrator emite eventos AG-UI.
-- Los tipos de evento AG-UI se definen en `libs/domain/events/agui.go`.
-- Los descriptores A2UI se validan contra el catálogo en el dashboard.
-- Al crear un patrón de nodo que necesite UI, incluir la definición
-  A2UI en el paquete y el handler AG-UI en el orchestrator.
-- El cliente AG-UI en el dashboard vive en `dashboard/src/api/agui/`.
+- The orchestrator WebSocket endpoint emits AG-UI events.
+- AG-UI event types are defined in `libs/domain/events/agui.go`.
+- A2UI descriptors are validated against the catalogue in the dashboard.
+- When creating a node pattern that needs UI, include the A2UI definition
+  in the package and the AG-UI handler in the orchestrator.
+- The AG-UI client in the dashboard lives in `dashboard/src/api/agui/`.

@@ -1,26 +1,25 @@
-# ADR-017: Paquetes como unidad de distribución
+# ADR-017: Packages as the distribution unit
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-Dago necesita una unidad de distribución que agrupe todo lo necesario
-para ejecutar un workflow: la definición del grafo, la configuración
-de los nodos agénticos, las herramientas MCP requeridas, los
-componentes de UI, y los metadatos de seguridad. Sin esta
-formalización, cada workflow es una colección de artefactos sueltos
-difíciles de versionar, compartir y reutilizar.
+Dago needs a distribution unit that groups everything required to
+execute a workflow: the graph definition, the configuration of agentic
+nodes, the required MCP tools, UI components, and security metadata.
+Without this formalisation, each workflow is a collection of loose
+artefacts that are hard to version, share, and reuse.
 
-## Decisión
+## Decision
 
-Se define el **paquete** como la unidad atómica de distribución del
-sistema. Un paquete es un artefacto versionado que se publica en el
-servicio catalog (ADR-013) y contiene todo lo necesario para instalar,
-configurar y ejecutar un workflow.
+The **package** is defined as the atomic distribution unit of the
+system. A package is a versioned artefact published to the catalog
+service (ADR-013) that contains everything needed to install,
+configure, and execute a workflow.
 
-### Estructura de un paquete
+### Package structure
 
 ```json
 {
@@ -118,73 +117,71 @@ configurar y ejecutar un workflow.
 }
 ```
 
-### Secciones del paquete
+### Package sections
 
-**`package`** — Metadatos: id, nombre, versión (semver), autor,
-licencia, descripción, tags ABAC para control de acceso, y
-dependencias (otros paquetes, MCP servers, modelos LLM).
+**`package`** — Metadata: id, name, version (semver), author,
+license, description, ABAC tags for access control, and
+dependencies (other packages, MCP servers, LLM models).
 
-**`workflow`** — Definición del grafo (ADR-016): nodos con sus
-patrones, aristas con sus flujos, configuración de memoria.
-Es la spec de ejecución — el orchestrator la consume para ejecutar.
+**`workflow`** — Graph definition (ADR-016): nodes with their
+patterns, edges with their flows, memory configuration.
+This is the execution spec — the orchestrator consumes it to execute.
 
-**`skills`** — Conocimiento del dominio: system prompts por nodo,
-ejemplos few-shot, reglas de negocio. Es lo que diferencia un
-agente genérico de uno especializado en un dominio concreto.
+**`skills`** — Domain knowledge: system prompts per node,
+few-shot examples, business rules. This is what differentiates a
+generic agent from one specialised in a specific domain.
 
-**`tools`** — Herramientas requeridas: MCP servers con las tools
-específicas que cada nodo necesita. El orchestrator verifica
-disponibilidad contra el mcp-registry antes de ejecutar.
+**`tools`** — Required tools: MCP servers with the specific
+tools each node needs. The orchestrator verifies availability
+against the mcp-registry before executing.
 
-**`ui`** — Componentes de interfaz: microfrontales que el dashboard
-carga dinámicamente, componentes A2UI que los agentes pueden
-solicitar durante la ejecución, y configuración AG-UI para la
-comunicación en tiempo real.
+**`ui`** — Interface components: microfrontends that the dashboard
+loads dynamically, A2UI components that agents can request during
+execution, and AG-UI configuration for real-time communication.
 
-### Versionado
+### Versioning
 
-Los paquetes siguen **Semantic Versioning** (semver):
+Packages follow **Semantic Versioning** (semver):
 
-- **Major** — Cambios incompatibles en el workflow o la API del paquete.
-- **Minor** — Nuevos nodos, tools o componentes UI sin romper.
-- **Patch** — Correcciones en prompts, reglas de negocio, configuración.
+- **Major** — Breaking changes to the workflow or the package API.
+- **Minor** — New nodes, tools, or UI components without breaking changes.
+- **Patch** — Fixes to prompts, business rules, configuration.
 
-El catálogo mantiene todas las versiones. Las ejecuciones en curso
-usan la versión con la que se iniciaron, no la última publicada.
+The catalogue retains all versions. In-progress executions use the
+version they were started with, not the latest published one.
 
-### Validación
+### Validation
 
-Al publicar un paquete, el catalog valida:
+When publishing a package, the catalog validates:
 
-1. **Schema** — El JSON cumple el JSON Schema del paquete.
-2. **Workflow** — El grafo es estructuralmente válido (ADR-016).
-3. **Dependencias** — Los MCP servers referenciados existen en
-   el mcp-registry. Los modelos LLM están disponibles.
-4. **Seguridad** — Los tags ABAC son válidos. El autor tiene
-   permisos para publicar con esos tags.
-5. **UI** — Los componentes referenciados existen en el catálogo
-   de microfrontales o son componentes A2UI válidos.
+1. **Schema** — The JSON satisfies the package JSON Schema.
+2. **Workflow** — The graph is structurally valid (ADR-016).
+3. **Dependencies** — Referenced MCP servers exist in
+   the mcp-registry. LLM models are available.
+4. **Security** — ABAC tags are valid. The author has
+   permission to publish with those tags.
+5. **UI** — Referenced components exist in the microfrontend
+   catalogue or are valid A2UI components.
 
-### Ciclo de vida
+### Lifecycle
 
 ```
 Draft → Published → Active → Deprecated → Archived
 ```
 
-- **Draft** — En desarrollo. No ejecutable.
-- **Published** — Disponible para ejecución. Inmutable.
-- **Active** — Tiene ejecuciones en curso.
-- **Deprecated** — Reemplazado por versión nueva. Las ejecuciones
-  existentes continúan pero no se inician nuevas.
-- **Archived** — Retirado. Solo consulta histórica.
+- **Draft** — In development. Not executable.
+- **Published** — Available for execution. Immutable.
+- **Active** — Has in-progress executions.
+- **Deprecated** — Replaced by a new version. Existing executions
+  continue but new ones cannot be started.
+- **Archived** — Retired. Historical query only.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- El schema del paquete vive en `specs/schemas/package.json`.
-- La validación de paquetes se implementa en `services/catalog/internal/`.
-- El orchestrator obtiene la definición del paquete del catalog via
-  HTTP antes de ejecutar un grafo.
-- Los tags del paquete se evalúan con ABAC (ADR-012) para control
-  de acceso.
-- Los componentes de UI del paquete los carga el dashboard
-  dinámicamente (ADR-019).
+- The package schema lives in `specs/schemas/package.json`.
+- Package validation is implemented in `services/catalog/internal/`.
+- The orchestrator retrieves the package definition from the catalog via
+  HTTP before executing a graph.
+- Package tags are evaluated with ABAC (ADR-012) for access control.
+- Package UI components are loaded dynamically by the dashboard
+  (ADR-019).

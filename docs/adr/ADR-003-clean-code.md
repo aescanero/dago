@@ -1,52 +1,52 @@
-# ADR-003: Clean Code como estándar de calidad de código
+# ADR-003: Clean Code as code quality standard
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El proyecto será mantenido por múltiples desarrolladores a lo largo del tiempo.
-Se necesita un estándar compartido de calidad de código que reduzca la carga
-cognitiva al leer, revisar y modificar código ajeno. Sin un estándar explícito,
-cada desarrollador aplica sus propios criterios y el código diverge en estilo
-y calidad.
+The project will be maintained by multiple developers over time.
+A shared code quality standard is needed to reduce cognitive load
+when reading, reviewing and modifying other people's code. Without an explicit standard,
+each developer applies their own criteria and the code diverges in style
+and quality.
 
-## Decisión
+## Decision
 
-Se adoptan principios de **Clean Code** como estándar de calidad, adaptados
-a las necesidades concretas del proyecto. No se adopta como dogma — cada regla
-tiene un umbral de aplicación pragmático.
+**Clean Code** principles are adopted as the quality standard, adapted
+to the specific needs of the project. It is not adopted as dogma — each rule
+has a pragmatic application threshold.
 
-### Reglas concretas
+### Concrete rules
 
-1. **Nombres descriptivos y sin abreviaturas.**
+1. **Descriptive names without abbreviations.**
 
    ```
    ✅ calculateShippingCost(), customerRepository, isOrderExpired
    ❌ calcShpCst(), repo, check()
    ```
 
-   Excepción: variables de iteración (`i`, `j`) y convenciones del lenguaje
-   ampliamente reconocidas (`ctx`, `err`, `req`, `res`).
+   Exception: iteration variables (`i`, `j`) and widely recognized
+   language conventions (`ctx`, `err`, `req`, `res`).
 
-2. **Funciones pequeñas con una sola responsabilidad.**
-   - Máximo orientativo: 20 líneas por función.
-   - Si una función supera 20 líneas, debe poder justificarse (por ejemplo,
-     un switch exhaustivo sobre un enum, o un builder con muchos parámetros).
-   - Cada función hace una cosa. Si necesitas usar "y" para describir lo que
-     hace, probablemente son dos funciones.
+2. **Small functions with a single responsibility.**
+   - Indicative maximum: 20 lines per function.
+   - If a function exceeds 20 lines, it must be justifiable (for example,
+     an exhaustive switch over an enum, or a builder with many parameters).
+   - Each function does one thing. If you need to use "and" to describe what
+     it does, it is probably two functions.
 
-3. **Máximo 3 parámetros por función.**
-   - Si necesitas más, agrupa en un objeto de configuración o un DTO.
-   - Los booleanos como parámetros son una señal de que la función hace
-     dos cosas — considera dividirla.
+3. **Maximum 3 parameters per function.**
+   - If more are needed, group them into a configuration object or a DTO.
+   - Booleans as parameters are a signal that the function does
+     two things — consider splitting it.
 
-4. **Sin comentarios redundantes.** El código debe ser autoexplicativo.
-   Los comentarios se reservan para:
-   - **Por qué** se hace algo no obvio (decisiones de negocio, workarounds).
-   - **Advertencias** sobre consecuencias no evidentes.
-   - **TODOs** con contexto suficiente para que cualquiera los entienda.
+4. **No redundant comments.** Code must be self-explanatory.
+   Comments are reserved for:
+   - **Why** something non-obvious is done (business decisions, workarounds).
+   - **Warnings** about non-evident consequences.
+   - **TODOs** with enough context for anyone to understand them.
 
    ```
    ❌ // Incrementa el contador
@@ -57,55 +57,55 @@ tiene un umbral de aplicación pragmático.
       await retryWithBackoff(callProviderX, { maxAttempts: 3 });
    ```
 
-5. **Sin código muerto.** No se comenta código "por si acaso". El control
-   de versiones ya lo preserva. Si no se usa, se elimina.
+5. **No dead code.** Code is not commented out "just in case". Version
+   control already preserves it. If it is not used, it is removed.
 
-6. **Manejo explícito de errores.** No se silencian excepciones. Cada catch
-   o bien maneja el error con una acción concreta, o bien lo propaga con
-   contexto adicional. Nunca `catch (e) {}` vacío.
+6. **Explicit error handling.** Exceptions are not silenced. Every catch
+   either handles the error with a concrete action, or propagates it with
+   additional context. Never an empty `catch (e) {}`.
 
-7. **Principio de mínima sorpresa.** El código debe hacer lo que su nombre
-   sugiere, ni más ni menos. Un método `getUser()` no debe tener efectos
-   secundarios como enviar un email o modificar estado.
+7. **Principle of least surprise.** Code must do what its name
+   suggests, no more and no less. A `getUser()` method must not have
+   side effects such as sending an email or modifying state.
 
-8. **DRY pragmático.** La duplicación se elimina cuando representa el mismo
-   concepto de negocio. Dos fragmentos de código que hoy son iguales pero
-   podrían evolucionar por razones distintas no deben forzarse en una
-   abstracción compartida.
+8. **Pragmatic DRY.** Duplication is eliminated when it represents the same
+   business concept. Two code fragments that are identical today but
+   could evolve for different reasons should not be forced into a
+   shared abstraction.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Linter estricto sin guía de principios:** Captura formato pero no diseño.
-  Se usa como complemento, no como sustituto.
+- **Strict linter without a principles guide:** Captures format but not design.
+  Used as a complement, not a substitute.
 
-- **No definir estándar explícito:** Confianza en la experiencia individual.
-  Descartada porque produce fricción en code reviews y divergencia estilística.
+- **No explicit standard:** Relying on individual experience.
+  Discarded because it produces friction in code reviews and stylistic divergence.
 
-- **Adopción literal del libro Clean Code:** Algunas reglas del libro son
-  opinadas o anticuadas (por ejemplo, la insistencia en evitar todo
-  comentario). Se prefiere una adaptación pragmática.
+- **Literal adoption of the Clean Code book:** Some rules in the book are
+  opinionated or outdated (for example, the insistence on avoiding all
+  comments). A pragmatic adaptation is preferred.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- El código es legible sin necesidad del autor original.
-- Las code reviews se centran en lógica, no en estilo.
-- Onboarding más rápido para nuevos desarrolladores.
+**Positive:**
+- Code is readable without the original author.
+- Code reviews focus on logic, not style.
+- Faster onboarding for new developers.
 
-**Negativas:**
-- Requiere criterio para aplicar las reglas (no son mecánicas).
-- Posible sobre-ingeniería al dividir funciones demasiado pequeñas.
-- Debates ocasionales sobre qué es "descriptivo" o "pequeño".
+**Negative:**
+- Requires judgment to apply the rules (they are not mechanical).
+- Possible over-engineering when splitting functions too small.
+- Occasional debates about what is "descriptive" or "small".
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Al generar código, usa nombres completos y descriptivos. Nunca abrevies
-  nombres de variables, funciones o clases.
-- Mantén las funciones por debajo de 20 líneas. Si la lógica lo requiere,
-  extrae subfunciones con nombres que describan su propósito.
-- No generes comentarios que repitan lo que el código ya dice. Añade
-  comentarios solo para decisiones no obvias.
-- Si se te pide refactorizar, aplica estas reglas en orden: primero nombres,
-  luego tamaño de funciones, luego eliminación de código muerto.
-- Nunca generes bloques catch vacíos. Si no sabes cómo manejar un error,
-  propaga con contexto.
+- When generating code, use complete and descriptive names. Never abbreviate
+  variable, function or class names.
+- Keep functions below 20 lines. If the logic requires it,
+  extract sub-functions with names that describe their purpose.
+- Do not generate comments that repeat what the code already says. Add
+  comments only for non-obvious decisions.
+- If asked to refactor, apply these rules in order: first names,
+  then function size, then removal of dead code.
+- Never generate empty catch blocks. If you do not know how to handle an error,
+  propagate with context.

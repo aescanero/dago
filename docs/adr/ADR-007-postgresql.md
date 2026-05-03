@@ -1,32 +1,32 @@
-# ADR-007: PostgreSQL con Ent y Atlas
+# ADR-007: PostgreSQL with Ent and Atlas
 
-**Estado:** Aceptado (revisado)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El sistema necesita persistencia relacional con transacciones ACID,
-integridad referencial y capacidad de consultas complejas. El enfoque
-SDD requiere que el schema de datos sea un artefacto formal, versionable
-y auditable — igual que OpenAPI y AsyncAPI.
+The system needs relational persistence with ACID transactions,
+referential integrity and the ability to run complex queries. The SDD
+approach requires the data schema to be a formal, versionable
+and auditable artifact — just like OpenAPI and AsyncAPI.
 
-## Decisión
+## Decision
 
-Se adopta **PostgreSQL** como base de datos, **Ent** (entgo.io) como ORM
-y **Atlas** (atlasgo.io) como herramienta de migraciones.
+**PostgreSQL** is adopted as the database, **Ent** (entgo.io) as the ORM
+and **Atlas** (atlasgo.io) as the migrations tool.
 
 ### Ent — Schema As Code
 
-Ent genera código tipado estáticamente a partir de schemas Go. No usa
-reflexión (a diferencia de GORM). Ejecutar `go generate ./ent` produce
-un cliente con queries, mutations y predicados type-safe.
+Ent generates statically typed code from Go schemas. It does not use
+reflection (unlike GORM). Running `go generate ./ent` produces
+a client with type-safe queries, mutations and predicates.
 
-### Atlas — Migraciones automáticas versionadas
+### Atlas — Versioned automatic migrations
 
-Atlas calcula el diff entre el estado deseado (schemas Ent) y el actual
-(base de datos), genera ficheros SQL de migración, y hace linting
-automático buscando cambios destructivos o bloqueos.
+Atlas calculates the diff between the desired state (Ent schemas) and the current one
+(database), generates SQL migration files, and performs automatic linting
+searching for destructive changes or locks.
 
 ```bash
 atlas migrate diff nombre_migracion \
@@ -35,51 +35,51 @@ atlas migrate diff nombre_migracion \
     --dev-url "docker://postgres/16/dev?search_path=public"
 ```
 
-### Rol dentro de la arquitectura hexagonal
+### Role within the hexagonal architecture
 
 ```
-libs/ports/Repository (interfaz)
+libs/ports/Repository (interface)
       ↓
-adapters/storage/order_repo.go (implementa con ent.Client)
+adapters/storage/order_repo.go (implements with ent.Client)
       ↓
-ent/ (código generado)
+ent/ (generated code)
       ↓
 PostgreSQL
 ```
 
-El dominio (libs/) NO depende de Ent. Los adaptadores traducen entre
-tipos del dominio y tipos de Ent.
+The domain (libs/) does NOT depend on Ent. Adapters translate between
+domain types and Ent types.
 
-### Reglas concretas
+### Concrete rules
 
-1. **Schemas Ent = spec de datos.** Se revisan en PR, análogo a OpenAPI.
-2. **`go generate ./ent`** tras cada cambio. Código generado se commitea.
-3. **Atlas genera migraciones**, nunca a mano. Se revisan en PR.
-4. **Linting de migraciones en CI** (destructivos, bloqueos, pérdida de datos).
-5. **Query builder de Ent** para CRUD. **SQL raw** para queries complejas.
-6. **Transacciones** con `client.Tx(ctx)` y defer rollback.
-7. **Nunca exponer tipos Ent** fuera del adaptador.
-8. **UUIDs** como identificadores. **TIMESTAMPTZ** para tiempos, en UTC.
+1. **Ent schemas = data spec.** Reviewed in PRs, analogous to OpenAPI.
+2. **`go generate ./ent`** after each change. Generated code is committed.
+3. **Atlas generates migrations**, never by hand. Reviewed in PRs.
+4. **Migration linting in CI** (destructive changes, locks, data loss).
+5. **Ent query builder** for CRUD. **Raw SQL** for complex queries.
+6. **Transactions** with `client.Tx(ctx)` and defer rollback.
+7. **Never expose Ent types** outside the adapter.
+8. **UUIDs** as identifiers. **TIMESTAMPTZ** for timestamps, in UTC.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **pgx puro:** Máximo control pero sin schema as code ni type safety.
-- **GORM:** Reflexión, AutoMigrate inseguro en producción.
-- **sqlc:** SQL-first, sin schema as code ni migraciones automáticas.
-- **golang-migrate:** Sin linting, estado "dirty" ante fallos.
+- **pgx pure:** Maximum control but without schema as code or type safety.
+- **GORM:** Reflection, AutoMigrate is unsafe in production.
+- **sqlc:** SQL-first, without schema as code or automatic migrations.
+- **golang-migrate:** Without linting, "dirty" state on failures.
 
-## Consecuencias
+## Consequences
 
-**Positivas:** Schema as code, type safety en compilación, migraciones
-con linting, traversal de grafos, hooks, coherencia con SDD.
+**Positive:** Schema as code, compile-time type safety, migrations
+with linting, graph traversal, hooks, consistency with SDD.
 
-**Negativas:** Código generado aumenta repo, compilación algo más lenta,
-curva de aprendizaje, menor control fino que SQL puro.
+**Negative:** Generated code increases the repo, slightly slower compilation,
+learning curve, less fine-grained control than pure SQL.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Schemas en `ent/schema/`. Tras cambio: `go generate ./ent`.
-- Migraciones: `atlas migrate diff`. Nunca a mano.
-- Adaptador en `adapters/storage/` usa `ent.Client`.
-- Tipos Ent no salen del adaptador. El dominio tiene sus propios tipos.
-- Context siempre. Transacciones con `client.Tx(ctx)`.
+- Schemas in `ent/schema/`. After a change: `go generate ./ent`.
+- Migrations: `atlas migrate diff`. Never by hand.
+- Adapter in `adapters/storage/` uses `ent.Client`.
+- Ent types do not leave the adapter. The domain has its own types.
+- Always use context. Transactions with `client.Tx(ctx)`.

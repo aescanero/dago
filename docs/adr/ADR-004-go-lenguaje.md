@@ -1,60 +1,60 @@
-# ADR-004: Go como lenguaje principal de desarrollo
+# ADR-004: Go as the primary development language
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El proyecto necesita un lenguaje que ofrezca buen rendimiento, concurrencia
-nativa, binarios autocontenidos y un ecosistema maduro para servicios backend.
-El equipo valora la simplicidad del lenguaje, los tiempos de compilación rápidos
-y la facilidad de despliegue en contenedores.
+The project needs a language that offers good performance, native concurrency,
+self-contained binaries and a mature ecosystem for backend services.
+The team values language simplicity, fast compilation times
+and ease of deployment in containers.
 
-## Decisión
+## Decision
 
-Se adopta **Go** como lenguaje principal para todos los servicios del proyecto.
+**Go** is adopted as the primary language for all services in the project.
 
-### Guías de referencia obligatorias
+### Mandatory reference guides
 
-El estilo de código sigue una jerarquía de fuentes de autoridad. Claude Code
-debe consultarlas en este orden de precedencia:
+The code style follows a hierarchy of authoritative sources. Claude Code
+must consult them in this order of precedence:
 
-1. **Effective Go** (referencia oficial del lenguaje)
+1. **Effective Go** (official language reference)
    https://go.dev/doc/effective_go
-   Principios fundacionales: formato con `gofmt`, convenciones de naming,
-   manejo de errores, interfaces, concurrencia. Es de 2009 y no cubre
-   generics ni modules, pero los principios de diseño siguen vigentes.
+   Foundational principles: formatting with `gofmt`, naming conventions,
+   error handling, interfaces, concurrency. It is from 2009 and does not cover
+   generics or modules, but the design principles remain valid.
 
-2. **Google Go Style Guide** (guía normativa más completa y actualizada)
+2. **Google Go Style Guide** (most complete and up-to-date normative guide)
    https://google.github.io/styleguide/go/
-   Dividida en tres partes:
-   - **Style Guide**: fundamentos normativos (claridad, simplicidad, concisión).
-   - **Style Decisions**: decisiones concretas sobre puntos de estilo.
-   - **Best Practices**: patrones probados para código robusto y mantenible.
+   Divided into three parts:
+   - **Style Guide**: normative fundamentals (clarity, simplicity, conciseness).
+   - **Style Decisions**: concrete decisions on style points.
+   - **Best Practices**: proven patterns for robust and maintainable code.
 
-3. **Uber Go Style Guide** (complemento práctico con ejemplos Good/Bad)
+3. **Uber Go Style Guide** (practical complement with Good/Bad examples)
    https://github.com/uber-go/guide/blob/master/style.md
-   Especialmente útil por sus ejemplos contrastados y su enfoque en
-   rendimiento, manejo de errores y patrones de concurrencia.
+   Especially useful for its contrasted examples and focus on
+   performance, error handling and concurrency patterns.
 
-4. **Go Code Review Comments** (wiki oficial de la comunidad)
+4. **Go Code Review Comments** (official community wiki)
    https://go.dev/wiki/CodeReviewComments
-   Lista concisa de puntos comunes en code reviews. Resuelve debates
-   frecuentes: initialisms (URL, ID no Url, Id), declaración de slices,
-   manejo de errores, etc.
+   Concise list of common code review points. Resolves frequent
+   debates: initialisms (URL, ID not Url, Id), slice declarations,
+   error handling, etc.
 
-### Reglas concretas del proyecto
+### Concrete project rules
 
-1. **Todo código se formatea con `gofmt`/`goimports`.** Sin excepciones.
-   No se discute formato — la herramienta decide.
+1. **All code is formatted with `gofmt`/`goimports`.** No exceptions.
+   Format is not discussed — the tool decides.
 
-2. **Linting con `golangci-lint`.** Se ejecuta en CI con la configuración
-   del proyecto (`.golangci.yml`). Los warnings se tratan como errores.
+2. **Linting with `golangci-lint`.** Runs in CI with the project
+   configuration (`.golangci.yml`). Warnings are treated as errors.
 
-3. **Manejo de errores explícito.** Nunca `_` para ignorar errores salvo
-   casos documentados (ej: `defer f.Close()` donde el error no es
-   accionable). Cada error se maneja o se propaga con contexto:
+3. **Explicit error handling.** Never `_` to ignore errors except
+   documented cases (e.g.: `defer f.Close()` where the error is not
+   actionable). Each error is handled or propagated with context:
 
    ```go
    // ✅ Correcto: contexto añadido
@@ -71,12 +71,12 @@ debe consultarlas en este orden de precedencia:
    result, _ := doSomething()
    ```
 
-4. **Interfaces pequeñas, definidas por el consumidor.** Las interfaces
-   se definen donde se consumen, no donde se implementan. Preferir
-   interfaces de 1-2 métodos (io.Reader, io.Writer como modelo).
+4. **Small interfaces, defined by the consumer.** Interfaces
+   are defined where they are consumed, not where they are implemented. Prefer
+   interfaces of 1-2 methods (io.Reader, io.Writer as model).
 
-5. **Table-driven tests.** Los tests usan subtests con tabla de casos.
-   Nombres descriptivos en los casos de test, no "case 1", "case 2":
+5. **Table-driven tests.** Tests use subtests with a table of cases.
+   Descriptive names in test cases, not "case 1", "case 2":
 
    ```go
    tests := []struct {
@@ -89,58 +89,57 @@ debe consultarlas en este orden de precedencia:
    }
    ```
 
-6. **Packages por responsabilidad, no por tipo.** Un package `models/`
-   o `utils/` es una señal de mal diseño. Organizar por dominio:
+6. **Packages by responsibility, not by type.** A `models/`
+   or `utils/` package is a signal of poor design. Organize by domain:
    `order/`, `customer/`, `shipping/`.
 
-7. **Concurrencia con patrones claros.** Usar `context.Context` como
-   primer parámetro en funciones que puedan cancelarse. Goroutines
-   siempre con mecanismo de parada (context, done channel). Nunca
-   goroutines "fire and forget" en producción.
+7. **Concurrency with clear patterns.** Use `context.Context` as the
+   first parameter in functions that can be cancelled. Goroutines
+   always have a stop mechanism (context, done channel). Never
+   fire-and-forget goroutines in production.
 
-8. **Go modules.** Todo proyecto usa Go modules. Sin vendor/ salvo
-   necesidad explícita de builds offline.
+8. **Go modules.** Every project uses Go modules. No vendor/ unless
+   there is an explicit need for offline builds.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Rust:** Rendimiento superior y seguridad de memoria en compilación.
-  Descartado por curva de aprendizaje más pronunciada y tiempos de
-  compilación significativamente mayores. El equipo tiene más experiencia
-  con Go.
+- **Rust:** Superior performance and compile-time memory safety.
+  Discarded due to steeper learning curve and significantly longer
+  compilation times. The team has more experience with Go.
 
-- **Java/Kotlin (Spring Boot):** Ecosistema enterprise muy maduro.
-  Descartado por mayor consumo de recursos en runtime (JVM) y
-  complejidad de configuración. Los binarios de Go son más simples
-  de desplegar en contenedores.
+- **Java/Kotlin (Spring Boot):** Very mature enterprise ecosystem.
+  Discarded due to higher runtime resource consumption (JVM) and
+  configuration complexity. Go binaries are simpler
+  to deploy in containers.
 
-- **TypeScript (Node.js):** Unificaría frontend y backend. Descartado
-  por menor rendimiento en carga concurrente y modelo de concurrencia
-  menos robusto para servicios backend intensivos.
+- **TypeScript (Node.js):** Would unify frontend and backend. Discarded
+  due to lower performance under concurrent load and a less robust
+  concurrency model for intensive backend services.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Binarios estáticos y ligeros — imágenes Docker de <20MB.
-- Concurrencia nativa con goroutines — escala sin frameworks adicionales.
-- Compilación rápida — ciclo de desarrollo ágil.
-- Formato unificado por herramientas — cero debates de estilo.
-- Ecosistema estándar rico (net/http, database/sql, testing).
+**Positive:**
+- Static and lightweight binaries — Docker images under 20MB.
+- Native concurrency with goroutines — scales without additional frameworks.
+- Fast compilation — agile development cycle.
+- Format unified by tooling — zero style debates.
+- Rich standard library (net/http, database/sql, testing).
 
-**Negativas:**
-- Generics aún relativamente recientes — algunos patrones son más verbosos.
-- Menos librerías de terceros que ecosistemas como Java o Node.js.
-- La verbosidad del manejo de errores puede ser repetitiva.
+**Negative:**
+- Generics are still relatively recent — some patterns are more verbose.
+- Fewer third-party libraries than ecosystems such as Java or Node.js.
+- The verbosity of error handling can be repetitive.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Todo código Go generado debe cumplir las guías de referencia listadas.
-  Ante duda sobre estilo, consulta primero Google Go Style Guide.
-- Usa siempre `fmt.Errorf("contexto: %w", err)` para propagar errores.
-  Nunca `return err` desnudo.
-- Define interfaces donde se consumen, no donde se implementan.
-- Los tests siempre son table-driven con subtests descriptivos.
-- No crees packages genéricos como `utils/`, `helpers/`, `common/`.
-- Al crear un nuevo servicio, sigue la estructura hexagonal (ADR-001)
-  adaptada a Go: packages por dominio con interfaces como puertos.
-- Formatea siempre con `goimports`. Los imports se agrupan en tres
-  bloques: stdlib, terceros, internos del proyecto.
+- All generated Go code must comply with the reference guides listed.
+  When in doubt about style, consult the Google Go Style Guide first.
+- Always use `fmt.Errorf("context: %w", err)` to propagate errors.
+  Never a bare `return err`.
+- Define interfaces where they are consumed, not where they are implemented.
+- Tests are always table-driven with descriptive subtests.
+- Do not create generic packages such as `utils/`, `helpers/`, `common/`.
+- When creating a new service, follow the hexagonal structure (ADR-001)
+  adapted to Go: packages by domain with interfaces as ports.
+- Always format with `goimports`. Imports are grouped into three
+  blocks: stdlib, third-party, project-internal.

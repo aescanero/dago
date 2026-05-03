@@ -1,44 +1,44 @@
-# ADR-013: Monorepo con un solo módulo Go
+# ADR-013: Monorepo with a single Go module
 
-**Estado:** Aceptado (revisado: 8 servicios tras descomposición)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: 8 services after decomposition)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El sistema dago consta de 8 servicios backend en Go y 1 frontend React.
-Originalmente eran repos separados con cadena de dependencias libs ← adapters
-← servicios. Cualquier cambio en libs generaba 6+ PRs y drift de versiones.
+The dago system consists of 8 Go backend services and 1 React frontend.
+Originally they were separate repositories with a dependency chain libs ← adapters
+← services. Any change in libs triggered 6+ PRs and version drift.
 
-## Decisión
+## Decision
 
-Se adopta **monorepo con un solo módulo Go** (`go.mod` en raíz).
+A **monorepo with a single Go module** is adopted (`go.mod` at the root).
 
-### Servicios
+### Services
 
-| Servicio | Tipo | Responsabilidad |
-|----------|------|-----------------|
-| orchestrator | Eventos + HTTP | Core: grafos, estado, coordinación, API, WebSocket |
-| executor | Eventos | Worker: llm_call, tool_use, react, reflection, guardrail |
-| router | Eventos | Worker: deterministic, llm, hybrid |
-| planner | Eventos | NL → grafo |
+| Service | Type | Responsibility |
+|---------|------|----------------|
+| orchestrator | Events + HTTP | Core: graphs, state, coordination, API, WebSocket |
+| executor | Events | Worker: llm_call, tool_use, react, reflection, guardrail |
+| router | Events | Worker: deterministic, llm, hybrid |
+| planner | Events | NL → graph |
 | auth-server | HTTP | OAuth 2.1, Identity Broker, ABAC |
-| catalog | HTTP | Catálogo de paquetes, versionado |
-| mcp-registry | HTTP | Registry + broker MCP |
-| agent-registry | HTTP | Agent Cards A2A, discovery |
+| catalog | HTTP | Package catalogue, versioning |
+| mcp-registry | HTTP | Registry + MCP broker |
+| agent-registry | HTTP | A2A Agent Cards, discovery |
 
-### Reglas concretas
+### Concrete rules
 
-1. **Un solo `go.mod` en la raíz.** Módulo: `github.com/org/dago`.
+1. **A single `go.mod` at the root.** Module: `github.com/org/dago`.
    Imports: `github.com/org/dago/libs/...`, `github.com/org/dago/adapters/...`.
 
-2. **No hay versiones internas.** Servicios consumen libs y adapters
-   del mismo commit. Sin `replace` directives.
+2. **No internal versions.** Services consume libs and adapters
+   from the same commit. No `replace` directives.
 
-3. **`internal/` por servicio.** Garantiza encapsulación:
-   `services/executor/internal/` no es importable por otros servicios.
+3. **`internal/` per service.** Guarantees encapsulation:
+   `services/executor/internal/` is not importable by other services.
 
-4. **Un binario y un Dockerfile por servicio.**
+4. **One binary and one Dockerfile per service.**
 
 5. **Path-based CI/CD triggers:**
 
@@ -53,25 +53,25 @@ Se adopta **monorepo con un solo módulo Go** (`go.mod` en raíz).
          - 'go.mod'
    ```
 
-6. **CI unificado** compila, lintea y testea todo el monorepo.
+6. **Unified CI** compiles, lints, and tests the entire monorepo.
 
-7. **Dashboard independiente** con su propio `package.json` y pipeline.
+7. **Independent dashboard** with its own `package.json` and pipeline.
 
-8. **Makefile como interfaz unificada:** build-all, build-{service},
+8. **Makefile as unified interface:** build-all, build-{service},
    test, lint, generate, migrate-diff, migrate-apply, dashboard-dev.
 
-9. **Docker Compose** para PostgreSQL + Valkey en desarrollo local.
+9. **Docker Compose** for PostgreSQL + Valkey in local development.
 
-10. **Un solo directorio `ent/` compartido.** Modelo de datos
-    centralizado. Si un servicio necesita DB propia, crea `ent/`
-    dentro de su `internal/`.
+10. **A single shared `ent/` directory.** Centralised data model.
+    If a service needs its own DB, it creates an `ent/`
+    inside its `internal/`.
 
-11. **Un solo directorio `migrations/`.** Atlas contra schema Ent.
+11. **A single `migrations/` directory.** Atlas against the Ent schema.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Nunca crees `go.mod` dentro de un servicio.
-- Código interno: `services/{nombre}/internal/`.
-- Código compartido: `libs/` o `adapters/`.
-- Nuevo servicio: `services/{nombre}/cmd/main.go`, `internal/`, `Dockerfile`.
-- Frontend: `dashboard/` con `package.json` propio.
+- Never create `go.mod` inside a service.
+- Internal code: `services/{name}/internal/`.
+- Shared code: `libs/` or `adapters/`.
+- New service: `services/{name}/cmd/main.go`, `internal/`, `Dockerfile`.
+- Frontend: `dashboard/` with its own `package.json`.

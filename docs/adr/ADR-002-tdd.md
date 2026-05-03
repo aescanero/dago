@@ -1,49 +1,49 @@
-# ADR-002: TDD como estrategia de desarrollo y testing
+# ADR-002: TDD as development and testing strategy
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El equipo necesita una estrategia de testing que garantice cobertura desde el
-inicio y que sirva como documentación viva del comportamiento del sistema.
-Históricamente, los tests se han escrito después del código, resultando en
-cobertura parcial y tests frágiles acoplados a detalles de implementación.
+The team needs a testing strategy that guarantees coverage from the
+start and serves as living documentation of system behavior.
+Historically, tests have been written after the code, resulting in
+partial coverage and fragile tests coupled to implementation details.
 
-## Decisión
+## Decision
 
-Se adopta **Test-Driven Development (TDD)** con el ciclo Red-Green-Refactor
-como estrategia obligatoria para todo código de producción.
+**Test-Driven Development (TDD)** with the Red-Green-Refactor cycle
+is adopted as the mandatory strategy for all production code.
 
-### Reglas concretas
+### Concrete rules
 
-1. **Red primero.** Antes de escribir cualquier código de producción, se escribe
-   un test que falla. El test describe el comportamiento esperado, no la
-   implementación.
+1. **Red first.** Before writing any production code, write
+   a test that fails. The test describes the expected behavior, not the
+   implementation.
 
-2. **Green mínimo.** Se escribe el código mínimo necesario para que el test pase.
-   No se anticipa funcionalidad futura ni se "mejora" el código en este paso.
+2. **Minimum green.** Write the minimum code necessary to make the test pass.
+   Do not anticipate future functionality or "improve" the code in this step.
 
-3. **Refactor con red de seguridad.** Solo después de que el test pasa se
-   refactoriza. Los tests existentes deben seguir pasando tras el refactor.
+3. **Refactor with a safety net.** Only after the test passes should you
+   refactor. Existing tests must continue to pass after the refactor.
 
-4. **Granularidad de los tests:**
+4. **Test granularity:**
 
-   - **Tests unitarios** (`tests/unit/`): Cubren lógica de dominio y servicios.
-     Aislados de infraestructura. Usan fakes de los puertos, nunca mocks de
-     librerías externas. Deben ejecutarse en milisegundos.
+   - **Unit tests** (`tests/unit/`): Cover domain logic and services.
+     Isolated from infrastructure. Use fakes of the ports, never mocks of
+     external libraries. Must execute in milliseconds.
 
-   - **Tests de integración** (`tests/integration/`): Verifican que los
-     adaptadores funcionan correctamente con la infraestructura real
-     (base de datos, APIs). Se ejecutan contra entornos controlados.
+   - **Integration tests** (`tests/integration/`): Verify that
+     adapters work correctly with real infrastructure
+     (database, APIs). Run against controlled environments.
 
-   - **Tests de contrato** (`tests/contract/`): Validan que la implementación
-     cumple las especificaciones formales (OpenAPI, schemas). Automatizan
-     la verificación spec-first.
+   - **Contract tests** (`tests/contract/`): Validate that the implementation
+     meets the formal specifications (OpenAPI, schemas). They automate
+     spec-first verification.
 
-5. **Nomenclatura de tests.** Cada test describe un comportamiento en lenguaje
-   de negocio:
+5. **Test naming.** Each test describes a behavior in business
+   language:
 
    ```
    ✅ "should reject order when stock is insufficient"
@@ -52,41 +52,41 @@ como estrategia obligatoria para todo código de producción.
    ❌ "test case 1"
    ```
 
-6. **Cobertura.** No se persigue un porcentaje arbitrario. Se persigue que
-   cada comportamiento de negocio tenga al menos un test que lo documente.
+6. **Coverage.** No arbitrary percentage is pursued. The goal is that
+   every business behavior has at least one test that documents it.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Testing post-implementación:** Más rápido inicialmente pero produce tests
-  que verifican implementación en vez de comportamiento. Descartada.
+- **Post-implementation testing:** Faster initially but produces tests
+  that verify implementation rather than behavior. Discarded.
 
-- **BDD con Gherkin:** Útil para comunicación con stakeholders pero añade
-  una capa de traducción. Se reserva para tests de aceptación si se necesitan
-  en el futuro, pero no como estrategia principal.
+- **BDD with Gherkin:** Useful for communication with stakeholders but adds
+  a translation layer. Reserved for acceptance tests if needed
+  in the future, but not as the primary strategy.
 
-- **Solo tests de integración:** Más realistas pero lentos y difíciles de
-  diagnosticar. No sustituyen la retroalimentación rápida de tests unitarios.
+- **Integration tests only:** More realistic but slow and hard to
+  diagnose. They do not replace the fast feedback of unit tests.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Los tests documentan el comportamiento esperado del sistema.
-- El diseño del código mejora porque TDD fuerza interfaces claras.
-- La confianza para refactorizar es alta.
-- Los bugs se detectan en segundos, no en despliegue.
+**Positive:**
+- Tests document the expected behavior of the system.
+- Code design improves because TDD forces clear interfaces.
+- Confidence to refactor is high.
+- Bugs are detected in seconds, not at deployment.
 
-**Negativas:**
-- Velocidad inicial percibida como más lenta (se compensa a medio plazo).
-- Requiere disciplina para no saltarse el ciclo bajo presión.
-- Riesgo de tests triviales si no se enfoca en comportamiento.
+**Negative:**
+- Initial perceived velocity is slower (compensated in the medium term).
+- Requires discipline to not skip the cycle under pressure.
+- Risk of trivial tests if not focused on behavior.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Si se te pide implementar una funcionalidad, genera siempre el fichero de
-  test primero. Presenta el test, espera confirmación, y luego genera la
-  implementación.
-- Los tests unitarios del dominio usan fakes, no mocks de librería. Crea
-  implementaciones in-memory de los puertos (definidos en ADR-001).
-- Nombra los tests describiendo comportamiento de negocio, nunca métodos.
-- Si se te pide "añadir un test", pregunta qué comportamiento se quiere
-  verificar, no qué método se quiere testear.
+- If asked to implement a feature, always generate the test file
+  first. Present the test, wait for confirmation, and then generate the
+  implementation.
+- Unit tests for the domain use fakes, not library mocks. Create
+  in-memory implementations of the ports (defined in ADR-001).
+- Name tests describing business behavior, never methods.
+- If asked to "add a test", ask what behavior is to be
+  verified, not what method is to be tested.

@@ -1,107 +1,106 @@
-# ADR-015: Arquitectura de memoria de agentes (tres capas)
+# ADR-015: Agent memory architecture (three layers)
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-Los nodos de dago que se comportan como agentes necesitan memoria para
-funcionar eficazmente. Sin memoria, cada ejecución parte de cero — el
-agente no recuerda decisiones anteriores, no aprende de errores, y no
-puede mantener contexto entre ejecuciones de un mismo grafo o entre
-ejecuciones diferentes.
+Dago nodes that behave as agents need memory to function effectively.
+Without memory, each execution starts from scratch — the agent does not
+remember previous decisions, does not learn from errors, and cannot
+maintain context across executions of the same graph or across different
+executions.
 
-El modelo de memoria de OpenClaw (MEMORY.md, notas diarias, dreaming)
-demuestra que una arquitectura de tres capas es efectiva. Adaptamos
-ese modelo a dago, reemplazando ficheros Markdown por PostgreSQL (Ent),
-pgvector y Valkey, adecuados para un sistema multi-usuario y distribuido.
+The OpenClaw memory model (MEMORY.md, daily notes, dreaming) demonstrates
+that a three-layer architecture is effective. We adapt that model to dago,
+replacing Markdown files with PostgreSQL (Ent), pgvector, and Valkey,
+which are appropriate for a multi-user distributed system.
 
-## Decisión
+## Decision
 
-Se adopta una **arquitectura de memoria de tres capas** con un proceso
-de consolidación asíncrono:
+A **three-layer memory architecture** is adopted with an asynchronous
+consolidation process:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   MEMORIA DEL AGENTE                        │
+│                     AGENT MEMORY                            │
 │                                                             │
-│  Capa 1: Working Memory (corto plazo)                       │
+│  Layer 1: Working Memory (short-term)                       │
 │  ─────────────────────────────────────                      │
-│  Qué: Estado de la ejecución actual del grafo               │
-│  Dónde: PostgreSQL (Ent) + Valkey                           │
-│  Ciclo de vida: Existe mientras el grafo se ejecuta         │
-│  Equivalente OpenClaw: Notas diarias (hoy + ayer)           │
+│  What: State of the current graph execution                 │
+│  Where: PostgreSQL (Ent) + Valkey                           │
+│  Lifecycle: Exists while the graph is executing             │
+│  OpenClaw equivalent: Daily notes (today + yesterday)       │
 │                                                             │
-│  Capa 2: Episodic Memory (medio plazo)                      │
+│  Layer 2: Episodic Memory (medium-term)                     │
 │  ─────────────────────────────────────                      │
-│  Qué: Historial de ejecuciones pasadas, resultados,         │
-│       decisiones tomadas por cada nodo                      │
-│  Dónde: PostgreSQL (Ent)                                    │
-│  Ciclo de vida: Persiste indefinidamente, consultable       │
-│  Equivalente OpenClaw: Notas diarias archivadas             │
+│  What: History of past executions, results,                 │
+│        decisions made by each node                          │
+│  Where: PostgreSQL (Ent)                                    │
+│  Lifecycle: Persists indefinitely, queryable                │
+│  OpenClaw equivalent: Archived daily notes                  │
 │                                                             │
-│  Capa 3: Semantic Memory (largo plazo)                      │
+│  Layer 3: Semantic Memory (long-term)                       │
 │  ─────────────────────────────────────                      │
-│  Qué: Conocimiento destilado — hechos, patrones,            │
-│       preferencias, lecciones aprendidas                    │
-│  Dónde: pgvector (embeddings) + PostgreSQL (Ent)            │
-│  Ciclo de vida: Curada, supersedida pero nunca borrada      │
-│  Equivalente OpenClaw: MEMORY.md + búsqueda semántica       │
+│  What: Distilled knowledge — facts, patterns,               │
+│        preferences, lessons learned                         │
+│  Where: pgvector (embeddings) + PostgreSQL (Ent)            │
+│  Lifecycle: Curated, superseded but never deleted           │
+│  OpenClaw equivalent: MEMORY.md + semantic search           │
 │                                                             │
-│  Consolidación (dreaming)                                   │
+│  Consolidation (dreaming)                                   │
 │  ─────────────────────────                                  │
-│  Qué: Proceso background que promueve datos relevantes      │
-│       de working → episodic → semantic                      │
-│  Dónde: Servicio background en el orchestrator              │
-│  Cuándo: Tras completar una ejecución de grafo              │
+│  What: Background process that promotes relevant data       │
+│        from working → episodic → semantic                   │
+│  Where: Background service in the orchestrator              │
+│  When: After completing a graph execution                   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Capa 1: Working Memory (corto plazo)
+### Layer 1: Working Memory (short-term)
 
-Estado vivo de la ejecución actual. Es lo que los nodos leen y escriben
-durante la ejecución de un grafo.
+Live state of the current execution. This is what nodes read and write
+during a graph execution.
 
 ```go
-// Modelo conceptual del estado de ejecución
+// Conceptual model of execution state
 type ExecutionState struct {
     ExecutionID  uuid.UUID
     GraphID      uuid.UUID
     Status       ExecutionStatus
     CurrentNode  string
-    Variables    map[string]any        // Variables acumuladas del grafo
-    Messages     []Message             // Historial conversacional
-    NodeResults  map[string]NodeResult // Resultados por nodo
+    Variables    map[string]any        // Accumulated graph variables
+    Messages     []Message             // Conversational history
+    NodeResults  map[string]NodeResult // Results per node
     CreatedAt    time.Time
     UpdatedAt    time.Time
 }
 ```
 
-**Almacenamiento:**
-- Estado completo en PostgreSQL (Ent) para persistencia y recovery.
-- Estado caliente en Valkey para acceso rápido durante ejecución.
-- Cada transición de nodo actualiza ambos (write-through).
+**Storage:**
+- Full state in PostgreSQL (Ent) for persistence and recovery.
+- Hot state in Valkey for fast access during execution.
+- Each node transition updates both (write-through).
 
-**Acceso:**
-- Los nodos reciben el estado relevante vía eventos (ADR-014).
-- El orchestrator mantiene la versión canónica.
-- Checkpointing tras cada transición para recovery ante crashes.
+**Access:**
+- Nodes receive relevant state via events (ADR-014).
+- The orchestrator maintains the canonical version.
+- Checkpointing after each transition for crash recovery.
 
-**Ciclo de vida:**
-- Se crea cuando se inicia una ejecución.
-- Se actualiza en cada transición de nodo.
-- Al completar el grafo, se archiva como episodic memory.
+**Lifecycle:**
+- Created when an execution starts.
+- Updated on each node transition.
+- When the graph completes, archived as episodic memory.
 
-### Capa 2: Episodic Memory (medio plazo)
+### Layer 2: Episodic Memory (medium-term)
 
-Historial completo de ejecuciones pasadas. Permite a los agentes
-consultar qué pasó en ejecuciones anteriores del mismo grafo o de
-grafos similares.
+Complete history of past executions. Allows agents to query what
+happened in previous executions of the same graph or similar graphs.
 
 ```go
-// Modelo conceptual del registro episódico
+// Conceptual model of the episodic record
 type EpisodeRecord struct {
     ExecutionID   uuid.UUID
     GraphID       uuid.UUID
@@ -109,10 +108,10 @@ type EpisodeRecord struct {
     StartedAt     time.Time
     CompletedAt   time.Time
     Status        ExecutionStatus      // completed, failed, cancelled
-    FinalState    map[string]any       // Estado final del grafo
-    NodeHistory   []NodeEpisode        // Secuencia de nodos ejecutados
-    ErrorDetails  *string              // Si falló, por qué
-    Metadata      map[string]string    // Tags, categorías
+    FinalState    map[string]any       // Final graph state
+    NodeHistory   []NodeEpisode        // Sequence of executed nodes
+    ErrorDetails  *string              // If it failed, why
+    Metadata      map[string]string    // Tags, categories
 }
 
 type NodeEpisode struct {
@@ -127,178 +126,178 @@ type NodeEpisode struct {
 }
 ```
 
-**Almacenamiento:** PostgreSQL (Ent). Tablas de ejecuciones y resultados
-de nodos con índices para consulta eficiente.
+**Storage:** PostgreSQL (Ent). Execution and node result tables
+with indexes for efficient querying.
 
-**Acceso:**
-- Consultable por grafo, usuario, rango de fechas, estado.
-- Los nodos pueden consultar episodios anteriores como contexto
-  (ej: "las últimas 5 veces que ejecutamos este grafo, ¿qué pasó?").
-- Acceso vía puerto `EpisodeStore` en `libs/ports/`.
+**Access:**
+- Queryable by graph, user, date range, status.
+- Nodes can query previous episodes as context
+  (e.g., "the last 5 times we ran this graph, what happened?").
+- Access via `EpisodeStore` port in `libs/ports/`.
 
-**Ciclo de vida:**
-- Se crea al completar una ejecución (archivado de working memory).
-- Persiste indefinidamente.
-- El proceso de consolidación extrae hechos relevantes hacia
+**Lifecycle:**
+- Created when an execution completes (archiving working memory).
+- Persists indefinitely.
+- The consolidation process extracts relevant facts toward
   semantic memory.
 
-### Capa 3: Semantic Memory (largo plazo)
+### Layer 3: Semantic Memory (long-term)
 
-Conocimiento destilado y generalizado. No es el historial crudo sino
-hechos, patrones y lecciones aprendidas que el agente puede usar en
-futuras ejecuciones.
+Distilled and generalised knowledge. Not the raw history but
+facts, patterns, and lessons learned that the agent can use in
+future executions.
 
 ```go
-// Modelo conceptual de memoria semántica
+// Conceptual model of semantic memory
 type SemanticFact struct {
     ID           uuid.UUID
-    Content      string                // El hecho en lenguaje natural
-    Embedding    pgvector.Vector       // Embedding para búsqueda semántica
+    Content      string                // The fact in natural language
+    Embedding    pgvector.Vector       // Embedding for semantic search
     FactType     FactType              // preference, lesson, pattern, fact
-    Source       string                // De dónde se aprendió
+    Source       string                // Where it was learned from
     Confidence   float64               // 0.0 - 1.0
-    SupersededBy *uuid.UUID            // Si fue reemplazado por otro hecho
+    SupersededBy *uuid.UUID            // If replaced by another fact
     CreatedAt    time.Time
     LastUsedAt   time.Time
-    UseCount     int                   // Cuántas veces se ha consultado
+    UseCount     int                   // How many times it has been queried
 }
 ```
 
-Tipos de hechos:
-- **preference** — "El usuario prefiere respuestas concisas"
-- **lesson** — "El nodo de scraping falla los lunes por mantenimiento"
-- **pattern** — "Los grafos de análisis financiero funcionan mejor con
-  temperatura 0.2"
-- **fact** — "La API de pagos tiene un rate limit de 100 req/min"
+Fact types:
+- **preference** — "The user prefers concise answers"
+- **lesson** — "The scraping node fails on Mondays due to maintenance"
+- **pattern** — "Financial analysis graphs work better with
+  temperature 0.2"
+- **fact** — "The payments API has a rate limit of 100 req/min"
 
-**Almacenamiento:**
-- PostgreSQL con extensión **pgvector** para embeddings.
-- Los embeddings se generan con un modelo de embedding (configurable).
-- Búsqueda por similitud semántica con `<=>` (cosine distance).
+**Storage:**
+- PostgreSQL with the **pgvector** extension for embeddings.
+- Embeddings are generated with a configurable embedding model.
+- Semantic similarity search with `<=>` (cosine distance).
 
-**Acceso:**
-- Búsqueda semántica: "¿qué sé sobre el rate limit de la API X?"
-  devuelve los hechos más relevantes sin necesidad de keyword exacta.
-- Acceso vía puerto `SemanticMemory` en `libs/ports/`.
-- Los nodos pueden inyectar hechos relevantes en su contexto antes
-  de ejecutar.
+**Access:**
+- Semantic search: "what do I know about the rate limit of API X?"
+  returns the most relevant facts without needing an exact keyword.
+- Access via `SemanticMemory` port in `libs/ports/`.
+- Nodes can inject relevant facts into their context before
+  executing.
 
-**Ciclo de vida:**
-- Creada por el proceso de consolidación (dreaming).
-- Nunca se borra, solo se supersede: si un hecho cambia, se marca
-  el anterior con `superseded_by` y se crea uno nuevo.
-- `confidence` y `use_count` se actualizan con el uso.
-- Hechos con `confidence` baja y `use_count` cero se depriorizan
-  pero no se eliminan.
+**Lifecycle:**
+- Created by the consolidation process (dreaming).
+- Never deleted, only superseded: if a fact changes, the previous
+  one is marked with `superseded_by` and a new one is created.
+- `confidence` and `use_count` are updated with usage.
+- Facts with low `confidence` and zero `use_count` are de-prioritised
+  but not removed.
 
-### Consolidación (dreaming)
+### Consolidation (dreaming)
 
-Proceso background que promueve conocimiento entre capas:
+Background process that promotes knowledge between layers:
 
 ```
-Working Memory ──(al completar grafo)──▶ Episodic Memory
-                                              │
-                                    (proceso background)
-                                              │
-                                              ▼
-                                      Semantic Memory
+Working Memory ──(on graph completion)──▶ Episodic Memory
+                                               │
+                                     (background process)
+                                               │
+                                               ▼
+                                       Semantic Memory
 ```
 
-**Trigger:** Se ejecuta tras cada ejecución completada de grafo.
+**Trigger:** Runs after each completed graph execution.
 
-**Proceso:**
-1. Archiva el estado de ejecución como registro episódico.
-2. Analiza el episodio buscando hechos nuevos o actualizados:
-   - ¿Hubo errores recurrentes? → lesson learned.
-   - ¿El usuario expresó una preferencia? → preference.
-   - ¿Se descubrió un patrón de rendimiento? → pattern.
-3. Genera embeddings para los hechos nuevos.
-4. Verifica si el hecho ya existe (búsqueda semántica por similitud).
-   - Si existe y es consistente: incrementa confidence.
-   - Si existe y contradice: supersede el anterior.
-   - Si es nuevo: inserta con confidence inicial.
-5. Registra en `DREAMS` log para auditoría.
+**Process:**
+1. Archives the execution state as an episodic record.
+2. Analyses the episode looking for new or updated facts:
+   - Were there recurring errors? → lesson learned.
+   - Did the user express a preference? → preference.
+   - Was a performance pattern discovered? → pattern.
+3. Generates embeddings for new facts.
+4. Checks if the fact already exists (semantic similarity search).
+   - If it exists and is consistent: increment confidence.
+   - If it exists and contradicts: supersede the previous one.
+   - If it is new: insert with initial confidence.
+5. Records in the `DREAMS` log for auditing.
 
-**El proceso de consolidación puede usar un LLM** para extraer hechos
-de los episodios — es un uso del patrón Reflection aplicado a la
-memoria del sistema.
+**The consolidation process can use an LLM** to extract facts
+from episodes — it is an application of the Reflection pattern
+applied to system memory.
 
-### Puertos de memoria
+### Memory ports
 
 ```go
 // libs/ports/memory.go
 
-// WorkingMemory gestiona el estado de ejecución activo
+// WorkingMemory manages active execution state
 type WorkingMemory interface {
     Get(ctx context.Context, executionID uuid.UUID) (*ExecutionState, error)
     Update(ctx context.Context, state *ExecutionState) error
     Checkpoint(ctx context.Context, executionID uuid.UUID) error
 }
 
-// EpisodeStore gestiona el historial de ejecuciones
+// EpisodeStore manages execution history
 type EpisodeStore interface {
     Archive(ctx context.Context, state *ExecutionState) (*EpisodeRecord, error)
     FindByGraph(ctx context.Context, graphID uuid.UUID, limit int) ([]EpisodeRecord, error)
     FindByUser(ctx context.Context, userID uuid.UUID, limit int) ([]EpisodeRecord, error)
 }
 
-// SemanticMemory gestiona el conocimiento a largo plazo
+// SemanticMemory manages long-term knowledge
 type SemanticMemory interface {
     Store(ctx context.Context, fact *SemanticFact) error
     Search(ctx context.Context, query string, limit int) ([]SemanticFact, error)
     Supersede(ctx context.Context, oldID uuid.UUID, newFact *SemanticFact) error
 }
 
-// MemoryConsolidator ejecuta el proceso de dreaming
+// MemoryConsolidator runs the dreaming process
 type MemoryConsolidator interface {
     Consolidate(ctx context.Context, episode *EpisodeRecord) error
 }
 ```
 
-## Alternativas consideradas
+## Considered Alternatives
 
-- **Ficheros Markdown (estilo OpenClaw):** Simple y transparente pero
-  no escala a multi-usuario ni es consultable eficientemente.
+- **Markdown files (OpenClaw style):** Simple and transparent but
+  does not scale to multi-user and is not efficiently queryable.
 
-- **Vector DB dedicada (Pinecone, Weaviate, Chroma):** Más potente
-  para búsqueda vectorial pero añade infraestructura. pgvector cubre
-  el caso de uso sin añadir otro sistema.
+- **Dedicated vector DB (Pinecone, Weaviate, Chroma):** More powerful
+  for vector search but adds infrastructure. pgvector covers the
+  use case without adding another system.
 
-- **Solo PostgreSQL (sin pgvector):** Posible con búsqueda full-text
-  pero pierde la capacidad de búsqueda semántica por similitud.
+- **PostgreSQL only (without pgvector):** Possible with full-text
+  search but loses the semantic similarity search capability.
 
-- **Solo Valkey para todo:** Rápido pero sin persistencia durable ni
-  búsqueda semántica. No adecuado para memoria a largo plazo.
+- **Valkey only for everything:** Fast but without durable persistence
+  or semantic search. Not suitable for long-term memory.
 
-- **Mem0 / LangMem:** Soluciones específicas para memoria de agentes.
-  Interesantes pero añaden dependencia externa. Preferimos implementar
-  sobre nuestro stack existente.
+- **Mem0 / LangMem:** Agent-specific memory solutions. Interesting
+  but add an external dependency. We prefer to implement on top of
+  our existing stack.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Tres capas con responsabilidades claras.
-- pgvector reutiliza PostgreSQL existente — sin infraestructura nueva.
-- Búsqueda semántica permite recuperar contexto sin keywords exactos.
-- "Nunca borrar" preserva historial completo para auditoría y aprendizaje.
-- Consolidación automática reduce ruido en la memoria a largo plazo.
-- Puertos en `libs/ports/` mantienen la arquitectura hexagonal.
+**Positive:**
+- Three layers with clear responsibilities.
+- pgvector reuses the existing PostgreSQL — no new infrastructure.
+- Semantic search allows retrieving context without exact keywords.
+- "Never delete" preserves the full history for auditing and learning.
+- Automatic consolidation reduces noise in long-term memory.
+- Ports in `libs/ports/` maintain hexagonal architecture.
 
-**Negativas:**
-- pgvector menos performante que vector DBs dedicadas a gran escala
-  (aceptable para nuestro volumen).
-- La consolidación con LLM añade coste por ejecución.
-- Los embeddings dependen del modelo elegido — cambiar modelo
-  requiere re-indexar.
-- Complejidad adicional frente a una solución simple de solo DB.
+**Negative:**
+- pgvector less performant than dedicated vector DBs at large scale
+  (acceptable for our volume).
+- Consolidation with LLM adds cost per execution.
+- Embeddings depend on the chosen model — changing models
+  requires re-indexing.
+- Additional complexity compared to a simple DB-only solution.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Los puertos de memoria viven en `libs/ports/memory.go`.
-- Las implementaciones viven en `adapters/storage/` (Ent + pgvector).
-- Working memory: Ent para persistencia, Valkey para acceso rápido.
-- Episodic memory: solo Ent (consultas SQL).
-- Semantic memory: Ent + pgvector (embeddings + búsqueda semántica).
-- Nunca borrar SemanticFacts. Usar `Supersede()` para actualizar.
-- El consolidador se ejecuta como background process tras cada
-  ejecución completada.
+- Memory ports live in `libs/ports/memory.go`.
+- Implementations live in `adapters/storage/` (Ent + pgvector).
+- Working memory: Ent for persistence, Valkey for fast access.
+- Episodic memory: Ent only (SQL queries).
+- Semantic memory: Ent + pgvector (embeddings + semantic search).
+- Never delete SemanticFacts. Use `Supersede()` to update.
+- The consolidator runs as a background process after each
+  completed execution.

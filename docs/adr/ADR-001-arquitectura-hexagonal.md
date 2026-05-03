@@ -1,46 +1,46 @@
-# ADR-001: Arquitectura Hexagonal como patrón estructural
+# ADR-001: Hexagonal Architecture as structural pattern
 
-**Estado:** Aceptado (revisado: adaptado a Go y monorepo)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: adapted to Go and monorepo)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El sistema necesita una estructura que permita evolucionar la lógica de negocio
-de forma independiente a las tecnologías de infraestructura (bases de datos,
-frameworks web, servicios externos).
+The system needs a structure that allows the business logic to evolve
+independently of infrastructure technologies (databases,
+web frameworks, external services).
 
-## Decisión
+## Decision
 
-Se adopta **Arquitectura Hexagonal** (Ports & Adapters, Alistair Cockburn)
-como patrón estructural para todos los servicios del proyecto.
+**Hexagonal Architecture** (Ports & Adapters, Alistair Cockburn)
+is adopted as the structural pattern for all services in the project.
 
-### Mapeo a la estructura Go del monorepo
+### Mapping to the Go monorepo structure
 
 ```
-libs/domain/       → Lógica de negocio pura (entidades, value objects)
-libs/ports/        → Interfaces (puertos) definidos por el dominio
-adapters/          → Implementaciones compartidas de puertos
-services/{s}/internal/ → Lógica interna de cada servicio
+libs/domain/       → Pure business logic (entities, value objects)
+libs/ports/        → Interfaces (ports) defined by the domain
+adapters/          → Shared port implementations
+services/{s}/internal/ → Internal logic of each service
 ```
 
-La dirección de dependencia es siempre hacia dentro:
+The dependency direction always points inward:
 
 ```
 adapters/ → libs/ports/ → libs/domain/
 services/{s}/internal/ → libs/ports/ → libs/domain/
 ```
 
-El dominio (`libs/domain/`) no importa NADA fuera de sí mismo.
+The domain (`libs/domain/`) imports NOTHING from outside itself.
 
-### Reglas concretas
+### Concrete rules
 
-1. **El dominio es el centro.** Toda lógica de negocio reside en
-   `libs/domain/`. No importa Gin, Ent, go-redis ni ninguna
-   dependencia de infraestructura.
+1. **The domain is the center.** All business logic resides in
+   `libs/domain/`. It does not import Gin, Ent, go-redis or any
+   infrastructure dependency.
 
-2. **Los puertos son interfaces Go en `libs/ports/`.** Representan
-   lo que el dominio necesita del exterior:
+2. **Ports are Go interfaces in `libs/ports/`.** They represent
+   what the domain needs from the outside:
 
    ```go
    // libs/ports/storage.go
@@ -55,8 +55,8 @@ El dominio (`libs/domain/`) no importa NADA fuera de sí mismo.
    }
    ```
 
-3. **Los adaptadores implementan los puertos.** Residen en `adapters/`
-   (compartidos) o `services/{s}/internal/` (específicos del servicio):
+3. **Adapters implement the ports.** They reside in `adapters/`
+   (shared) or `services/{s}/internal/` (service-specific):
 
    ```go
    // adapters/storage/graph_repo.go
@@ -69,34 +69,33 @@ El dominio (`libs/domain/`) no importa NADA fuera de sí mismo.
    }
    ```
 
-4. **Los tipos Ent no salen del adaptador.** El adaptador traduce
-   entre tipos de Ent y tipos del dominio. El dominio trabaja con
-   sus propios tipos definidos en `libs/domain/`.
+4. **Ent types do not leave the adapter.** The adapter translates
+   between Ent types and domain types. The domain works with
+   its own types defined in `libs/domain/`.
 
-5. **La inyección de dependencias conecta las capas.** En el `main.go`
-   de cada servicio o en `internal/config/` se construye el grafo de
-   dependencias.
+5. **Dependency injection connects the layers.** The dependency graph
+   is built in the `main.go` of each service or in `internal/config/`.
 
-6. **Tests del dominio sin infraestructura.** Se crean fakes in-memory
-   de los puertos, nunca mocks de librerías externas.
+6. **Domain tests without infrastructure.** In-memory fakes of the
+   ports are created; never mocks of external libraries.
 
-## Alternativas consideradas
+## Alternatives considered
 
-- **Arquitectura en capas clásica (N-tier):** Permite dependencias
-  transitivas que acoplan dominio a infraestructura. Descartada.
-- **Clean Architecture:** Mismos principios. Se prefiere Hexagonal
-  por vocabulario más concreto (puertos/adaptadores).
+- **Classic layered architecture (N-tier):** Allows transitive dependencies
+  that couple domain to infrastructure. Discarded.
+- **Clean Architecture:** Same principles. Hexagonal is preferred
+  for more concrete vocabulary (ports/adapters).
 
-## Consecuencias
+## Consequences
 
-**Positivas:** Dominio testeable sin infra, cambiar DB/broker solo
-afecta al adaptador, estructura predecible.
+**Positive:** Domain is testable without infrastructure, changing the DB/broker
+only affects the adapter, predictable structure.
 
-**Negativas:** Más ficheros e indirección, requiere disciplina.
+**Negative:** More files and indirection, requires discipline.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Dominio en `libs/domain/`. Puertos en `libs/ports/`.
-- Adaptadores compartidos en `adapters/`. Específicos en `services/{s}/internal/`.
-- Si detectas import de Gin, Ent o go-redis desde `libs/`, es una violación.
-- Tests del dominio: fakes in-memory, no mocks de librería.
+- Domain in `libs/domain/`. Ports in `libs/ports/`.
+- Shared adapters in `adapters/`. Service-specific in `services/{s}/internal/`.
+- If you detect imports of Gin, Ent or go-redis from `libs/`, it is a violation.
+- Domain tests: in-memory fakes, not library mocks.

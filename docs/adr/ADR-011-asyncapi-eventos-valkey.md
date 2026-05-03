@@ -1,44 +1,44 @@
-# ADR-011: AsyncAPI y patrón de eventos con Valkey
+# ADR-011: AsyncAPI and event pattern with Valkey
 
-**Estado:** Aceptado (revisado: Redis → Valkey)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: Redis → Valkey)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El ADR-008 establece Valkey como infraestructura de eventos. Se necesita
-definir qué patrón de eventos se adopta, cómo se estructuran los mensajes,
-y cómo se documenta formalmente la API asíncrona.
+ADR-008 establishes Valkey as the event infrastructure. We need to
+define which event pattern to adopt, how messages are structured,
+and how the asynchronous API is formally documented.
 
-## Decisión
+## Decision
 
-### Contrato: AsyncAPI 3.0
+### Contract: AsyncAPI 3.0
 
-Se adopta **AsyncAPI 3.0** como especificación de la API asíncrona.
-Fichero: `specs/asyncapi.yaml`.
+**AsyncAPI 3.0** is adopted as the asynchronous API specification.
+File: `specs/asyncapi.yaml`.
 
-### Patrón: Event Notification + Event-Carried State Transfer
+### Pattern: Event Notification + Event-Carried State Transfer
 
 ```
 Event Notification (Pub/Sub)       Event-Carried State (Streams)
 ─────────────────────────          ──────────────────────────────
-Garantía: ninguna                  Garantía: at-least-once
-Payload: mínimo (ID)               Payload: completo
-Uso: caché, UI real-time           Uso: eventos de negocio
+Guarantee: none                    Guarantee: at-least-once
+Payload: minimal (ID)              Payload: complete
+Use: cache, real-time UI           Use: business events
 ```
 
-### Reglas concretas
+### Concrete rules
 
-1. **Event Notification (Valkey Pub/Sub)** para señales efímeras:
-   invalidación de caché, notificaciones UI.
+1. **Event Notification (Valkey Pub/Sub)** for ephemeral signals:
+   cache invalidation, UI notifications.
 
-2. **Event-Carried State Transfer (Valkey Streams)** para eventos
-   de negocio con procesamiento garantizado.
+2. **Event-Carried State Transfer (Valkey Streams)** for business
+   events with guaranteed processing.
 
-3. **No Event Sourcing.** Estado en PostgreSQL (Ent). Si se necesita
-   event sourcing, evaluar Kafka/EventStoreDB.
+3. **No Event Sourcing.** State in PostgreSQL (Ent). If event
+   sourcing is needed, evaluate Kafka/EventStoreDB.
 
-4. **Envelope estándar:**
+4. **Standard envelope:**
 
    ```go
    type Event struct {
@@ -47,26 +47,26 @@ Uso: caché, UI real-time           Uso: eventos de negocio
        Source    string          `json:"source"`
        Timestamp time.Time       `json:"timestamp"`
        Data      json.RawMessage `json:"data"`
-       Auth      string          `json:"auth,omitempty"` // Token propagado
+       Auth      string          `json:"auth,omitempty"` // Propagated token
    }
    ```
 
-5. **Naming:** `{dominio}.{acción}` en pasado. `node.executed`, no
+5. **Naming:** `{domain}.{action}` in past tense. `node.executed`, not
    `node.execute`.
 
-6. **Consumer groups** para procesamiento distribuido (Valkey Streams).
+6. **Consumer groups** for distributed processing (Valkey Streams).
 
-7. **Dead letter:** `{stream}.dlq` para mensajes con fallos repetidos.
+7. **Dead letter:** `{stream}.dlq` for messages with repeated failures.
 
-8. **Retención:** `MAXLEN ~1000` por stream.
+8. **Retention:** `MAXLEN ~1000` per stream.
 
-9. **Spec-first:** Definir en `specs/asyncapi.yaml` antes de
-   implementar. Tests de contrato validan cumplimiento.
+9. **Spec-first:** Define in `specs/asyncapi.yaml` before
+   implementing. Contract tests validate compliance.
 
-10. **Campo `auth` en el envelope** para propagación de tokens
-    OAuth 2.1 (ADR-012) a través de los eventos.
+10. **`auth` field in the envelope** for propagating OAuth 2.1 tokens
+    (ADR-012) through events.
 
-### Ejemplo AsyncAPI
+### AsyncAPI example
 
 ```yaml
 asyncapi: 3.0.0
@@ -108,12 +108,12 @@ components:
           type: object
 ```
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Eventos en `specs/asyncapi.yaml` — spec-first.
-- Valkey Streams para negocio, Pub/Sub para efímeros.
-- Envelope con id, type, source, timestamp, data, auth.
-- Naming: pasado simple (`node.executed`).
-- ACK tras procesamiento exitoso, nunca antes.
-- Publisher en `adapters/eventbus/`. Consumer en cada servicio.
-- El campo `auth` propaga el token OAuth 2.1.
+- Events in `specs/asyncapi.yaml` — spec-first.
+- Valkey Streams for business events, Pub/Sub for ephemeral ones.
+- Envelope with id, type, source, timestamp, data, auth.
+- Naming: simple past tense (`node.executed`).
+- ACK after successful processing, never before.
+- Publisher in `adapters/eventbus/`. Consumer in each service.
+- The `auth` field propagates the OAuth 2.1 token.

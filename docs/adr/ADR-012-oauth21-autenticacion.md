@@ -1,49 +1,49 @@
-# ADR-012: OAuth 2.1 propio + autorización ABAC por etiquetas
+# ADR-012: Custom OAuth 2.1 + tag-based ABAC authorization
 
-**Estado:** Aceptado (revisado: auth-server independiente, ABAC completo)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: independent auth-server, full ABAC)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-Dago necesita autenticación (usuarios + M2M) y autorización granular
-basada en atributos. El auth-server es un servicio independiente (ADR-013).
+Dago needs authentication (users + M2M) and fine-grained attribute-based
+authorization. The auth-server is an independent service (ADR-013).
 
-## Decisión
+## Decision
 
-### Autenticación: auth-server con OAuth 2.1
+### Authentication: auth-server with OAuth 2.1
 
-El servicio **auth-server** actúa como Authorization Server OAuth 2.1
-e Identity Broker del ecosistema dago.
+The **auth-server** service acts as the OAuth 2.1 Authorization Server
+and Identity Broker for the dago ecosystem.
 
 ```
 auth-server
 ├── OAuth 2.1 endpoints (/authorize, /token, /revoke, /introspect, JWKS)
-├── Identity Broker (IdP externo: Google, Azure AD, OIDC, LDAP; o local)
-├── Gestión de usuarios y credenciales locales (argon2id)
-├── Gestión de clientes (servicios, MCP servers, agentes)
-├── Unidades organizativas (árbol con herencia de tags)
-└── Motor ABAC (evaluación de acceso por etiquetas)
+├── Identity Broker (external IdP: Google, Azure AD, OIDC, LDAP; or local)
+├── Local user and credential management (argon2id)
+├── Client management (services, MCP servers, agents)
+├── Organizational units (tree with tag inheritance)
+└── ABAC engine (tag-based access evaluation)
 ```
 
-### Flujo 1: Usuario (Authorization Code + PKCE)
+### Flow 1: User (Authorization Code + PKCE)
 
 ```
-Dashboard → auth-server → IdP externo (o login local)
+Dashboard → auth-server → external IdP (or local login)
          ← authorization_code
          → code + code_verifier
          ← access_token (JWT) + refresh_token
-         → Bearer token en cada request a la API
+         → Bearer token on each API request
 ```
 
-### Flujo 2: Machine-to-machine (Client Credentials)
+### Flow 2: Machine-to-machine (Client Credentials)
 
 ```
-Servicio → POST /token (client_id + client_secret)
-         ← access_token (JWT)
+Service → POST /token (client_id + client_secret)
+        ← access_token (JWT)
 ```
 
-### Tokens JWT
+### JWT tokens
 
 ```json
 {
@@ -60,39 +60,39 @@ Servicio → POST /token (client_id + client_secret)
 }
 ```
 
-Validación local con JWKS (`/.well-known/jwks.json`). Sin
-introspection en cada request.
+Local validation with JWKS (`/.well-known/jwks.json`). No
+introspection on each request.
 
-### Propagación de tokens
+### Token propagation
 
-El token viaja en los eventos Valkey (campo `auth` del envelope,
-ADR-011) hasta los MCP servers:
-
-```
-Dashboard → orchestrator → eventos → executor → mcp-registry → MCP server
-                                                                    │
-                                                            auth-server (JWKS)
-```
-
-### Autorización: ABAC por etiquetas
-
-**Modelo de etiquetas (tags):**
+The token travels in Valkey events (the `auth` field of the envelope,
+ADR-011) all the way to the MCP servers:
 
 ```
-Sujetos (quién):
-├── Usuarios       → tags propias + heredadas de UO
-└── Servicios/MCP  → tags asignadas
+Dashboard → orchestrator → events → executor → mcp-registry → MCP server
+                                                                   │
+                                                           auth-server (JWKS)
+```
 
-Recursos (qué):
-├── Grafos/Paquetes → tags requeridas
-├── Ejecuciones     → tags heredadas del grafo
-└── MCP Servers     → tags asignadas
+### Authorization: tag-based ABAC
 
-Operaciones (cómo):
+**Tag model:**
+
+```
+Subjects (who):
+├── Users       → own tags + inherited from OU
+└── Services/MCP → assigned tags
+
+Resources (what):
+├── Graphs/Packages → required tags
+├── Executions      → tags inherited from the graph
+└── MCP Servers     → assigned tags
+
+Operations (how):
 └── Scopes: read, execute, manage, admin
 ```
 
-**Unidades organizativas (árbol con herencia):**
+**Organizational units (tree with inheritance):**
 
 ```
 /company                           tags: [env:production]
@@ -102,20 +102,20 @@ Operaciones (cómo):
 └── /company/finance               tags: [department:finance, data:sensitive]
 ```
 
-Tags efectivas = tags propias ∪ tags heredadas de toda la cadena de UO.
+Effective tags = own tags ∪ tags inherited from the entire OU chain.
 
-**Regla de acceso:**
+**Access rule:**
 
 ```
-PERMITIR si:
-  scopes del token cubren la operación
-  Y
-  tags del recurso ⊆ tags efectivas del sujeto
+ALLOW if:
+  token scopes cover the operation
+  AND
+  resource tags ⊆ subject's effective tags
 ```
 
-**Compartir:** Añadir tags al recurso o al destinatario.
+**Sharing:** Add tags to the resource or to the recipient.
 
-### Schemas Ent (modelo de datos)
+### Ent schemas (data model)
 
 ```go
 // ent/schema/org_unit.go
@@ -137,7 +137,7 @@ func (OrgUnit) Edges() []ent.Edge {
 }
 ```
 
-### Puertos
+### Ports
 
 ```go
 // libs/ports/auth.go
@@ -152,7 +152,7 @@ type Authorizer interface {
 
 type Claims struct {
     Subject    string
-    ClientType string       // "user" o "service"
+    ClientType string       // "user" or "service"
     Scopes     []string
     Attrs      AttributeSet
 }
@@ -164,27 +164,27 @@ type AttributeSet struct {
 }
 ```
 
-### Reglas concretas
+### Concrete rules
 
-1. Dos flujos: Authorization Code + PKCE (usuarios), Client Credentials (M2M).
-2. Identity Broker: IdPs externos o dominio local (argon2id).
-3. JWT firmados (RS256 o EdDSA) con attrs ABAC.
-4. Validación local vía JWKS. Sin introspection por request.
-5. Refresh tokens: rotación obligatoria (one-time use).
-6. Dashboard: tokens en memoria, nunca localStorage.
-7. ABAC: tags recurso ⊆ tags efectivas sujeto.
-8. Herencia de tags por árbol de UOs.
-9. Propagación de tokens en eventos (campo `auth`).
-10. No se almacenan contraseñas en el backend API. Solo el auth-server
-    gestiona credenciales.
+1. Two flows: Authorization Code + PKCE (users), Client Credentials (M2M).
+2. Identity Broker: external IdPs or local domain (argon2id).
+3. JWT signed (RS256 or EdDSA) with ABAC attrs.
+4. Local validation via JWKS. No introspection per request.
+5. Refresh tokens: mandatory rotation (one-time use).
+6. Dashboard: tokens in memory, never localStorage.
+7. ABAC: resource tags ⊆ subject's effective tags.
+8. Tag inheritance through the OU tree.
+9. Token propagation in events (`auth` field).
+10. No passwords stored in the backend API. Only the auth-server
+    manages credentials.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- auth-server en `services/auth-server/internal/`.
-  - `oauth/` — endpoints OAuth 2.1.
-  - `identity/` — IdP broker, dominio local.
-  - `abac/` — motor ABAC, UOs, evaluación de tags.
-- `TokenValidator` y `Authorizer` en `libs/ports/auth.go`.
-- Implementación JWT/JWKS en `adapters/auth/`.
-- Schemas Ent: OrgUnit, User con campos tags.
-- Tokens propagados en campo `auth` del envelope de eventos.
+- auth-server in `services/auth-server/internal/`.
+  - `oauth/` — OAuth 2.1 endpoints.
+  - `identity/` — IdP broker, local domain.
+  - `abac/` — ABAC engine, OUs, tag evaluation.
+- `TokenValidator` and `Authorizer` in `libs/ports/auth.go`.
+- JWT/JWKS implementation in `adapters/auth/`.
+- Ent schemas: OrgUnit, User with tags fields.
+- Tokens propagated in the `auth` field of the event envelope.

@@ -1,61 +1,61 @@
-# ADR-006: Gin como framework HTTP
+# ADR-006: Gin as HTTP framework
 
-**Estado:** Aceptado (revisado: múltiples servicios HTTP)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: multiple HTTP services)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El proyecto necesita un framework HTTP para exponer APIs REST.
-Inicialmente solo el orchestrator exponía HTTP; tras la descomposición
-de servicios (ADR-013, ADR-014), también exponen HTTP: auth-server,
-catalog, mcp-registry y agent-registry.
+The project needs an HTTP framework to expose REST APIs.
+Initially only the orchestrator exposed HTTP; after the service
+decomposition (ADR-013, ADR-014), the following also expose HTTP:
+auth-server, catalog, mcp-registry and agent-registry.
 
-## Decisión
+## Decision
 
-Se adopta **Gin** (github.com/gin-gonic/gin) como framework HTTP
-para todos los servicios que exponen API REST.
+**Gin** (github.com/gin-gonic/gin) is adopted as the HTTP framework
+for all services that expose a REST API.
 
-### Servicios con API HTTP
+### Services with HTTP API
 
-| Servicio | Endpoints principales |
-|----------|----------------------|
-| orchestrator | API REST grafos/ejecuciones + WebSocket (AG-UI) |
+| Service | Main endpoints |
+|---------|----------------|
+| orchestrator | REST API graphs/executions + WebSocket (AG-UI) |
 | auth-server | OAuth 2.1 (/authorize, /token, /revoke, JWKS) |
-| catalog | CRUD paquetes, versionado |
-| mcp-registry | Registro MCP, broker de invocaciones |
-| agent-registry | Agent Cards A2A, discovery |
+| catalog | Package CRUD, versioning |
+| mcp-registry | MCP registry, invocation broker |
+| agent-registry | A2A Agent Cards, discovery |
 
-Los servicios de orquestación (executor, router, planner) NO exponen
-HTTP — solo consumen/producen eventos Valkey (ADR-014).
+Orchestration services (executor, router, planner) do NOT expose
+HTTP — they only consume/produce Valkey events (ADR-014).
 
-### Reglas concretas
+### Concrete rules
 
-1. **Handlers delgados.** Bind → servicio de dominio → respuesta HTTP.
-   Sin lógica de negocio en handlers.
+1. **Thin handlers.** Bind → domain service → HTTP response.
+   No business logic in handlers.
 
-2. **Context propagation.** `c.Request.Context()` al dominio, nunca
+2. **Context propagation.** `c.Request.Context()` to the domain, never
    `*gin.Context`.
 
-3. **Errores centralizados.** Función `mapDomainError()` traduce
-   errores de dominio → HTTP status codes.
+3. **Centralized errors.** A `mapDomainError()` function translates
+   domain errors → HTTP status codes.
 
-4. **Rutas versionadas.** Todo bajo `/api/v1/` (ADR-010). Excepción:
-   endpoints OAuth estándar del auth-server (`/authorize`, `/token`,
+4. **Versioned routes.** Everything under `/api/v1/` (ADR-010). Exception:
+   standard OAuth endpoints of auth-server (`/authorize`, `/token`,
    `/.well-known/*`).
 
-5. **Middlewares comunes.** Recovery, logging (slog), CORS, RequestID,
-   auth (JWT validation via JWKS). Cada servicio compone los que
-   necesita.
+5. **Common middlewares.** Recovery, logging (slog), CORS, RequestID,
+   auth (JWT validation via JWKS). Each service composes the ones
+   it needs.
 
-6. **`ShouldBindJSON`**, no `BindJSON`. Validación de negocio en el
-   dominio, no en tags del binding.
+6. **`ShouldBindJSON`**, not `BindJSON`. Business validation in the
+   domain, not in binding tags.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Handlers en `services/{nombre}/internal/handler/`.
-- Middlewares en `services/{nombre}/internal/middleware/` o compartidos
-  en `adapters/auth/` (JWT validation).
-- Todo servicio HTTP tiene `c.Request.Context()` → dominio.
-- Los 5 servicios HTTP usan Gin. Los 3 workers (executor, router,
-  planner) no tienen HTTP.
+- Handlers in `services/{name}/internal/handler/`.
+- Middlewares in `services/{name}/internal/middleware/` or shared
+  in `adapters/auth/` (JWT validation).
+- Every HTTP service uses `c.Request.Context()` → domain.
+- The 5 HTTP services use Gin. The 3 workers (executor, router,
+  planner) have no HTTP.

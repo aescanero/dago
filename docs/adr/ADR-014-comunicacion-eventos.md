@@ -1,21 +1,21 @@
-# ADR-014: Comunicación inter-servicio (eventos + HTTP)
+# ADR-014: Inter-service communication (events + HTTP)
 
-**Estado:** Aceptado (revisado: dos modos tras descomposición)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: two modes after decomposition)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-Dago distribuye la ejecución de grafos siguiendo el modelo LangGraph:
-estado centralizado con transiciones por eventos. Tras la descomposición
-en 8 servicios, se necesitan dos modos de comunicación.
+Dago distributes graph execution following the LangGraph model:
+centralised state with event-driven transitions. After decomposing
+into 8 services, two communication modes are needed.
 
-## Decisión
+## Decision
 
-### Dos modos de comunicación
+### Two communication modes
 
-**Eventos (Valkey Streams)** — Orquestación de grafos. Los servicios
-de ejecución se comunican exclusivamente por eventos:
+**Events (Valkey Streams)** — Graph orchestration. Execution services
+communicate exclusively via events:
 
 ```
 orchestrator ↔ executor (node.execute.requested / node.executed)
@@ -24,23 +24,22 @@ orchestrator ↔ planner  (graph.plan.requested / graph.planned)
 executor     ↔ mcp-registry (mcp.tool.invoked / mcp.tool.result)
 ```
 
-**HTTP (Gin)** — Servicios de soporte. Consultas síncronas de baja
-latencia:
+**HTTP (Gin)** — Support services. Low-latency synchronous queries:
 
 ```
-orchestrator → catalog      (obtener definición de paquete)
+orchestrator → catalog      (get package definition)
 orchestrator → auth-server   (JWKS)
-executor     → mcp-registry  (discovery MCP)
-dashboard    → orchestrator  (API REST + WebSocket AG-UI)
-dashboard    → catalog       (gestión de paquetes)
+executor     → mcp-registry  (MCP discovery)
+dashboard    → orchestrator  (REST API + WebSocket AG-UI)
+dashboard    → catalog       (package management)
 dashboard    → agent-registry (Agent Cards)
-cualquiera   → auth-server   (validación JWKS)
+any          → auth-server   (JWKS validation)
 ```
 
-### Catálogo de eventos de orquestación
+### Orchestration event catalogue
 
-| Evento | Productor | Consumidor |
-|--------|-----------|------------|
+| Event | Producer | Consumer |
+|-------|----------|----------|
 | `graph.submitted` | orchestrator (API) | orchestrator |
 | `graph.planned` | planner | orchestrator |
 | `node.execute.requested` | orchestrator | executor |
@@ -55,45 +54,45 @@ cualquiera   → auth-server   (validación JWKS)
 | `mcp.tool.invoked` | executor | mcp-registry |
 | `mcp.tool.result` | mcp-registry | executor |
 
-Todos definidos en `specs/asyncapi.yaml` (ADR-011).
+All defined in `specs/asyncapi.yaml` (ADR-011).
 
-### Estado centralizado (modelo LangGraph)
+### Centralised state (LangGraph model)
 
-El orchestrator mantiene el estado canónico de cada ejecución en
-PostgreSQL (Ent). Cada evento lleva el estado relevante (Event-Carried
-State Transfer). Los demás servicios nunca consultan la DB del
-orchestrator directamente.
+The orchestrator maintains the canonical state of each execution in
+PostgreSQL (Ent). Each event carries the relevant state (Event-Carried
+State Transfer). Other services never query the orchestrator's DB
+directly.
 
-### Reglas concretas
+### Concrete rules
 
-1. **Orquestación: solo eventos.** Executor nunca llama al
-   orchestrator por HTTP. Sin excepciones.
+1. **Orchestration: events only.** The executor never calls the
+   orchestrator via HTTP. No exceptions.
 
-2. **Soporte: HTTP síncrono.** Consultas rápidas antes de actuar.
+2. **Support: synchronous HTTP.** Fast queries before acting.
 
-3. **Todos los eventos llevan `execution_id`** y `auth` (token).
+3. **All events carry `execution_id`** and `auth` (token).
 
-4. **Consumer groups por servicio.** Escalado horizontal.
+4. **Consumer groups per service.** Horizontal scaling.
 
-5. **Idempotencia obligatoria** en consumidores.
+5. **Mandatory idempotency** in consumers.
 
-6. **Checkpointing** del estado en PostgreSQL tras cada transición.
+6. **State checkpointing** in PostgreSQL after each transition.
 
-7. **Timeout por nodo.** Si executor/router no responde,
-   `node.execute.failed` con razón `timeout`.
+7. **Timeout per node.** If executor/router does not respond,
+   `node.execute.failed` with reason `timeout`.
 
-8. **Dead letter:** `{stream}.dlq` para fallos repetidos.
+8. **Dead letter:** `{stream}.dlq` for repeated failures.
 
-9. **Retry con backoff** para fallos transitorios (LLM rate limited).
+9. **Retry with backoff** for transient failures (LLM rate limited).
 
-10. **Human-in-the-loop:** `graph.paused` persiste estado,
-    `graph.resumed` cuando el usuario responde.
+10. **Human-in-the-loop:** `graph.paused` persists state,
+    `graph.resumed` when the user responds.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Eventos de orquestación: Valkey Streams.
-- Servicios de soporte: HTTP con Gin.
-- Nunca HTTP entre orchestrator ↔ executor/router/planner.
-- Cada evento: envelope con id, type, source, timestamp, data, auth.
-- Consumer handlers idempotentes.
-- Nuevo tipo de nodo → definir eventos en AsyncAPI primero.
+- Orchestration events: Valkey Streams.
+- Support services: HTTP with Gin.
+- Never HTTP between orchestrator ↔ executor/router/planner.
+- Each event: envelope with id, type, source, timestamp, data, auth.
+- Consumer handlers must be idempotent.
+- New node type → define events in AsyncAPI first.

@@ -1,104 +1,104 @@
-# SPRINT-007: Adaptador Event Bus — Valkey Streams + Consumer Groups
+# SPRINT-007: Event Bus Adapter — Valkey Streams + Consumer Groups
 
 ## Metadata
 
-- **Fecha inicio:** 2026-04-29
-- **Fecha fin estimada:** 2026-04-30
-- **Estado:** planificado
-- **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-008, ADR-011, ADR-013, ADR-020
-- **Specs afectadas:** specs/asyncapi.yaml (7 canales de orquestación)
-- **Agente planificador:** planner
-- **Revisado por:** pendiente
-- **Bloqueado por:** SPRINT-001 (go.mod, docker-compose con Valkey 8)
-- **Bloquea:** SPRINT-009 (executor consume node.execute.requested), SPRINT-010 (orchestrator publica eventos)
+- **Start date:** 2026-04-29
+- **Estimated end date:** 2026-04-30
+- **Status:** planned
+- **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-008, ADR-011, ADR-013, ADR-020
+- **Affected specs:** specs/asyncapi.yaml (7 orchestration channels)
+- **Planning agent:** planner
+- **Reviewed by:** pending
+- **Blocked by:** SPRINT-001 (go.mod, docker-compose with Valkey 8)
+- **Blocks:** SPRINT-009 (executor consumes node.execute.requested), SPRINT-010 (orchestrator publishes events)
 
-## Objetivo
+## Objective
 
-Implementar el puerto `EventPublisher`/`EventConsumer` en `libs/ports/` y su adaptador
-Valkey Streams en `adapters/eventbus/valkey/`, con envelope estándar CloudEvents (campo
-`auth` incluido), consumer groups con ACK/NACK, recuperación de pending messages y
-dead-letter queue. Tests de integración con Testcontainers.
+Implement the `EventPublisher`/`EventConsumer` port in `libs/ports/` and its
+Valkey Streams adapter in `adapters/eventbus/valkey/`, with standard CloudEvents envelope
+(including `auth` field), consumer groups with ACK/NACK, pending messages recovery and
+dead-letter queue. Integration tests with Testcontainers.
 
-## Alcance
+## Scope
 
-**Entra:**
-- Definición de canales y mensajes en `specs/asyncapi.yaml` (7 eventos de orquestación)
-- Tipos de dominio: `Event`, `EventAuth` en `libs/domain/events.go`
-- Puertos: `EventPublisher`, `EventConsumer`, `EventHandler` en `libs/ports/eventbus.go`
-- Adaptador: publisher, consumer, envelope, consumer group en `adapters/eventbus/valkey/`
-- Tests de integración con Testcontainers (6 casos, build tag `integration`)
-- Variables de entorno documentadas en `.env.example`
+**Included:**
+- Channel and message definitions in `specs/asyncapi.yaml` (7 orchestration events)
+- Domain types: `Event`, `EventAuth` in `libs/domain/events.go`
+- Ports: `EventPublisher`, `EventConsumer`, `EventHandler` in `libs/ports/eventbus.go`
+- Adapter: publisher, consumer, envelope, consumer group in `adapters/eventbus/valkey/`
+- Integration tests with Testcontainers (6 cases, build tag `integration`)
+- Environment variables documented in `.env.example`
 
-**No entra:**
-- Publicación de eventos de negocio (eso es SPRINT-003 en adelante para orchestrator)
-- Pub-Sub (notificaciones de dashboard — SPRINT-007-pubsub futuro)
-- Caché Valkey (SPRINT-cache futuro)
-- Sesiones OAuth en Valkey (SPRINT-005 usa in-memory por ahora)
-- Wiring de consumer groups en servicios concretos (cada servicio lo hace en su `main.go`)
+**Not included:**
+- Business event publishing (that is SPRINT-003 onwards for orchestrator)
+- Pub-Sub (dashboard notifications — future SPRINT-007-pubsub)
+- Valkey cache (future SPRINT-cache)
+- OAuth sessions in Valkey (SPRINT-005 uses in-memory for now)
+- Consumer group wiring in concrete services (each service does it in its `main.go`)
 
-## Dependencias
+## Dependencies
 
-- **Bloqueado por:** SPRINT-001 (go.mod con dependencias Go, docker-compose con Valkey 8)
-- **Paralelo a:** SPRINT-002, SPRINT-003, SPRINT-004 (no hay dependencia entre ellos)
-- **Bloquea:** SPRINT-003 extendido (orchestrator publica `execution.requested`),
-  SPRINT-008 (executor consume eventos), SPRINT-009 (router consume eventos)
+- **Blocked by:** SPRINT-001 (go.mod with Go dependencies, docker-compose with Valkey 8)
+- **Parallel with:** SPRINT-002, SPRINT-003, SPRINT-004 (no dependency between them)
+- **Blocks:** extended SPRINT-003 (orchestrator publishes `execution.requested`),
+  SPRINT-008 (executor consumes events), SPRINT-009 (router consumes events)
 
-## Contratos de comportamiento
+## Behavior Contracts
 
-### C1 — `EventPublisher.Publish` — publicación básica
+### C1 — `EventPublisher.Publish` — basic publish
 
 ```
-Given: Valkey activo, stream "dago.graph.execution.requested" existente
+Given: Active Valkey, existing stream "dago.graph.execution.requested"
 When: publisher.Publish(ctx, event, PublishOptions{Stream: "dago.graph.execution.requested"})
-Then: XLEN del stream aumenta en 1
-      El entry contiene campo "envelope" con el JSON completo del evento
-      event.ID es un UUID v4 válido
-      unmarshal(marshal(event)) == event (round-trip exacto)
+Then: XLEN of the stream increases by 1
+      The entry contains field "envelope" with the complete event JSON
+      event.ID is a valid UUID v4
+      unmarshal(marshal(event)) == event (exact round-trip)
 ```
 
-### C2 — `EventConsumer.Subscribe` — ACK automático en éxito
+### C2 — `EventConsumer.Subscribe` — automatic ACK on success
 
 ```
-Given: Mensaje publicado en el stream, consumer group configurado
-When: El handler retorna nil al procesar el mensaje
-Then: El mensaje recibe XACK
-      Una segunda llamada XREADGROUP no devuelve el mensaje
-      El mensaje no aparece en la PEL (Pending Entry List)
+Given: Message published in the stream, consumer group configured
+When: The handler returns nil when processing the message
+Then: The message receives XACK
+      A second XREADGROUP call does not return the message
+      The message does not appear in the PEL (Pending Entry List)
 ```
 
-### C3 — DLQ tras MaxRetries
+### C3 — DLQ after MaxRetries
 
 ```
-Given: Mensaje publicado, MaxRetries=3, handler siempre retorna error
-When: El consumer procesa el mensaje exactamente 3 veces
-Then: El mensaje aparece en el stream "dago.dlq"
-      El mensaje original recibe XACK en el stream de origen (sale de la PEL)
-      El evento en dago.dlq preserva el execution_id del evento original
+Given: Message published, MaxRetries=3, handler always returns error
+When: The consumer processes the message exactly 3 times
+Then: The message appears in the "dago.dlq" stream
+      The original message receives XACK in the source stream (leaves the PEL)
+      The event in dago.dlq preserves the execution_id of the original event
 ```
 
 ## TODOs
 
-### TODO #1 — spec: Definir canales AsyncAPI para eventos de orquestación
+### TODO #1 — spec: Define AsyncAPI channels for orchestration events
 
 **Agente:** @developer
 
-**Descripción:** Actualizar `specs/asyncapi.yaml` con los 7 canales de Valkey Streams
-para la fase inicial de orquestación, siguiendo el envelope CloudEvents + campo `auth`
-definido en ADR-011.
+**Description:** Update `specs/asyncapi.yaml` with the 7 Valkey Streams channels
+for the initial orchestration phase, following the CloudEvents envelope + `auth` field
+defined in ADR-011.
 
-**Archivos afectados:**
+**Affected files:**
 - `specs/asyncapi.yaml`
 
-**Canales a definir:**
-- `dago.graph.execution.requested` — orchestrator publica; executor/router consumen
-- `dago.node.execution.started` — executor publica; orchestrator consume
-- `dago.node.execution.completed` — executor publica; orchestrator consume
-- `dago.node.execution.failed` — executor publica; orchestrator consume
-- `dago.graph.execution.completed` — orchestrator publica
-- `dago.graph.execution.failed` — orchestrator publica
-- `dago.dlq` — dead-letter queue; cualquier servicio publica
+**Channels to define:**
+- `dago.graph.execution.requested` — orchestrator publishes; executor/router consume
+- `dago.node.execution.started` — executor publishes; orchestrator consumes
+- `dago.node.execution.completed` — executor publishes; orchestrator consumes
+- `dago.node.execution.failed` — executor publishes; orchestrator consumes
+- `dago.graph.execution.completed` — orchestrator publishes
+- `dago.graph.execution.failed` — orchestrator publishes
+- `dago.dlq` — dead-letter queue; any service publishes
 
-**Schema del envelope (inline en AsyncAPI):**
+**Envelope schema (inline in AsyncAPI):**
 ```yaml
 type: object
 required: [id, type, source, specversion, time, datacontenttype, data]
@@ -119,25 +119,25 @@ properties:
   data:          { type: object }
 ```
 
-**Criterios de aceptación:**
-- `asyncapi validate specs/asyncapi.yaml` no reporta errores
-- Cada canal tiene: nombre de stream, binding Valkey, consumer groups suscritos, schema
+**Acceptance criteria:**
+- `asyncapi validate specs/asyncapi.yaml` reports no errors
+- Each channel has: stream name, Valkey binding, subscribed consumer groups, schema
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #2 — data: Tipos Event y EventAuth en libs/domain/events.go
+### TODO #2 — data: Event and EventAuth types in libs/domain/events.go
 
 **Agente:** @developer
 
-**Descripción:** Definir los tipos de dominio puros para eventos. Sin dependencias de
-infraestructura. `Event.Data` es `json.RawMessage` para no acoplar al tipo concreto.
+**Description:** Define pure domain types for events. Without infrastructure
+dependencies. `Event.Data` is `json.RawMessage` to avoid coupling to the concrete type.
 
-**Archivos afectados:**
-- `libs/domain/events.go` (nuevo)
+**Affected files:**
+- `libs/domain/events.go` (new)
 
-**Tipos a implementar:**
+**Types to implement:**
 ```go
 package domain
 
@@ -165,7 +165,7 @@ type Event struct {
 }
 ```
 
-**Constantes de tipos de evento:**
+**Event type constants:**
 ```go
 const (
     EventTypeExecutionRequested  = "dago.graph.execution.requested"
@@ -178,27 +178,27 @@ const (
 )
 ```
 
-**Criterios de aceptación:**
-- `go build ./libs/domain/...` sin errores
-- Sin imports de infraestructura (`adapters/`, `valkey-go`, etc.)
+**Acceptance criteria:**
+- `go build ./libs/domain/...` without errors
+- No infrastructure imports (`adapters/`, `valkey-go`, etc.)
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #3 — impl: Interfaces EventPublisher y EventConsumer en libs/ports/eventbus.go
+### TODO #3 — impl: EventPublisher and EventConsumer interfaces in libs/ports/eventbus.go
 
 **Agente:** @developer
 
-**Descripción:** Definir los puertos de salida para publicación y consumo de eventos.
-Separar `EventPublisher` de `EventConsumer` para que cada servicio importe solo lo que
-necesita (orchestrator publica y consume; executor solo consume ciertos streams y publica
-resultados).
+**Description:** Define the output ports for event publishing and consumption.
+Separate `EventPublisher` from `EventConsumer` so each service imports only what it
+needs (orchestrator publishes and consumes; executor only consumes certain streams and publishes
+results).
 
-**Archivos afectados:**
-- `libs/ports/eventbus.go` (nuevo)
+**Affected files:**
+- `libs/ports/eventbus.go` (new)
 
-**Interfaces a implementar:**
+**Interfaces to implement:**
 ```go
 package ports
 
@@ -216,7 +216,7 @@ type ConsumeOptions struct {
     Group         string
     ConsumerName  string
     BlockDuration time.Duration
-    MaxRetries    int // default 3, tras MaxRetries va a DLQ
+    MaxRetries    int // default 3, after MaxRetries goes to DLQ
 }
 
 type EventHandler func(ctx context.Context, event domain.Event) error
@@ -227,231 +227,231 @@ type EventPublisher interface {
 }
 
 type EventConsumer interface {
-    // Subscribe bloquea hasta ctx cancelado. Llama handler por cada mensaje.
-    // ACK automático si handler retorna nil. Sin ACK si retorna error.
+    // Subscribe blocks until ctx is cancelled. Calls handler for each message.
+    // Automatic ACK if handler returns nil. No ACK if it returns error.
     Subscribe(ctx context.Context, opts ConsumeOptions, handler EventHandler) error
-    // RecoverPending reasigna mensajes idle > idleThreshold al consumer actual.
+    // RecoverPending reassigns idle messages > idleThreshold to the current consumer.
     RecoverPending(ctx context.Context, opts ConsumeOptions, idleThreshold time.Duration) error
     Close() error
 }
 ```
 
-**Criterios de aceptación:**
-- `go build ./libs/ports/...` sin errores
-- Solo importa `libs/domain/` y paquetes stdlib
+**Acceptance criteria:**
+- `go build ./libs/ports/...` without errors
+- Only imports `libs/domain/` and stdlib packages
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #4 — test: Tests de integración (Red) con Testcontainers
+### TODO #4 — test: Integration tests (Red) with Testcontainers
 
 **Agente:** @qa
 
-**Descripción:** Escribir los 6 tests de integración con build tag `integration` ANTES
-de implementar el adaptador. Deben fallar (Red) al ejecutarse contra stubs vacíos.
+**Description:** Write the 6 integration tests with build tag `integration` BEFORE
+implementing the adapter. They must fail (Red) when run against empty stubs.
 
-**Archivos afectados:**
-- `adapters/eventbus/valkey/integration_test.go` (nuevo)
+**Affected files:**
+- `adapters/eventbus/valkey/integration_test.go` (new)
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 //go:build integration
 
 package valkey_test
 
-// TestMain: levanta container valkey/valkey:8, obtiene addr, crea cliente
+// TestMain: starts valkey/valkey:8 container, gets addr, creates client
 
 func TestPublishAndConsume(t *testing.T)
-// Publish un evento → Subscribe con consumer group → handler recibe evento igual
+// Publish an event → Subscribe with consumer group → handler receives same event
 
 func TestConsumerGroupAck(t *testing.T)
-// Publish → Subscribe (handler OK → ACK) → segundo XREADGROUP no devuelve el mensaje
+// Publish → Subscribe (handler OK → ACK) → second XREADGROUP does not return the message
 
 func TestConsumerGroupNoAck(t *testing.T)
-// Publish → Subscribe (handler error → sin ACK) → segundo XREADGROUP devuelve el mismo mensaje
+// Publish → Subscribe (handler error → no ACK) → second XREADGROUP returns the same message
 
 func TestPendingRecovery(t *testing.T)
-// Publish → consumer1 lee sin ACK → RecoverPending con idle>0 → consumer2 recibe el mensaje
+// Publish → consumer1 reads without ACK → RecoverPending with idle>0 → consumer2 receives the message
 
 func TestDLQAfterMaxRetries(t *testing.T)
-// Publish → Subscribe con MaxRetries=3, handler siempre error → tras 3 intentos
-// el mensaje aparece en stream "dago.dlq"
+// Publish → Subscribe with MaxRetries=3, handler always errors → after 3 attempts
+// the message appears in stream "dago.dlq"
 
 func TestEnvelopeRoundtrip(t *testing.T)
-// Event con todos los campos incluido Auth → Publish → Subscribe
-// → evento recibido == evento publicado (deep equal)
+// Event with all fields including Auth → Publish → Subscribe
+// → received event == published event (deep equal)
 ```
 
-**Criterios de aceptación:**
-- `go test -tags integration ./adapters/eventbus/valkey/... -run TestPublish` falla con
-  "not implemented" o similar (Red confirmado)
-- Testcontainers descarga imagen `valkey/valkey:8` automáticamente
+**Acceptance criteria:**
+- `go test -tags integration ./adapters/eventbus/valkey/... -run TestPublish` fails with
+  "not implemented" or similar (Red confirmed)
+- Testcontainers automatically downloads image `valkey/valkey:8`
 
-**Test asociado:** este TODO ES el test
+**Associated test:** this TODO IS the test
 
 ---
 
-### TODO #5 — impl: Envelope — serialización/deserialización CloudEvents
+### TODO #5 — impl: Envelope — CloudEvents serialization/deserialization
 
 **Agente:** @developer
 
-**Descripción:** Implementar la conversión entre `domain.Event` y el formato de entrada
-de Valkey Streams (`map[string]any` con campo `envelope` JSON).
+**Description:** Implement the conversion between `domain.Event` and the Valkey Streams
+input format (`map[string]any` with `envelope` JSON field).
 
-**Archivos afectados:**
-- `adapters/eventbus/valkey/envelope.go` (nuevo)
+**Affected files:**
+- `adapters/eventbus/valkey/envelope.go` (new)
 
-**Diseño:**
+**Design:**
 ```go
-// marshalEnvelope serializa domain.Event → map[string]any para XADD
-// unmarshalEnvelope deserializa entry de XREAD → domain.Event
-// El stream entry tiene un único campo "envelope" con el JSON completo del evento
+// marshalEnvelope serializes domain.Event → map[string]any for XADD
+// unmarshalEnvelope deserializes XREAD entry → domain.Event
+// The stream entry has a single "envelope" field with the complete event JSON
 ```
 
-**Criterios de aceptación:**
-- `TestEnvelopeRoundtrip` pasa (Green)
-- Marshal/Unmarshal son inversas: `unmarshal(marshal(e)) == e`
-- Campo `auth` se omite si es nil (`omitempty`)
+**Acceptance criteria:**
+- `TestEnvelopeRoundtrip` passes (Green)
+- Marshal/Unmarshal are inverses: `unmarshal(marshal(e)) == e`
+- `auth` field is omitted if nil (`omitempty`)
 
-**Test asociado:** `TestEnvelopeRoundtrip`
+**Associated test:** `TestEnvelopeRoundtrip`
 
 ---
 
-### TODO #6 — impl: Publisher — XADD con XGROUP CREATE idempotente
+### TODO #6 — impl: Publisher — XADD with idempotent XGROUP CREATE
 
 **Agente:** @developer
 
-**Descripción:** Implementar `ValkeyPublisher` que implementa `ports.EventPublisher`.
-Garantizar que el stream y el grupo existen antes de publicar (XGROUP CREATE MKSTREAM).
+**Description:** Implement `ValkeyPublisher` that implements `ports.EventPublisher`.
+Ensure the stream and group exist before publishing (XGROUP CREATE MKSTREAM).
 
-**Archivos afectados:**
-- `adapters/eventbus/valkey/publisher.go` (nuevo)
+**Affected files:**
+- `adapters/eventbus/valkey/publisher.go` (new)
 
-**Comportamiento:**
-- `Publish`: serializa con `marshalEnvelope` → `XADD stream * envelope <json>`
-- `EnsureStream`: `XGROUP CREATE stream <group> $ MKSTREAM` (idempotente, ignora BUSYGROUP)
-- `Close`: cierra conexión Valkey
+**Behavior:**
+- `Publish`: serializes with `marshalEnvelope` → `XADD stream * envelope <json>`
+- `EnsureStream`: `XGROUP CREATE stream <group> $ MKSTREAM` (idempotent, ignores BUSYGROUP)
+- `Close`: closes Valkey connection
 
 **Error handling:**
 - `fmt.Errorf("eventbus publish %s: %w", stream, err)`
-- Timeout desde `ctx`
+- Timeout from `ctx`
 
-**Criterios de aceptación:**
-- `TestPublishAndConsume` pasa (Green) cuando el consumer también está implementado
-- `TestEnvelopeRoundtrip` pasa
+**Acceptance criteria:**
+- `TestPublishAndConsume` passes (Green) when the consumer is also implemented
+- `TestEnvelopeRoundtrip` passes
 
-**Test asociado:** `TestPublishAndConsume`, `TestEnvelopeRoundtrip`
+**Associated test:** `TestPublishAndConsume`, `TestEnvelopeRoundtrip`
 
 ---
 
-### TODO #7 — impl: Consumer — XREADGROUP + ACK + DLQ tras MaxRetries
+### TODO #7 — impl: Consumer — XREADGROUP + ACK + DLQ after MaxRetries
 
 **Agente:** @developer
 
-**Descripción:** Implementar `ValkeyConsumer` que implementa `ports.EventConsumer`.
-`Subscribe` bloquea en un loop leyendo con `XREADGROUP`. Gestiona ACK/NACK y DLQ.
+**Description:** Implement `ValkeyConsumer` that implements `ports.EventConsumer`.
+`Subscribe` blocks in a loop reading with `XREADGROUP`. Manages ACK/NACK and DLQ.
 
-**Archivos afectados:**
-- `adapters/eventbus/valkey/consumer.go` (nuevo)
+**Affected files:**
+- `adapters/eventbus/valkey/consumer.go` (new)
 
-**Comportamiento de Subscribe:**
-1. `XGROUP CREATE stream group $ MKSTREAM` (idempotente)
-2. Loop hasta `ctx.Done()`:
+**Subscribe behavior:**
+1. `XGROUP CREATE stream group $ MKSTREAM` (idempotent)
+2. Loop until `ctx.Done()`:
    a. `XREADGROUP GROUP group consumer BLOCK blockDuration COUNT 10 STREAMS stream >`
-   b. Para cada mensaje: deserializar → llamar `handler`
-   c. Si `handler` retorna nil: `XACK stream group id`
-   d. Si `handler` retorna error:
-      - Consultar `XPENDING stream group - + 10` para contar reintentos del mensaje
-      - Si reintentos >= `MaxRetries`: publicar en `dago.dlq` + `XACK` (para sacarlo del pending)
-      - Si reintentos < `MaxRetries`: no XACK (el mensaje permanece en pending)
+   b. For each message: deserialize → call `handler`
+   c. If `handler` returns nil: `XACK stream group id`
+   d. If `handler` returns error:
+      - Query `XPENDING stream group - + 10` to count message retries
+      - If retries >= `MaxRetries`: publish to `dago.dlq` + `XACK` (to remove from pending)
+      - If retries < `MaxRetries`: no XACK (message stays in pending)
 
 **Error handling:**
-- Errores de conexión: log + retry con backoff exponencial (1s, 2s, 4s, máx 30s)
+- Connection errors: log + retry with exponential backoff (1s, 2s, 4s, max 30s)
 - `fmt.Errorf("eventbus consume %s: %w", stream, err)`
 
-**Criterios de aceptación:**
-- `TestConsumerGroupAck` pasa
-- `TestConsumerGroupNoAck` pasa
-- `TestDLQAfterMaxRetries` pasa
+**Acceptance criteria:**
+- `TestConsumerGroupAck` passes
+- `TestConsumerGroupNoAck` passes
+- `TestDLQAfterMaxRetries` passes
 
-**Test asociado:** `TestConsumerGroupAck`, `TestConsumerGroupNoAck`, `TestDLQAfterMaxRetries`
+**Associated test:** `TestConsumerGroupAck`, `TestConsumerGroupNoAck`, `TestDLQAfterMaxRetries`
 
 ---
 
-### TODO #8 — impl: RecoverPending — XAUTOCLAIM para mensajes idle
+### TODO #8 — impl: RecoverPending — XAUTOCLAIM for idle messages
 
 **Agente:** @developer
 
-**Descripción:** Implementar `RecoverPending` en `ValkeyConsumer`. Al arrancar un
-servicio, reclama los mensajes que llevan más de `idleThreshold` sin ACK (pueden
-pertenecer a un consumer anterior que murió).
+**Description:** Implement `RecoverPending` in `ValkeyConsumer`. When a
+service starts, it reclaims messages that have been pending for more than `idleThreshold`
+without ACK (they may belong to a previous consumer that died).
 
-**Archivos afectados:**
-- `adapters/eventbus/valkey/consumer.go` (añadir método)
+**Affected files:**
+- `adapters/eventbus/valkey/consumer.go` (add method)
 
-**Comportamiento:**
+**Behavior:**
 ```
 XAUTOCLAIM stream group consumerName idleMs 0-0 COUNT 100
 ```
-- Reasigna los mensajes al `consumerName` actual
-- Procesa cada mensaje con el mismo handler de `Subscribe`
-- Si handler OK: XACK; si error: lógica de MaxRetries igual que en Subscribe
+- Reassigns the messages to the current `consumerName`
+- Processes each message with the same handler as `Subscribe`
+- If handler OK: XACK; if error: same MaxRetries logic as in Subscribe
 
-**Criterios de aceptación:**
-- `TestPendingRecovery` pasa
-- Idempotente: llamar dos veces no duplica el procesamiento
+**Acceptance criteria:**
+- `TestPendingRecovery` passes
+- Idempotent: calling twice does not duplicate processing
 
-**Test asociado:** `TestPendingRecovery`
+**Associated test:** `TestPendingRecovery`
 
 ---
 
-### TODO #9 — infra: Añadir dependencia valkey-go al go.mod y configuración
+### TODO #9 — infra: Add valkey-go dependency to go.mod and configuration
 
 **Agente:** @devops
 
-**Descripción:** Añadir `github.com/valkey-io/valkey-go` al go.mod del monorepo.
-Añadir `github.com/testcontainers/testcontainers-go` para tests de integración.
-Documentar variables de entorno en `.env.example`.
+**Description:** Add `github.com/valkey-io/valkey-go` to the monorepo go.mod.
+Add `github.com/testcontainers/testcontainers-go` for integration tests.
+Document environment variables in `.env.example`.
 
-**Archivos afectados:**
+**Affected files:**
 - `go.mod` / `go.sum` (via `go get`)
 - `.env.example`
 
-**Comandos:**
+**Commands:**
 ```bash
 go get github.com/valkey-io/valkey-go@latest
 go get github.com/testcontainers/testcontainers-go@latest
 ```
 
-**Variables de entorno a añadir en `.env.example`:**
+**Environment variables to add in `.env.example`:**
 ```
 VALKEY_ADDR=localhost:6379
-VALKEY_PASSWORD=           # vacío en dev
+VALKEY_PASSWORD=           # empty in dev
 VALKEY_DLQ_STREAM=dago.dlq
 VALKEY_MAX_RETRIES=3
 VALKEY_CONSUMER_IDLE_MS=30000
 ```
 
-**Criterios de aceptación:**
-- `go build ./adapters/eventbus/...` sin errores
-- `go test -tags integration ./adapters/eventbus/...` levanta container y ejecuta tests
+**Acceptance criteria:**
+- `go build ./adapters/eventbus/...` without errors
+- `go test -tags integration ./adapters/eventbus/...` starts container and runs tests
 
-**Test asociado:** todos los tests de integración
+**Associated test:** all integration tests
 
 ---
 
-### TODO #10 — infra: Target Makefile para tests de integración del eventbus
+### TODO #10 — infra: Makefile target for eventbus integration tests
 
 **Agente:** @devops
 
-**Descripción:** Añadir target `make test-integration-eventbus` en el Makefile para
-ejecutar solo los tests de integración del adaptador, separados de los unitarios.
+**Description:** Add target `make test-integration-eventbus` in the Makefile to
+run only the adapter's integration tests, separated from unit tests.
 
-**Archivos afectados:**
+**Affected files:**
 - `Makefile`
 
-**Target a añadir:**
+**Target to add:**
 ```makefile
 test-integration-eventbus:
 	go test -tags integration -count=1 -timeout 120s \
@@ -461,36 +461,36 @@ test-integration: test-integration-eventbus
 	@echo "All integration tests passed"
 ```
 
-**Criterios de aceptación:**
-- `make test-integration-eventbus` ejecuta los 6 tests y todos pasan
-- `make ci` no ejecuta tests de integración (solo `//go:build integration` los activa)
+**Acceptance criteria:**
+- `make test-integration-eventbus` runs the 6 tests and all pass
+- `make ci` does not run integration tests (only `//go:build integration` activates them)
 
-**Test asociado:** todos los tests de integración
+**Associated test:** all integration tests
 
 ---
 
-### TODO #11 — docs: Actualizar docs/index.md y docs/log.md
+### TODO #11 — docs: Update docs/index.md and docs/log.md
 
 **Agente:** @docs
 
-**Descripción:** Registrar SPRINT-007 en el índice y el log del proyecto.
+**Description:** Register SPRINT-007 in the project index and log.
 
-**Archivos afectados:**
-- `docs/index.md` — añadir fila en tabla Sprints
-- `docs/log.md` — añadir entrada append-only
+**Affected files:**
+- `docs/index.md` — add row in Sprints table
+- `docs/log.md` — add append-only entry
 
-**Criterios de aceptación:**
-- `grep "SPRINT-007" docs/index.md` retorna la fila
-- `grep "SPRINT-007" docs/log.md` retorna la entrada
-- `docs/index.md` añade sección "## Adaptadores" si no existe, con fila del eventbus
+**Acceptance criteria:**
+- `grep "SPRINT-007" docs/index.md` returns the row
+- `grep "SPRINT-007" docs/log.md` returns the entry
+- `docs/index.md` adds section "## Adapters" if it does not exist, with eventbus row
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-## Matriz de trazabilidad
+## Traceability Matrix
 
-| TODO | Tipo   | ADR       | Spec              | Test                        | Impl                                  |
+| TODO | Type   | ADR       | Spec              | Test                        | Impl                                  |
 |------|--------|-----------|-------------------|-----------------------------|---------------------------------------|
 | #1   | spec   | 011       | asyncapi.yaml     | —                           | specs/asyncapi.yaml                   |
 | #2   | data   | 001, 011  | asyncapi.yaml     | —                           | libs/domain/events.go                 |
@@ -500,28 +500,28 @@ test-integration: test-integration-eventbus
 | #6   | impl   | 008       | asyncapi.yaml     | TestPublishAndConsume        | adapters/eventbus/valkey/publisher.go |
 | #7   | impl   | 008, 011  | asyncapi.yaml     | TestAck, TestNoAck, TestDLQ | adapters/eventbus/valkey/consumer.go  |
 | #8   | impl   | 008       | —                 | TestPendingRecovery          | adapters/eventbus/valkey/consumer.go  |
-| #9   | infra  | 008, 013  | —                 | (habilita todos los tests)  | go.mod, .env.example                  |
-| #10  | infra  | 002       | —                 | (habilita ejecución CI)     | Makefile                              |
+| #9   | infra  | 008, 013  | —                 | (enables all tests)         | go.mod, .env.example                  |
+| #10  | infra  | 002       | —                 | (enables CI execution)      | Makefile                              |
 | #11  | docs   | 020       | —                 | —                           | docs/index.md, docs/log.md            |
 
-## Notas de implementación
+## Implementation Notes
 
-**Cliente Valkey:** usar `github.com/valkey-io/valkey-go` (no `go-redis`). API:
+**Valkey client:** use `github.com/valkey-io/valkey-go` (not `go-redis`). API:
 ```go
 client, err := valkey.NewClient(valkey.ClientOption{
     InitAddress: []string{addr},
 })
 ```
 
-**XPENDING para contar reintentos:** el campo `delivery-count` de cada entrada PEL
-(Pending Entry List) devuelve cuántas veces se entregó. Usar:
+**XPENDING to count retries:** the `delivery-count` field of each PEL entry
+(Pending Entry List) returns how many times it was delivered. Use:
 ```
 XPENDING stream group - + 1 consumerName
 ```
-O bien `XRANGE` sobre la PEL. Alternativamente, incluir un contador en el envelope de
-DLQ (`retry_count` en el campo `data` del evento `dago.dlq`).
+Or use `XRANGE` on the PEL. Alternatively, include a counter in the DLQ envelope
+(`retry_count` in the `data` field of the `dago.dlq` event).
 
-**Testcontainers setup mínimo:**
+**Minimal Testcontainers setup:**
 ```go
 func TestMain(m *testing.M) {
     ctx := context.Background()
@@ -540,16 +540,16 @@ func TestMain(m *testing.M) {
 }
 ```
 
-## Resultado (completar al cerrar)
+## Result (complete on close)
 
-- [ ] `TestPublishAndConsume` pasa
-- [ ] `TestConsumerGroupAck` pasa
-- [ ] `TestConsumerGroupNoAck` pasa
-- [ ] `TestPendingRecovery` pasa
-- [ ] `TestDLQAfterMaxRetries` pasa
-- [ ] `TestEnvelopeRoundtrip` pasa
-- [ ] `go build ./libs/... ./adapters/eventbus/...` sin errores
-- [ ] `golangci-lint run ./libs/... ./adapters/eventbus/...` sin errores
-- [ ] `specs/asyncapi.yaml` validado con 7 canales definidos
-- [ ] `.env.example` actualizado con variables Valkey
-- [ ] `docs/index.md` y `docs/log.md` actualizados
+- [ ] `TestPublishAndConsume` passes
+- [ ] `TestConsumerGroupAck` passes
+- [ ] `TestConsumerGroupNoAck` passes
+- [ ] `TestPendingRecovery` passes
+- [ ] `TestDLQAfterMaxRetries` passes
+- [ ] `TestEnvelopeRoundtrip` passes
+- [ ] `go build ./libs/... ./adapters/eventbus/...` without errors
+- [ ] `golangci-lint run ./libs/... ./adapters/eventbus/...` without errors
+- [ ] `specs/asyncapi.yaml` validated with 7 channels defined
+- [ ] `.env.example` updated with Valkey variables
+- [ ] `docs/index.md` and `docs/log.md` updated

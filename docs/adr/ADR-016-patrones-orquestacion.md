@@ -1,71 +1,70 @@
-# ADR-016: Modelo de orquestación por grafos — patrones de flujo y de nodo
+# ADR-016: Graph orchestration model — flow and node patterns
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-Dago orquesta workflows de IA modelados como grafos dirigidos, siguiendo
-el modelo de LangGraph. Los vértices del grafo son nodos que ejecutan
-comportamientos agénticos. Las aristas definen cómo fluye la ejecución.
+Dago orchestrates AI workflows modelled as directed graphs, following
+the LangGraph model. Graph vertices are nodes that execute agentic
+behaviours. Edges define how execution flows.
 
-Se necesita una taxonomía formal de los patrones disponibles, separando
-claramente los patrones de **control de flujo** (aristas — cómo se mueve
-la ejecución) de los patrones de **comportamiento de nodo** (vértices —
-qué hace un nodo).
+A formal taxonomy of available patterns is needed, clearly separating
+**flow control** patterns (edges — how execution moves) from **node
+behaviour** patterns (vertices — what a node does).
 
-Cada patrón se define con un JSON Schema que describe sus parámetros
-configurables. Los schemas viven en `specs/patterns/` como la cuarta
-spec del sistema.
+Each pattern is defined with a JSON Schema describing its configurable
+parameters. The schemas live in `specs/patterns/` as the fourth
+spec of the system.
 
-## Decisión
+## Decision
 
-### Librería de grafos
+### Graph library
 
-Se usa **`dominikbraun/graph`** (Go, Apache 2.0, zero dependencies)
-para la validación estructural del grafo: detección de ciclos,
-conectividad, orden topológico. La librería no ejecuta el grafo —
-solo lo valida. La ejecución la coordina el orchestrator vía eventos.
+**`dominikbraun/graph`** (Go, Apache 2.0, zero dependencies) is used
+for structural graph validation: cycle detection, connectivity,
+topological order. The library does not execute the graph —
+it only validates it. Execution is coordinated by the orchestrator via events.
 
-### Taxonomía de patrones
+### Pattern taxonomy
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    GRAFO DE EJECUCIÓN                       │
+│                    EXECUTION GRAPH                          │
 │                                                             │
-│   Patrones de control de flujo (aristas)                    │
+│   Flow control patterns (edges)                             │
 │   ──────────────────────────────────────                    │
-│   Definen CÓMO se mueve la ejecución entre nodos            │
+│   Define HOW execution moves between nodes                  │
 │                                                             │
-│   • sequential    — A → B lineal                            │
-│   • conditional   — Branch según estado (regla o LLM)       │
+│   • sequential    — A → B linear                            │
+│   • conditional   — Branch based on state (rule or LLM)     │
 │   • parallel      — Fan-out / fan-in                        │
-│   • loop          — Repetir hasta condición de salida       │
-│   • interrupt     — Pausar y esperar input externo          │
+│   • loop          — Repeat until exit condition             │
+│   • interrupt     — Pause and wait for external input       │
 │                                                             │
-│   Patrones de comportamiento de nodo (vértices)             │
-│   ─────────────────────────────────────────────             │
-│   Definen QUÉ hace un nodo cuando le toca ejecutar          │
+│   Node behaviour patterns (vertices)                        │
+│   ─────────────────────────────────────────                 │
+│   Define WHAT a node does when it is its turn to execute    │
 │                                                             │
-│   • llm_call      — Prompt → LLM → respuesta               │
-│   • tool_use      — Invocar herramientas (MCP, APIs)        │
-│   • react         — Loop interno think → act → observe      │
-│   • reflection    — Generar → criticar → mejorar            │
-│   • router        — Decidir siguiente nodo (regla/LLM)      │
-│   • guardrail     — Validar input/output contra reglas      │
-│   • subgraph      — Ejecutar un grafo completo como nodo    │
+│   • llm_call      — Prompt → LLM → response                 │
+│   • tool_use      — Invoke tools (MCP, APIs)                │
+│   • react         — Internal loop think → act → observe     │
+│   • reflection    — Generate → critique → improve           │
+│   • router        — Decide next node (rule/LLM)             │
+│   • guardrail     — Validate input/output against rules     │
+│   • subgraph      — Execute a complete graph as a node      │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Patrones de control de flujo (aristas)
+## Flow control patterns (edges)
 
 ### `sequential`
 
-La arista más básica: un nodo sigue a otro sin condición.
+The most basic edge: one node follows another with no condition.
 
 ```json
 {
@@ -77,8 +76,8 @@ La arista más básica: un nodo sigue a otro sin condición.
 
 ### `conditional`
 
-La ejecución toma un camino u otro según una condición evaluada
-sobre el estado del grafo.
+Execution takes one path or another based on a condition evaluated
+against the graph state.
 
 ```json
 {
@@ -98,15 +97,15 @@ sobre el estado del grafo.
 }
 ```
 
-Modos de evaluación:
-- **rule** — Expresión determinística sobre el estado.
-- **llm** — Un LLM decide el camino basándose en el estado.
-- **hybrid** — Primero intenta regla, si no aplica, usa LLM.
+Evaluation modes:
+- **rule** — Deterministic expression over the state.
+- **llm** — An LLM decides the path based on the state.
+- **hybrid** — Tries a rule first; if none applies, uses LLM.
 
 ### `parallel`
 
-Fan-out: divide la ejecución en N ramas simultáneas. Fan-in: espera
-a que completen según una política (all, any, N-of-M).
+Fan-out: splits execution into N simultaneous branches. Fan-in: waits
+for them to complete according to a policy (all, any, N-of-M).
 
 ```json
 {
@@ -121,16 +120,15 @@ a que completen según una política (all, any, N-of-M).
 }
 ```
 
-Políticas de join:
-- **all** — Espera a que todas las ramas completen.
-- **any** — Continúa cuando la primera rama completa (cancela el resto).
-- **n_of_m** — Continúa cuando N de M ramas completan.
+Join policies:
+- **all** — Waits for all branches to complete.
+- **any** — Continues when the first branch completes (cancels the rest).
+- **n_of_m** — Continues when N of M branches complete.
 
 ### `loop`
 
-La ejecución vuelve a un nodo anterior hasta cumplir una condición
-de salida. Criterio de parada **obligatorio** para evitar loops
-infinitos.
+Execution returns to a previous node until an exit condition is met.
+A **mandatory** stop criterion prevents infinite loops.
 
 ```json
 {
@@ -146,13 +144,14 @@ infinitos.
 }
 ```
 
-Validación: el orchestrator rechaza grafos con loops sin
-`max_iterations` o `timeout_seconds`.
+Validation: the orchestrator rejects graphs with loops lacking
+`max_iterations` or `timeout_seconds`.
 
 ### `interrupt`
 
-La ejecución se pausa y persiste el estado. Se reanuda cuando llega
-un input externo (humano vía dashboard, webhook, o sistema externo).
+Execution pauses and the state is persisted. It resumes when an
+external input arrives (a human via the dashboard, a webhook, or an
+external system).
 
 ```json
 {
@@ -160,7 +159,7 @@ un input externo (humano vía dashboard, webhook, o sistema externo).
   "from": "node_proposal",
   "resume_target": "node_execute",
   "reject_target": "node_revise",
-  "prompt": "¿Aprobar esta acción?",
+  "prompt": "Approve this action?",
   "timeout_seconds": 86400,
   "timeout_target": "node_cancel"
 }
@@ -168,11 +167,11 @@ un input externo (humano vía dashboard, webhook, o sistema externo).
 
 ---
 
-## Patrones de comportamiento de nodo (vértices)
+## Node behaviour patterns (vertices)
 
 ### `llm_call`
 
-El patrón más básico: envía un prompt a un LLM y devuelve la respuesta.
+The most basic pattern: sends a prompt to an LLM and returns the response.
 
 ```json
 {
@@ -195,8 +194,8 @@ El patrón más básico: envía un prompt a un LLM y devuelve la respuesta.
 
 ### `tool_use`
 
-El nodo invoca herramientas externas. Puede ser directo (tool
-específica) o con selección LLM (el LLM decide qué tool usar).
+The node invokes external tools. Can be direct (specific tool)
+or with LLM selection (the LLM decides which tool to use).
 
 ```json
 {
@@ -223,14 +222,14 @@ específica) o con selección LLM (el LLM decide qué tool usar).
 }
 ```
 
-Modos:
-- **direct** — Invoca una tool específica sin intervención LLM.
-- **llm_selected** — El LLM elige qué tool usar según el contexto.
+Modes:
+- **direct** — Invokes a specific tool without LLM involvement.
+- **llm_selected** — The LLM chooses which tool to use based on context.
 
 ### `react`
 
-Loop interno de reasoning + acting. Think → Act (tool) → Observe →
-Repeat. Es el patrón agéntico más canónico.
+Internal reasoning + acting loop. Think → Act (tool) → Observe →
+Repeat. This is the most canonical agentic pattern.
 
 ```json
 {
@@ -252,12 +251,13 @@ Repeat. Es el patrón agéntico más canónico.
 ```
 
 `thought_visibility`:
-- **full** — Pensamientos visibles en el output (debugging).
-- **final_only** — Solo la respuesta final.
+- **full** — Thoughts visible in the output (debugging).
+- **final_only** — Only the final answer.
 
 ### `reflection`
 
-Genera una salida, la evalúa críticamente, y la mejora iterativamente.
+Generates an output, evaluates it critically, and improves it
+iteratively.
 
 ```json
 {
@@ -282,14 +282,14 @@ Genera una salida, la evalúa críticamente, y la mejora iterativamente.
 }
 ```
 
-El generador y el crítico pueden usar modelos diferentes.
+The generator and the critic can use different models.
 
 ### `router`
 
-Analiza el input y produce una decisión de routing. No genera contenido
-— decide el camino. Es distinto del `conditional` de flujo: el
-conditional evalúa el estado, el router usa lógica compleja (LLM o
-reglas) para decidir.
+Analyses the input and produces a routing decision. It does not generate
+content — it decides the path. It differs from the flow `conditional`:
+conditional evaluates state, the router uses complex logic (LLM or
+rules) to decide.
 
 ```json
 {
@@ -312,15 +312,15 @@ reglas) para decidir.
 }
 ```
 
-Modos:
-- **deterministic** — Solo reglas.
-- **llm** — Solo LLM decide.
-- **hybrid** — Reglas primero, LLM si ninguna aplica.
+Modes:
+- **deterministic** — Rules only.
+- **llm** — LLM decides only.
+- **hybrid** — Rules first, LLM if none applies.
 
 ### `guardrail`
 
-Valida input o output contra reglas. No genera contenido. Acepta
-o rechaza, opcionalmente con razón.
+Validates input or output against rules. Does not generate content.
+Accepts or rejects, optionally with a reason.
 
 ```json
 {
@@ -350,16 +350,16 @@ o rechaza, opcionalmente con razón.
 }
 ```
 
-Modos: **input** (valida antes de ejecutar) o **output** (valida
-después de generar).
+Modes: **input** (validates before executing) or **output** (validates
+after generating).
 
-Tipos de check: **json_schema**, **llm_safety**, **regex**,
+Check types: **json_schema**, **llm_safety**, **regex**,
 **custom_function**.
 
 ### `subgraph`
 
-Encapsula un grafo completo como un nodo atómico del grafo padre.
-Permite composición jerárquica.
+Encapsulates a complete graph as an atomic node of the parent graph.
+Enables hierarchical composition.
 
 ```json
 {
@@ -380,15 +380,15 @@ Permite composición jerárquica.
 ```
 
 `on_failure`:
-- **propagate** — El padre falla si el subgrafo falla.
-- **isolate** — El padre continúa con un resultado vacío/error.
+- **propagate** — The parent fails if the subgraph fails.
+- **isolate** — The parent continues with an empty/error result.
 
 ---
 
-## Definición de un grafo completo
+## Complete graph definition
 
-Un grafo combina nodos (con sus patrones de comportamiento) y aristas
-(con sus patrones de flujo):
+A graph combines nodes (with their behaviour patterns) and edges
+(with their flow patterns):
 
 ```json
 {
@@ -430,14 +430,14 @@ Un grafo combina nodos (con sus patrones de comportamiento) y aristas
 }
 ```
 
-### Ubicación de los schemas
+### Schema locations
 
 ```
 specs/
-├── openapi.yaml               # API REST
-├── asyncapi.yaml              # Eventos
-└── patterns/                  # Schemas de patrones (JSON Schema)
-    ├── graph.json             # Schema del grafo completo
+├── openapi.yaml               # REST API
+├── asyncapi.yaml              # Events
+└── patterns/                  # Pattern schemas (JSON Schema)
+    ├── graph.json             # Full graph schema
     ├── edges/
     │   ├── sequential.json
     │   ├── conditional.json
@@ -454,73 +454,73 @@ specs/
         └── subgraph.json
 ```
 
-### Validación del grafo
+### Graph validation
 
-Antes de ejecutar, el orchestrator valida:
+Before executing, the orchestrator validates:
 
-1. **Estructura** (usando `dominikbraun/graph`):
-   - Es un grafo dirigido válido.
-   - Tiene un `entry_node` definido y alcanzable.
-   - No tiene nodos desconectados.
-   - Los loops tienen criterio de parada (`max_iterations` o `timeout`).
-   - Los parallel tienen política de join definida.
+1. **Structure** (using `dominikbraun/graph`):
+   - It is a valid directed graph.
+   - It has a defined and reachable `entry_node`.
+   - It has no disconnected nodes.
+   - Loops have a stop criterion (`max_iterations` or `timeout`).
+   - Parallel edges have a defined join policy.
 
-2. **Schemas** (usando JSON Schema validation):
-   - Cada nodo cumple el JSON Schema de su patrón.
-   - Cada arista cumple el JSON Schema de su tipo de flujo.
-   - Los `input_mapping` y `output_mapping` referencian paths válidos.
+2. **Schemas** (using JSON Schema validation):
+   - Each node satisfies the JSON Schema of its pattern.
+   - Each edge satisfies the JSON Schema of its flow type.
+   - `input_mapping` and `output_mapping` reference valid paths.
 
-3. **Recursos**:
-   - Los modelos LLM referenciados están disponibles.
-   - Los MCP servers referenciados están registrados.
-   - Los subgraphs referenciados existen.
+3. **Resources**:
+   - Referenced LLM models are available.
+   - Referenced MCP servers are registered.
+   - Referenced subgraphs exist.
 
-## Alternativas consideradas
+## Considered Alternatives
 
-- **Patrones como código Go (hardcoded):** Más performante pero no
-  configurable por el usuario sin recompilar. Los grafos deben poder
-  crearse y modificarse desde el dashboard.
+- **Patterns as Go code (hardcoded):** More performant but not
+  user-configurable without recompiling. Graphs must be creatable
+  and modifiable from the dashboard.
 
-- **YAML en vez de JSON Schema:** Más legible pero sin ecosistema de
-  validación. JSON Schema tiene soporte nativo en Go, TypeScript, y
-  en la UI del dashboard.
+- **YAML instead of JSON Schema:** More readable but without a
+  validation ecosystem. JSON Schema has native support in Go, TypeScript,
+  and the dashboard UI.
 
-- **BPMN / Workflow standards:** Más completos pero diseñados para
-  workflows empresariales, no para orquestación de agentes IA. Excesiva
-  complejidad para nuestro caso.
+- **BPMN / Workflow standards:** More complete but designed for
+  enterprise workflows, not AI agent orchestration. Excessive
+  complexity for our use case.
 
-- **Protobuf para definición de patrones:** Buen type safety pero menos
-  accesible para usuarios no-técnicos que editen grafos desde el UI.
+- **Protobuf for pattern definitions:** Good type safety but less
+  accessible to non-technical users editing graphs from the UI.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Separación clara entre flujo (aristas) y comportamiento (nodos).
-- JSON Schema como cuarta spec — coherente con SDD.
-- Grafos definibles y editables desde el dashboard.
-- Validación automática antes de ejecución.
-- Patrones extensibles — añadir uno nuevo es crear un JSON Schema
-  y un handler en el executor.
-- Composición jerárquica con subgraphs.
+**Positive:**
+- Clear separation between flow (edges) and behaviour (nodes).
+- JSON Schema as the fourth spec — consistent with SDD.
+- Graphs definable and editable from the dashboard.
+- Automatic validation before execution.
+- Extensible patterns — adding a new one means creating a JSON Schema
+  and a handler in the executor.
+- Hierarchical composition with subgraphs.
 
-**Negativas:**
-- JSON puede ser verboso para grafos complejos (mitigado con UI
-  de editor visual en el dashboard).
-- La expresividad de las condiciones está limitada por el evaluador
-  de expresiones elegido.
-- Cada patrón nuevo requiere implementación en el executor además
-  del schema.
+**Negative:**
+- JSON can be verbose for complex graphs (mitigated by the visual
+  editor UI in the dashboard).
+- The expressiveness of conditions is limited by the chosen expression
+  evaluator.
+- Each new pattern requires implementation in the executor as well
+  as the schema.
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Los schemas de patrones viven en `specs/patterns/`.
-- Al crear un nuevo patrón de nodo, crea el JSON Schema en
-  `specs/patterns/nodes/` y el handler en `services/executor/internal/`.
-- Al crear un nuevo patrón de flujo, crea el JSON Schema en
-  `specs/patterns/edges/` y la lógica en `services/orchestrator/internal/`.
-- La validación del grafo usa `dominikbraun/graph` para estructura
-  y JSON Schema validation para configuración.
-- Los grafos se definen como JSON. El dashboard proporciona un editor
-  visual pero el formato subyacente es JSON.
-- Todo nodo con loop (`react`, `reflection`) debe tener
-  `max_iterations` y/o `timeout_seconds`. Rechaza grafos sin ellos.
+- Pattern schemas live in `specs/patterns/`.
+- When creating a new node pattern, create the JSON Schema in
+  `specs/patterns/nodes/` and the handler in `services/executor/internal/`.
+- When creating a new flow pattern, create the JSON Schema in
+  `specs/patterns/edges/` and the logic in `services/orchestrator/internal/`.
+- Graph validation uses `dominikbraun/graph` for structure
+  and JSON Schema validation for configuration.
+- Graphs are defined as JSON. The dashboard provides a visual editor
+  but the underlying format is JSON.
+- Every node with a loop (`react`, `reflection`) must have
+  `max_iterations` and/or `timeout_seconds`. Reject graphs without them.

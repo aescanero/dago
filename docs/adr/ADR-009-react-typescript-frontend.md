@@ -1,48 +1,48 @@
 # ADR-009: React 19 + TypeScript + Vite (dashboard)
 
-**Estado:** Aceptado (revisado: shadcn/ui, AG-UI, microfrontales)
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted (revised: shadcn/ui, AG-UI, microfrontends)
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El sistema necesita un dashboard web para monitorización, gestión de
-grafos, catálogo de paquetes y comunicación en tiempo real con agentes
-durante la ejecución.
+The system needs a web dashboard for monitoring, graph management,
+package catalog and real-time communication with agents
+during execution.
 
-## Decisión
+## Decision
 
-Se adopta **React 19** + **TypeScript** + **Vite** como stack frontend.
-El dashboard se complementa con decisiones tomadas en ADRs posteriores:
+**React 19** + **TypeScript** + **Vite** are adopted as the frontend stack.
+The dashboard is complemented by decisions made in subsequent ADRs:
 
-- **shadcn/ui + Tailwind CSS** como design system (ADR-019).
-- **Module Federation** para microfrontales de paquetes (ADR-019).
-- **AG-UI** como protocolo agente↔usuario sobre WebSocket (ADR-018).
-- **A2UI** como formato de UI generativa declarativa (ADR-018).
+- **shadcn/ui + Tailwind CSS** as design system (ADR-019).
+- **Module Federation** for package microfrontends (ADR-019).
+- **AG-UI** as the agent-to-user protocol over WebSocket (ADR-018).
+- **A2UI** as the declarative generative UI format (ADR-018).
 
-### Reglas concretas
+### Concrete rules
 
-1. **Vite como build tool.** HMR instantáneo, builds con Rollup.
-   Module Federation vía `@originjs/vite-plugin-federation`.
+1. **Vite as build tool.** Instant HMR, Rollup builds.
+   Module Federation via `@originjs/vite-plugin-federation`.
 
-2. **TypeScript estricto.** `strict: true`. Sin `any`.
+2. **Strict TypeScript.** `strict: true`. No `any`.
 
-3. **Organización por feature**, no por tipo técnico:
+3. **Feature-based organization**, not by technical type:
 
    ```
    dashboard/src/
-   ├── api/                  # Tipos generados desde OpenAPI
-   ├── auth/                 # Flujo OAuth 2.1 / PKCE
+   ├── api/                  # Types generated from OpenAPI
+   ├── auth/                 # OAuth 2.1 / PKCE flow
    ├── features/
-   │   ├── graphs/           # Editor visual, listado
-   │   ├── executions/       # Monitorización en tiempo real (AG-UI)
-   │   ├── catalog/          # Gestión de paquetes
-   │   ├── agents/           # Agent Cards A2A
+   │   ├── graphs/           # Visual editor, listing
+   │   ├── executions/       # Real-time monitoring (AG-UI)
+   │   ├── catalog/          # Package management
+   │   ├── agents/           # A2A Agent Cards
    │   ├── mcp/              # MCP servers
-   │   └── settings/         # Config, UOs, usuarios
+   │   └── settings/         # Config, OUs, users
    ├── components/
-   │   ├── ui/               # shadcn/ui (propiedad)
-   │   ├── composed/         # Componentes de negocio dago
+   │   ├── ui/               # shadcn/ui (owned)
+   │   ├── composed/         # dago business components
    │   └── shared/           # Theme, error boundary, skeletons
    ├── hooks/
    ├── layouts/
@@ -50,30 +50,30 @@ El dashboard se complementa con decisiones tomadas en ADRs posteriores:
    └── lib/                  # utils, cn()
    ```
 
-4. **Data fetching con TanStack Query.** Nunca `useEffect` para HTTP.
+4. **Data fetching with TanStack Query.** Never `useEffect` for HTTP.
 
-5. **API client generado desde OpenAPI** (`openapi-typescript`).
+5. **API client generated from OpenAPI** (`openapi-typescript`).
 
-6. **Comunicación real-time con AG-UI** sobre WebSocket. Cliente
-   AG-UI en `dashboard/src/api/agui/`.
+6. **Real-time communication with AG-UI** over WebSocket. AG-UI
+   client in `dashboard/src/api/agui/`.
 
-7. **Renderer A2UI** para componentes declarativos de los agentes.
-   Valida contra catálogo de componentes aprobados.
+7. **A2UI renderer** for declarative components from agents.
+   Validates against the catalog of approved components.
 
-8. **shadcn/ui + Tailwind CSS** para todo el styling. Sin CSS-in-JS,
-   sin styled-components, sin CSS modules. Dark mode obligatorio.
+8. **shadcn/ui + Tailwind CSS** for all styling. No CSS-in-JS,
+   no styled-components, no CSS modules. Dark mode mandatory.
 
-9. **Tests con Vitest + React Testing Library + MSW.**
+9. **Tests with Vitest + React Testing Library + MSW.**
 
-10. **Tokens OAuth en memoria**, nunca en localStorage (ADR-012).
+10. **OAuth tokens in memory**, never in localStorage (ADR-012).
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- El dashboard vive en `dashboard/` con su propio `package.json`.
-- Componentes shadcn/ui: `npx shadcn-ui@latest add`. Viven en
+- The dashboard lives in `dashboard/` with its own `package.json`.
+- shadcn/ui components: `npx shadcn-ui@latest add`. They live in
   `src/components/ui/`.
-- Styling: solo Tailwind utilities + CSS variables. No inline styles.
-- Formularios: shadcn Form + React Hook Form + Zod.
+- Styling: Tailwind utilities + CSS variables only. No inline styles.
+- Forms: shadcn Form + React Hook Form + Zod.
 - Data tables: shadcn DataTable + TanStack Table.
-- Microfrontales de paquetes: Module Federation + lazy loading +
+- Package microfrontends: Module Federation + lazy loading +
   Error Boundary + Suspense.

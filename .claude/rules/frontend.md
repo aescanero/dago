@@ -3,12 +3,12 @@ paths:
   - "dashboard/**"
 ---
 
-# Reglas del frontend (dashboard)
+# Frontend rules (dashboard)
 
-- TypeScript strict. Sin `any`.
-- shadcn/ui + Tailwind CSS. Sin CSS-in-JS ni styled-components.
-- Data fetching: TanStack Query. Nunca `useEffect` para HTTP.
-- Organización por feature (`features/{nombre}/`).
-- Formularios: shadcn Form + React Hook Form + Zod.
+- TypeScript strict. No `any`.
+- shadcn/ui + Tailwind CSS. No CSS-in-JS or styled-components.
+- Data fetching: TanStack Query. Never `useEffect` for HTTP.
+- Feature-based organisation (`features/{name}/`).
+- Forms: shadcn Form + React Hook Form + Zod.
 - Tests: Vitest + React Testing Library + MSW.
-- Tokens OAuth en memoria, nunca en localStorage.
+- OAuth tokens in memory, never in localStorage.

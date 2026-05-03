@@ -1,156 +1,156 @@
-# SPRINT-008: Adaptador LLM — Puerto LLMClient, Anthropic y Ollama/Mixtral
+# SPRINT-008: LLM Adapter — LLMClient Port, Anthropic and Ollama/Mixtral
 
 ## Metadata
 
-- **Fecha inicio:** 2026-04-29
-- **Fecha fin estimada:** 2026-04-30
-- **Estado:** planificado
-- **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-013, ADR-015, ADR-016
-- **Specs afectadas:** specs/patterns/nodes/llm_call.json (referencia; ninguna spec nueva creada en este sprint)
-- **Agente planificador:** planner
-- **Revisado por:** pendiente
-- **Bloqueado por:** SPRINT-001 (go.mod)
-- **Bloquea:** SPRINT-009 (executor usa LLMClient), SPRINT-010 (orchestrator state machine)
+- **Start date:** 2026-04-29
+- **Estimated end date:** 2026-04-30
+- **Status:** planned
+- **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-013, ADR-015, ADR-016
+- **Affected specs:** specs/patterns/nodes/llm_call.json (reference; no new spec created in this sprint)
+- **Planning agent:** planner
+- **Reviewed by:** pending
+- **Blocked by:** SPRINT-001 (go.mod)
+- **Blocks:** SPRINT-009 (executor uses LLMClient), SPRINT-010 (orchestrator state machine)
 
-## Objetivo
+## Objective
 
-Implementar el puerto `LLMClient` en `libs/ports/llm.go` y dos adaptadores: Anthropic
-(`adapters/llm/anthropic/`) y Ollama con API OpenAI-compatible (`adapters/llm/ollama/`,
-modelo default `mixtral`). Incluye un `FakeLLMClient` determinista para tests. Al
-finalizar, el executor puede invocar Anthropic claude-sonnet o Mixtral via Ollama a
-través de la misma interfaz `LLMClient` sin acoplar el dominio a ningún SDK concreto.
+Implement the `LLMClient` port in `libs/ports/llm.go` and two adapters: Anthropic
+(`adapters/llm/anthropic/`) and Ollama with OpenAI-compatible API (`adapters/llm/ollama/`,
+default model `mixtral`). Includes a deterministic `FakeLLMClient` for tests. At
+completion, the executor can invoke Anthropic claude-sonnet or Mixtral via Ollama through
+the same `LLMClient` interface without coupling the domain to any concrete SDK.
 
-## Alcance
+## Scope
 
-**Entra:**
-- Tres errores de dominio nuevos en `libs/domain/errors.go`:
+**Included:**
+- Three new domain errors in `libs/domain/errors.go`:
   `ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable`
-- Puerto `LLMClient` con tipos `Message`, `ToolDefinition`, `LLMRequest`,
-  `LLMResponse`, `ToolUse` en `libs/ports/llm.go`
-- Adaptador Anthropic en `adapters/llm/anthropic/`:
-  - `client.go` — `AnthropicClient` que implementa `LLMClient`
-  - `convert.go` — conversión `ports` ↔ Anthropic SDK types
-  - `errors.go` — mapeo HTTP status → errores de dominio
-  - `client_test.go` — 7 tests unitarios con `httptest.NewServer`
-- Fake determinista en `adapters/llm/fake/`:
-  - `client.go` — `FakeLLMClient` con cola de respuestas y registro de llamadas
+- `LLMClient` port with types `Message`, `ToolDefinition`, `LLMRequest`,
+  `LLMResponse`, `ToolUse` in `libs/ports/llm.go`
+- Anthropic adapter in `adapters/llm/anthropic/`:
+  - `client.go` — `AnthropicClient` that implements `LLMClient`
+  - `convert.go` — `ports` ↔ Anthropic SDK types conversion
+  - `errors.go` — HTTP status → domain errors mapping
+  - `client_test.go` — 7 unit tests with `httptest.NewServer`
+- Deterministic fake in `adapters/llm/fake/`:
+  - `client.go` — `FakeLLMClient` with response queue and call registry
   - `client_test.go` — 1 test `TestFakeLLMClientQueue`
-- Dependencias `github.com/anthropics/anthropic-sdk-go` y `github.com/sashabaranov/go-openai` en `go.mod`
-- Adaptador Ollama (API OpenAI-compatible) en `adapters/llm/ollama/`:
-  - `client.go` — `OllamaClient` que implementa `LLMClient`; `NewOllamaClient` no retorna error (BaseURL tiene default `http://localhost:11434`)
-  - `convert.go` — conversión `ports` ↔ `go-openai` types; `convertFinishReason` mapea "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
+- Dependencies `github.com/anthropics/anthropic-sdk-go` and `github.com/sashabaranov/go-openai` in `go.mod`
+- Ollama adapter (OpenAI-compatible API) in `adapters/llm/ollama/`:
+  - `client.go` — `OllamaClient` that implements `LLMClient`; `NewOllamaClient` does not return error (BaseURL has default `http://localhost:11434`)
+  - `convert.go` — `ports` ↔ `go-openai` types conversion; `convertFinishReason` maps "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
   - `errors.go` — HTTP 500 → `ErrProviderUnavailable`
-  - `client_test.go` — 6 tests unitarios con `httptest.NewServer`
-- Modelo default Ollama: `mixtral` (Mixtral 8x7B)
-- Variables de entorno documentadas en `.env.example`
-- Target `make test-llm` en `Makefile` (14 tests en total)
-- Actualización de `docs/index.md` y `docs/log.md`
+  - `client_test.go` — 6 unit tests with `httptest.NewServer`
+- Default Ollama model: `mixtral` (Mixtral 8x7B)
+- Environment variables documented in `.env.example`
+- Target `make test-llm` in `Makefile` (14 tests total)
+- Update of `docs/index.md` and `docs/log.md`
 
-**No entra:**
-- Otros proveedores LLM (OpenAI nativo, Google Vertex) — sprints futuros
-- Streaming de tokens (chunked responses) — requiere ADR separado
-- Integración con el executor — SPRINT-010 o posterior
-- Caché de respuestas LLM — sprint futuro
-- Tests de integración contra la API real de Anthropic — excluidos de `make ci`
-- Retry automático con backoff propio — se delega al SDK (`ANTHROPIC_MAX_RETRIES`)
+**Not included:**
+- Other LLM providers (native OpenAI, Google Vertex) — future sprints
+- Token streaming (chunked responses) — requires separate ADR
+- Integration with the executor — SPRINT-010 or later
+- LLM response cache — future sprint
+- Integration tests against the real Anthropic API — excluded from `make ci`
+- Automatic retry with own backoff — delegated to the SDK (`ANTHROPIC_MAX_RETRIES`)
 
-## Dependencias
+## Dependencies
 
-- **Bloqueado por:** SPRINT-001 (go.mod válido con estructura de monorepo compilable)
-- **Paralelo a:** SPRINT-002, SPRINT-003, SPRINT-004, SPRINT-007 (sin dependencia entre ellos)
-- **Bloquea:** executor (nodos `llm_call`, `react`, `reflection` usan `LLMClient`),
-  router LLM (usa `LLMClient` para routing basado en LLM)
+- **Blocked by:** SPRINT-001 (valid go.mod with compilable monorepo structure)
+- **Parallel with:** SPRINT-002, SPRINT-003, SPRINT-004, SPRINT-007 (no dependency between them)
+- **Blocks:** executor (`llm_call`, `react`, `reflection` nodes use `LLMClient`),
+  LLM router (uses `LLMClient` for LLM-based routing)
 
-## Contratos de comportamiento
+## Behavior Contracts
 
-### C1 — `AnthropicClient.Complete` — respuesta de texto
+### C1 — `AnthropicClient.Complete` — text response
 
 ```
-Given: LLMRequest con messages=[{role:"user",content:"hello"}], model="claude-sonnet-4-6", max_tokens=100
-When: AnthropicClient.Complete(ctx, req) — mock HTTP devuelve 200 con content text
-Then: LLMResponse.Content no está vacío
+Given: LLMRequest with messages=[{role:"user",content:"hello"}], model="claude-sonnet-4-6", max_tokens=100
+When: AnthropicClient.Complete(ctx, req) — mock HTTP returns 200 with text content
+Then: LLMResponse.Content is not empty
       LLMResponse.StopReason == "end_turn"
-      LLMResponse.InputTokens > 0 y OutputTokens > 0
-      No se retorna error
+      LLMResponse.InputTokens > 0 and OutputTokens > 0
+      No error is returned
 ```
 
 ### C2 — `AnthropicClient.Complete` — rate limit
 
 ```
-Given: El servidor HTTP mock devuelve HTTP 429
+Given: The mock HTTP server returns HTTP 429
 When: AnthropicClient.Complete(ctx, req)
-Then: Se retorna error tal que errors.Is(err, domain.ErrRateLimited) == true
-      El caller puede reintentar con backoff exponencial
-      LLMResponse devuelta es vacía
+Then: An error is returned such that errors.Is(err, domain.ErrRateLimited) == true
+      The caller can retry with exponential backoff
+      The returned LLMResponse is empty
 ```
 
-### C3 — `FakeLLMClient.Complete` — cola FIFO y registro de llamadas
+### C3 — `FakeLLMClient.Complete` — FIFO queue and call registry
 
 ```
 Given: FakeLLMClient{Responses: [resp1, resp2]}
-When: Se llama Complete() tres veces consecutivas
-Then: Primera llamada retorna resp1, segunda retorna resp2
-      Tercera llamada (cola vacía) retorna {Content:"fake response", StopReason:"end_turn"}
-      Calls contiene exactamente 3 LLMRequests en orden de inserción
-      Complete nunca retorna error
+When: Complete() is called three consecutive times
+Then: First call returns resp1, second returns resp2
+      Third call (empty queue) returns {Content:"fake response", StopReason:"end_turn"}
+      Calls contains exactly 3 LLMRequests in insertion order
+      Complete never returns error
 ```
 
 ## TODOs
 
-### TODO #1 — data: Añadir errores de dominio LLM a libs/domain/errors.go
+### TODO #1 — data: Add LLM domain errors to libs/domain/errors.go
 
 **Agente:** @developer
 
-**Descripción:** Añadir tres errores centinela al fichero de errores de dominio.
-Tipos puros sin dependencia de infraestructura. El adaptador Anthropic los retornará
-envueltos con `fmt.Errorf`. El executor usará `errors.Is` para diferenciar la acción
-de recuperación.
+**Description:** Add three sentinel errors to the domain errors file.
+Pure types without infrastructure dependency. The Anthropic adapter will return them
+wrapped with `fmt.Errorf`. The executor will use `errors.Is` to differentiate the
+recovery action.
 
-**Archivos afectados:**
-- `libs/domain/errors.go` (nuevo o existente — añadir si ya existe)
+**Affected files:**
+- `libs/domain/errors.go` (new or existing — add if already exists)
 
-**Tipos a implementar:**
+**Types to implement:**
 ```go
 package domain
 
 import "errors"
 
 var (
-    // ErrUnauthorized indica credenciales del proveedor LLM inválidas (HTTP 401).
+    // ErrUnauthorized indicates invalid LLM provider credentials (HTTP 401).
     ErrUnauthorized = errors.New("unauthorized")
 
-    // ErrRateLimited indica que el proveedor LLM rechazó la petición por límite de
-    // velocidad (HTTP 429). El caller puede reintentar con backoff exponencial.
+    // ErrRateLimited indicates that the LLM provider rejected the request due to
+    // rate limiting (HTTP 429). The caller can retry with exponential backoff.
     ErrRateLimited = errors.New("rate limited")
 
-    // ErrProviderUnavailable indica que el proveedor LLM no está disponible
-    // temporalmente (HTTP 500/529). Retryable.
+    // ErrProviderUnavailable indicates that the LLM provider is temporarily
+    // unavailable (HTTP 500/529). Retryable.
     ErrProviderUnavailable = errors.New("provider unavailable")
 )
 ```
 
-**Criterios de aceptación:**
-- `go build ./libs/domain/...` sin errores
-- Sin imports de infraestructura
-- Los tres errores son distinguibles con `errors.Is`
+**Acceptance criteria:**
+- `go build ./libs/domain/...` without errors
+- No infrastructure imports
+- The three errors are distinguishable with `errors.Is`
 
-**Test asociado:** cubiertos indirectamente por tests del adaptador en TODO #3
+**Associated test:** covered indirectly by adapter tests in TODO #3
 
 ---
 
-### TODO #2 — impl: Definir interfaz LLMClient en libs/ports/llm.go
+### TODO #2 — impl: Define LLMClient interface in libs/ports/llm.go
 
 **Agente:** @developer
 
-**Descripción:** Definir el puerto de salida para llamadas a LLMs. El puerto es la
-frontera entre el dominio y la infraestructura. `LLMRequest` y `LLMResponse` son tipos
-portátiles — no contienen tipos del SDK de Anthropic. `ToolDefinition.InputSchema` es
-`json.RawMessage` para transportar un JSON Schema arbitrario sin deserializarlo.
+**Description:** Define the output port for LLM calls. The port is the
+boundary between domain and infrastructure. `LLMRequest` and `LLMResponse` are
+portable types — they do not contain Anthropic SDK types. `ToolDefinition.InputSchema` is
+`json.RawMessage` to transport an arbitrary JSON Schema without deserializing it.
 
-**Archivos afectados:**
-- `libs/ports/llm.go` (nuevo)
+**Affected files:**
+- `libs/ports/llm.go` (new)
 
-**Interfaz a implementar:**
+**Interface to implement:**
 ```go
 package ports
 
@@ -159,21 +159,21 @@ import (
     "encoding/json"
 )
 
-// Message representa un turno de conversación.
+// Message represents a conversation turn.
 type Message struct {
     Role      string // "user" | "assistant" | "tool_result"
     Content   string
-    ToolUseID string // solo para Role == "tool_result"
+    ToolUseID string // only for Role == "tool_result"
 }
 
-// ToolDefinition describe una herramienta disponible para el LLM.
+// ToolDefinition describes a tool available to the LLM.
 type ToolDefinition struct {
     Name        string
     Description string
-    InputSchema json.RawMessage // JSON Schema del input de la herramienta
+    InputSchema json.RawMessage // JSON Schema of the tool input
 }
 
-// LLMRequest encapsula una llamada al LLM.
+// LLMRequest encapsulates a call to the LLM.
 type LLMRequest struct {
     Model       string
     System      string
@@ -183,138 +183,138 @@ type LLMRequest struct {
     Temperature float64
 }
 
-// ToolUse representa una invocación de herramienta solicitada por el LLM.
+// ToolUse represents a tool invocation requested by the LLM.
 type ToolUse struct {
     ID    string
     Name  string
     Input json.RawMessage
 }
 
-// LLMResponse encapsula la respuesta del LLM.
+// LLMResponse encapsulates the LLM response.
 type LLMResponse struct {
-    Content      string    // texto generado; vacío si StopReason == "tool_use"
+    Content      string    // generated text; empty if StopReason == "tool_use"
     StopReason   string    // "end_turn" | "tool_use" | "max_tokens"
-    ToolUses     []ToolUse // poblado si StopReason == "tool_use"
+    ToolUses     []ToolUse // populated if StopReason == "tool_use"
     InputTokens  int
     OutputTokens int
 }
 
-// LLMClient es el puerto de salida para llamadas a modelos de lenguaje.
+// LLMClient is the output port for calls to language models.
 type LLMClient interface {
     Complete(ctx context.Context, req LLMRequest) (LLMResponse, error)
 }
 ```
 
-**Criterios de aceptación:**
-- `go build ./libs/ports/...` sin errores
-- Solo importa `context`, `encoding/json` y nada de infraestructura
-- `LLMClient` tiene un único método (ADR-003: responsabilidad única)
+**Acceptance criteria:**
+- `go build ./libs/ports/...` without errors
+- Only imports `context`, `encoding/json` and nothing from infrastructure
+- `LLMClient` has a single method (ADR-003: single responsibility)
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #3 — test: Tests Red del adaptador Anthropic con httptest mock server
+### TODO #3 — test: Red tests for the Anthropic adapter with httptest mock server
 
 **Agente:** @qa
 
-**Descripción:** Escribir los 7 tests del adaptador Anthropic ANTES de implementarlo
-(ciclo Red de TDD). Usan `net/http/httptest.NewServer` como mock del endpoint Anthropic.
-`ANTHROPIC_BASE_URL` apunta al servidor mock. Al ejecutarse contra stubs vacíos deben
-fallar con error de compilación o "not implemented".
+**Description:** Write the 7 Anthropic adapter tests BEFORE implementing it
+(TDD Red cycle). They use `net/http/httptest.NewServer` as mock for the Anthropic endpoint.
+`ANTHROPIC_BASE_URL` points to the mock server. When run against empty stubs they must
+fail with compilation error or "not implemented".
 
-**Archivos afectados:**
-- `adapters/llm/anthropic/client_test.go` (nuevo)
+**Affected files:**
+- `adapters/llm/anthropic/client_test.go` (new)
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 package anthropic_test
 
 // TestCompleteText
-// Escenario: LLMRequest sin tools, mock devuelve 200 con content text.
-// Verifica: LLMResponse.Content == texto esperado, StopReason == "end_turn",
+// Scenario: LLMRequest without tools, mock returns 200 with text content.
+// Verifies: LLMResponse.Content == expected text, StopReason == "end_turn",
 //           InputTokens > 0, OutputTokens > 0.
 
 // TestCompleteWithTools
-// Escenario: LLMRequest con ToolDefinition, mock devuelve 200 con
-//            stop_reason "tool_use" y un bloque tool_use.
-// Verifica: StopReason == "tool_use", len(ToolUses) == 1,
-//           ToolUses[0].Name == nombre esperado, Content == "".
+// Scenario: LLMRequest with ToolDefinition, mock returns 200 with
+//            stop_reason "tool_use" and a tool_use block.
+// Verifies: StopReason == "tool_use", len(ToolUses) == 1,
+//           ToolUses[0].Name == expected name, Content == "".
 
 // TestCompleteToolResult
-// Escenario: conversación de 3 turnos (user → assistant tool_use →
+// Scenario: 3-turn conversation (user → assistant tool_use →
 //            tool_result → assistant end_turn).
-// Verifica: StopReason == "end_turn", Content != "".
+// Verifies: StopReason == "end_turn", Content != "".
 
 // TestCompleteRateLimit
-// Escenario: mock devuelve HTTP 429.
-// Verifica: errors.Is(err, domain.ErrRateLimited).
+// Scenario: mock returns HTTP 429.
+// Verifies: errors.Is(err, domain.ErrRateLimited).
 
 // TestCompleteServerError
-// Escenario: mock devuelve HTTP 500.
-// Verifica: errors.Is(err, domain.ErrProviderUnavailable).
+// Scenario: mock returns HTTP 500.
+// Verifies: errors.Is(err, domain.ErrProviderUnavailable).
 
 // TestCompleteUnauthorized
-// Escenario: mock devuelve HTTP 401.
-// Verifica: errors.Is(err, domain.ErrUnauthorized).
+// Scenario: mock returns HTTP 401.
+// Verifies: errors.Is(err, domain.ErrUnauthorized).
 
 // TestCompleteContextTimeout
-// Escenario: ctx con deadline 10ms, mock duerme 100ms.
-// Verifica: error envuelve context.DeadlineExceeded.
+// Scenario: ctx with 10ms deadline, mock sleeps 100ms.
+// Verifies: error wraps context.DeadlineExceeded.
 ```
 
-**Criterios de aceptación:**
-- `go test ./adapters/llm/anthropic/...` falla con compilación o "not implemented" (Red)
-- Sin frameworks de mock — solo `httptest.NewServer` y fakes manuales
-- Cada test crea su propio `httptest.NewServer`, independientes entre sí
+**Acceptance criteria:**
+- `go test ./adapters/llm/anthropic/...` fails with compilation or "not implemented" (Red)
+- No mock frameworks — only `httptest.NewServer` and manual fakes
+- Each test creates its own `httptest.NewServer`, independent from each other
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #4 — test: Test Red del FakeLLMClient
+### TODO #4 — test: FakeLLMClient Red test
 
 **Agente:** @qa
 
-**Descripción:** Escribir el test del fake ANTES de implementarlo. Verifica la
-cola de respuestas FIFO y el registro de llamadas.
+**Description:** Write the fake test BEFORE implementing it. Verifies the
+FIFO response queue and call registry.
 
-**Archivos afectados:**
-- `adapters/llm/fake/client_test.go` (nuevo)
+**Affected files:**
+- `adapters/llm/fake/client_test.go` (new)
 
-**Test a implementar:**
+**Test to implement:**
 ```go
 package fake_test
 
 // TestFakeLLMClientQueue
-// Escenario: FakeLLMClient con Responses = [resp1, resp2].
-// Verifica:
-//   - Primera llamada Complete → resp1
-//   - Segunda llamada → resp2
-//   - Tercera llamada (cola vacía) → LLMResponse{Content: "fake response", StopReason: "end_turn"}
-//   - Calls contiene 3 LLMRequests en orden
-//   - No retorna error en ningún caso
+// Scenario: FakeLLMClient with Responses = [resp1, resp2].
+// Verifies:
+//   - First Complete call → resp1
+//   - Second call → resp2
+//   - Third call (empty queue) → LLMResponse{Content: "fake response", StopReason: "end_turn"}
+//   - Calls contains 3 LLMRequests in order
+//   - Returns no error in any case
 ```
 
-**Criterios de aceptación:**
-- `go test ./adapters/llm/fake/...` falla con compilación (Red confirmado)
-- Verifica tanto valores retornados como el registro `Calls`
+**Acceptance criteria:**
+- `go test ./adapters/llm/fake/...` fails with compilation (Red confirmed)
+- Verifies both returned values and the `Calls` registry
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #5 — impl: FakeLLMClient en adapters/llm/fake/client.go
+### TODO #5 — impl: FakeLLMClient in adapters/llm/fake/client.go
 
 **Agente:** @developer
 
-**Descripción:** Implementar el fake determinista para uso en tests del executor.
-Sin dependencias externas — solo stdlib. Implementa `ports.LLMClient`.
+**Description:** Implement the deterministic fake for use in executor tests.
+No external dependencies — stdlib only. Implements `ports.LLMClient`.
 
-**Archivos afectados:**
-- `adapters/llm/fake/client.go` (nuevo)
+**Affected files:**
+- `adapters/llm/fake/client.go` (new)
 
-**Diseño:**
+**Design:**
 ```go
 package fake
 
@@ -323,506 +323,506 @@ import (
     "github.com/aescanero/dago/libs/ports"
 )
 
-// FakeLLMClient implementa ports.LLMClient para tests.
-// Devuelve respuestas de Responses en orden FIFO.
-// Cuando la cola se agota, devuelve la respuesta por defecto.
+// FakeLLMClient implements ports.LLMClient for tests.
+// Returns responses from Responses in FIFO order.
+// When the queue is exhausted, returns the default response.
 type FakeLLMClient struct {
     Responses []ports.LLMResponse
     Calls     []ports.LLMRequest
 }
 
-// Complete retorna la siguiente respuesta o la por defecto.
-// Registra siempre la llamada en Calls. Nunca retorna error.
+// Complete returns the next response or the default one.
+// Always records the call in Calls. Never returns error.
 func (f *FakeLLMClient) Complete(ctx context.Context, req ports.LLMRequest) (ports.LLMResponse, error)
 ```
 
-**Respuesta por defecto:** `ports.LLMResponse{Content: "fake response", StopReason: "end_turn"}`
+**Default response:** `ports.LLMResponse{Content: "fake response", StopReason: "end_turn"}`
 
-**Verificación de interface:** `var _ ports.LLMClient = &FakeLLMClient{}`
+**Interface verification:** `var _ ports.LLMClient = &FakeLLMClient{}`
 
-**Criterios de aceptación:**
-- `TestFakeLLMClientQueue` pasa (Green)
-- `go build ./adapters/llm/fake/...` sin errores
-- Sin imports de SDKs externos
+**Acceptance criteria:**
+- `TestFakeLLMClientQueue` passes (Green)
+- `go build ./adapters/llm/fake/...` without errors
+- No external SDK imports
 
-**Test asociado:** `TestFakeLLMClientQueue`
+**Associated test:** `TestFakeLLMClientQueue`
 
 ---
 
-### TODO #6 — impl: Conversión de tipos en adapters/llm/anthropic/convert.go
+### TODO #6 — impl: Type conversion in adapters/llm/anthropic/convert.go
 
 **Agente:** @developer
 
-**Descripción:** Funciones puras de traducción entre tipos del puerto y tipos del SDK
-de Anthropic. Sin estado, sin IO. Separar la conversión del cliente permite testearla
-de forma unitaria.
+**Description:** Pure translation functions between port types and Anthropic SDK
+types. No state, no IO. Separating the conversion from the client allows testing it
+in isolation.
 
-**Archivos afectados:**
-- `adapters/llm/anthropic/convert.go` (nuevo)
+**Affected files:**
+- `adapters/llm/anthropic/convert.go` (new)
 
-**Funciones a implementar:**
+**Functions to implement:**
 ```go
 package anthropic
 
-// toAnthropicMessages convierte []ports.Message → []anthropic.MessageParam.
-// Maneja roles: "user", "assistant", "tool_result".
-// Para "tool_result": construye ToolResultBlockParam con ToolUseID.
+// toAnthropicMessages converts []ports.Message → []anthropic.MessageParam.
+// Handles roles: "user", "assistant", "tool_result".
+// For "tool_result": builds ToolResultBlockParam with ToolUseID.
 func toAnthropicMessages(messages []ports.Message) []anthropic.MessageParam
 
-// toAnthropicTools convierte []ports.ToolDefinition → []anthropic.ToolParam.
-// InputSchema se pasa directamente como json.RawMessage al SDK.
+// toAnthropicTools converts []ports.ToolDefinition → []anthropic.ToolParam.
+// InputSchema is passed directly as json.RawMessage to the SDK.
 func toAnthropicTools(tools []ports.ToolDefinition) []anthropic.ToolParam
 
-// fromAnthropicResponse convierte anthropic.Message → ports.LLMResponse.
-// Extrae Content del primer bloque tipo text.
-// Extrae ToolUses de los bloques tipo tool_use.
-// Mapea stop_reason: "end_turn" | "tool_use" | "max_tokens".
+// fromAnthropicResponse converts anthropic.Message → ports.LLMResponse.
+// Extracts Content from the first block of type text.
+// Extracts ToolUses from blocks of type tool_use.
+// Maps stop_reason: "end_turn" | "tool_use" | "max_tokens".
 func fromAnthropicResponse(msg anthropic.Message) ports.LLMResponse
 ```
 
-**Criterios de aceptación:**
-- `go build ./adapters/llm/anthropic/...` sin errores
-- Cada función ≤20 líneas (ADR-003)
-- `TestCompleteText`, `TestCompleteWithTools` y `TestCompleteToolResult` pasan
+**Acceptance criteria:**
+- `go build ./adapters/llm/anthropic/...` without errors
+- Each function ≤20 lines (ADR-003)
+- `TestCompleteText`, `TestCompleteWithTools` and `TestCompleteToolResult` pass
 
-**Test asociado:** `TestCompleteText`, `TestCompleteWithTools`, `TestCompleteToolResult`
+**Associated test:** `TestCompleteText`, `TestCompleteWithTools`, `TestCompleteToolResult`
 
 ---
 
-### TODO #7 — impl: Mapeo de errores en adapters/llm/anthropic/errors.go
+### TODO #7 — impl: Error mapping in adapters/llm/anthropic/errors.go
 
 **Agente:** @developer
 
-**Descripción:** Función que mapea errores del SDK de Anthropic (por código HTTP) a
-errores de dominio. El adaptador nunca expone tipos del SDK al dominio.
+**Description:** Function that maps Anthropic SDK errors (by HTTP code) to
+domain errors. The adapter never exposes SDK types to the domain.
 
-**Archivos afectados:**
-- `adapters/llm/anthropic/errors.go` (nuevo)
+**Affected files:**
+- `adapters/llm/anthropic/errors.go` (new)
 
-**Función a implementar:**
+**Function to implement:**
 ```go
 package anthropic
 
-// mapAnthropicError convierte un error del SDK en un error de dominio.
-// Si el error es *anthropicsdk.Error, mapea por StatusCode.
-// context.DeadlineExceeded y context.Canceled se propagan sin envolver.
+// mapAnthropicError converts an SDK error into a domain error.
+// If the error is *anthropicsdk.Error, maps by StatusCode.
+// context.DeadlineExceeded and context.Canceled are propagated without wrapping.
 func mapAnthropicError(op string, err error) error
 ```
 
-**Mapeo:**
+**Mapping:**
 - 401 → `fmt.Errorf("%s: %w", op, domain.ErrUnauthorized)`
 - 429 → `fmt.Errorf("%s: %w", op, domain.ErrRateLimited)`
 - 500, 529 → `fmt.Errorf("%s: %w", op, domain.ErrProviderUnavailable)`
-- `context.DeadlineExceeded` / `context.Canceled` → propagar sin envolver
-- otros → `fmt.Errorf("%s: %w", op, err)`
+- `context.DeadlineExceeded` / `context.Canceled` → propagate without wrapping
+- others → `fmt.Errorf("%s: %w", op, err)`
 
-**Criterios de aceptación:**
-- `TestCompleteRateLimit`, `TestCompleteServerError`, `TestCompleteUnauthorized` pasan
-- `errors.Is(result, domain.ErrRateLimited)` true para error 429
-- `context.DeadlineExceeded` no se envuelve en error de dominio
+**Acceptance criteria:**
+- `TestCompleteRateLimit`, `TestCompleteServerError`, `TestCompleteUnauthorized` pass
+- `errors.Is(result, domain.ErrRateLimited)` true for 429 error
+- `context.DeadlineExceeded` is not wrapped in domain error
 
-**Test asociado:** `TestCompleteRateLimit`, `TestCompleteServerError`,
+**Associated test:** `TestCompleteRateLimit`, `TestCompleteServerError`,
 `TestCompleteUnauthorized`, `TestCompleteContextTimeout`
 
 ---
 
-### TODO #8 — impl: AnthropicClient en adapters/llm/anthropic/client.go
+### TODO #8 — impl: AnthropicClient in adapters/llm/anthropic/client.go
 
 **Agente:** @developer
 
-**Descripción:** Implementar `AnthropicClient` que implementa `ports.LLMClient`.
-Configuración por variables de entorno. Delega serialización al SDK y traducción
-de tipos a `convert.go`. `Complete` no supera 20 líneas.
+**Description:** Implement `AnthropicClient` that implements `ports.LLMClient`.
+Configuration via environment variables. Delegates serialization to the SDK and type
+translation to `convert.go`. `Complete` does not exceed 20 lines.
 
-**Archivos afectados:**
-- `adapters/llm/anthropic/client.go` (nuevo)
+**Affected files:**
+- `adapters/llm/anthropic/client.go` (new)
 
-**Diseño:**
+**Design:**
 ```go
 package anthropic
 
-// Config contiene la configuración del cliente Anthropic.
+// Config contains the Anthropic client configuration.
 type Config struct {
-    APIKey     string // ANTHROPIC_API_KEY (requerido)
-    BaseURL    string // ANTHROPIC_BASE_URL (opcional)
+    APIKey     string // ANTHROPIC_API_KEY (required)
+    BaseURL    string // ANTHROPIC_BASE_URL (optional)
     MaxRetries int    // ANTHROPIC_MAX_RETRIES (default 2)
 }
 
-// AnthropicClient implementa ports.LLMClient usando el SDK oficial de Anthropic.
+// AnthropicClient implements ports.LLMClient using the official Anthropic SDK.
 type AnthropicClient struct {
     client       *anthropicsdk.Client
     defaultModel string
 }
 
-// NewAnthropicClient construye un AnthropicClient. Retorna error si APIKey está vacía.
+// NewAnthropicClient builds an AnthropicClient. Returns error if APIKey is empty.
 func NewAnthropicClient(cfg Config) (*AnthropicClient, error)
 
-// Complete envía la petición al API de Anthropic y retorna la respuesta del dominio.
+// Complete sends the request to the Anthropic API and returns the domain response.
 func (c *AnthropicClient) Complete(ctx context.Context, req ports.LLMRequest) (ports.LLMResponse, error)
 ```
 
-**Comportamiento de Complete:**
-1. Construir `MessageNewParams` usando funciones de `convert.go`
-2. Llamar `c.client.Messages.New(ctx, params)`
-3. Si error: `mapAnthropicError("anthropic complete", err)` y retornar
-4. Convertir respuesta con `fromAnthropicResponse(msg)`
-5. Retornar `LLMResponse, nil`
+**Complete behavior:**
+1. Build `MessageNewParams` using functions from `convert.go`
+2. Call `c.client.Messages.New(ctx, params)`
+3. If error: `mapAnthropicError("anthropic complete", err)` and return
+4. Convert response with `fromAnthropicResponse(msg)`
+5. Return `LLMResponse, nil`
 
-**Modelo default:** `claude-sonnet-4-6` (usado cuando `LLMRequest.Model == ""`).
+**Default model:** `claude-sonnet-4-6` (used when `LLMRequest.Model == ""`).
 
-**Verificación de interface:** `var _ ports.LLMClient = &AnthropicClient{}`
+**Interface verification:** `var _ ports.LLMClient = &AnthropicClient{}`
 
-**Criterios de aceptación:**
-- Todos los 7 tests de `client_test.go` pasan (Green)
-- `go build ./adapters/llm/anthropic/...` sin errores
-- `golangci-lint run ./adapters/llm/anthropic/...` sin errores
-- `Complete` ≤20 líneas (ADR-003)
+**Acceptance criteria:**
+- All 7 tests from `client_test.go` pass (Green)
+- `go build ./adapters/llm/anthropic/...` without errors
+- `golangci-lint run ./adapters/llm/anthropic/...` without errors
+- `Complete` ≤20 lines (ADR-003)
 
-**Test asociado:** todos los tests de `adapters/llm/anthropic/client_test.go`
+**Associated test:** all tests from `adapters/llm/anthropic/client_test.go`
 
 ---
 
-### TODO #9 — infra: Añadir dependencia anthropic-sdk-go y variables de entorno
+### TODO #9 — infra: Add anthropic-sdk-go dependency and environment variables
 
 **Agente:** @devops
 
-**Descripción:** Añadir el SDK oficial de Anthropic al go.mod. Documentar variables
-de entorno en `.env.example`. Los tests usan `httptest.NewServer` — no necesitan
-credenciales reales.
+**Description:** Add the official Anthropic SDK to go.mod. Document environment
+variables in `.env.example`. Tests use `httptest.NewServer` — they do not need
+real credentials.
 
-**Archivos afectados:**
+**Affected files:**
 - `go.mod` / `go.sum` (via `go get`)
 - `.env.example`
 
-**Comandos:**
+**Commands:**
 ```bash
 go get github.com/anthropics/anthropic-sdk-go@latest
 go mod tidy
 ```
 
-**Variables a añadir en `.env.example`:**
+**Variables to add in `.env.example`:**
 ```
 # Anthropic LLM
-ANTHROPIC_API_KEY=sk-ant-...          # requerido en producción
-ANTHROPIC_BASE_URL=                   # vacío → api.anthropic.com; tests: http://localhost:PORT
+ANTHROPIC_API_KEY=sk-ant-...          # required in production
+ANTHROPIC_BASE_URL=                   # empty → api.anthropic.com; tests: http://localhost:PORT
 ANTHROPIC_MAX_RETRIES=2
 ```
 
-**Criterios de aceptación:**
-- `go build ./adapters/llm/...` sin errores
-- `go test ./adapters/llm/...` ejecuta 8 tests sin red ni credenciales reales
-- `.env.example` tiene las tres variables con comentarios
+**Acceptance criteria:**
+- `go build ./adapters/llm/...` without errors
+- `go test ./adapters/llm/...` runs 8 tests without network or real credentials
+- `.env.example` has the three variables with comments
 
-**Test asociado:** habilita compilación y ejecución de todos los tests
+**Associated test:** enables compilation and execution of all tests
 
 ---
 
-### TODO #10 — infra: Target make test-llm en Makefile
+### TODO #10 — infra: make test-llm target in Makefile
 
 **Agente:** @devops
 
-**Descripción:** Añadir target `make test-llm` para ejecutar tests unitarios del
-adaptador LLM. Tests unitarios (no de integración) → incluidos en `make ci`.
+**Description:** Add target `make test-llm` to run LLM adapter unit tests.
+Unit tests (not integration) → included in `make ci`.
 
-**Archivos afectados:**
+**Affected files:**
 - `Makefile`
 
-**Targets a añadir:**
+**Targets to add:**
 ```makefile
-## test-llm: tests unitarios del adaptador LLM (anthropic + fake)
+## test-llm: unit tests for the LLM adapter (anthropic + fake)
 test-llm:
 	go test -count=1 -timeout 30s ./adapters/llm/...
 ```
 
-Añadir `test-llm` como dependencia del target `test` existente.
+Add `test-llm` as a dependency of the existing `test` target.
 
-**Criterios de aceptación:**
-- `make test-llm` ejecuta 8 tests, todos pasan
-- `make ci` incluye `make test-llm` (sin credenciales reales)
+**Acceptance criteria:**
+- `make test-llm` runs 8 tests, all pass
+- `make ci` includes `make test-llm` (without real credentials)
 
-**Test asociado:** todos los tests de `adapters/llm/`
+**Associated test:** all tests in `adapters/llm/`
 
 ---
 
-### TODO #11 — docs: Actualizar docs/index.md y docs/log.md
+### TODO #11 — docs: Update docs/index.md and docs/log.md
 
 **Agente:** @docs
 
-**Descripción:** Registrar SPRINT-008 en el índice y log. Añadir sección
-`## Adaptadores` en `docs/index.md` con Event Bus Valkey (SPRINT-007) y LLM
+**Description:** Register SPRINT-008 in the index and log. Add section
+`## Adapters` in `docs/index.md` with Event Bus Valkey (SPRINT-007) and LLM
 Anthropic+Fake+Ollama (SPRINT-008).
 
-**Archivos afectados:**
+**Affected files:**
 - `docs/index.md`
 - `docs/log.md`
 
-**Criterios de aceptación:**
-- `grep "SPRINT-008" docs/index.md` retorna al menos dos filas
-- `grep "SPRINT-008" docs/log.md` retorna la entrada
-- Sección `## Adaptadores` lista los cuatro adaptadores planificados
+**Acceptance criteria:**
+- `grep "SPRINT-008" docs/index.md` returns at least two rows
+- `grep "SPRINT-008" docs/log.md` returns the entry
+- Section `## Adapters` lists the four planned adapters
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #12 — infra: Añadir dependencia go-openai y variables de entorno para Ollama
+### TODO #12 — infra: Add go-openai dependency and Ollama environment variables
 
 **Agente:** @devops
 
-**Descripción:** Añadir el cliente OpenAI-compatible `sashabaranov/go-openai` al go.mod.
-Este SDK es reutilizable para el adaptador OpenAI nativo en sprints futuros. Documentar
-las dos variables de Ollama en `.env.example`. Los tests usan `httptest.NewServer` —
-no requieren instancia Ollama real ni ninguna API key.
+**Description:** Add the OpenAI-compatible client `sashabaranov/go-openai` to go.mod.
+This SDK is reusable for the native OpenAI adapter in future sprints. Document
+the two Ollama variables in `.env.example`. Tests use `httptest.NewServer` —
+they do not require a real Ollama instance or any API key.
 
-**Archivos afectados:**
+**Affected files:**
 - `go.mod` / `go.sum` (via `go get`)
 - `.env.example`
 
-**Comandos:**
+**Commands:**
 ```bash
 go get github.com/sashabaranov/go-openai@latest
 go mod tidy
 ```
 
-**Variables a añadir en `.env.example`:**
+**Variables to add in `.env.example`:**
 ```
 # Ollama LLM
 OLLAMA_BASE_URL=http://localhost:11434   # default local; tests: http://127.0.0.1:PORT
-OLLAMA_DEFAULT_MODEL=mixtral             # modelo Mixtral 8x7B (alternativa: mixtral:8x7b)
+OLLAMA_DEFAULT_MODEL=mixtral             # Mixtral 8x7B model (alternative: mixtral:8x7b)
 ```
 
-**Criterios de aceptación:**
-- `go build ./adapters/llm/ollama/...` sin errores tras añadir la dependencia
-- `go test ./adapters/llm/ollama/...` no requiere red ni credenciales
-- `.env.example` tiene las dos variables con comentarios
+**Acceptance criteria:**
+- `go build ./adapters/llm/ollama/...` without errors after adding the dependency
+- `go test ./adapters/llm/ollama/...` does not require network or credentials
+- `.env.example` has the two variables with comments
 
-**Test asociado:** habilita compilación y ejecución de los tests del TODO #13
+**Associated test:** enables compilation and execution of TODO #13 tests
 
 ---
 
-### TODO #13 — test: Tests Red del adaptador Ollama con httptest mock server
+### TODO #13 — test: Red tests for the Ollama adapter with httptest mock server
 
 **Agente:** @qa
 
-**Descripción:** Escribir los 6 tests del adaptador Ollama ANTES de implementarlo
-(ciclo Red de TDD). El servidor mock simula la API OpenAI-compatible de Ollama en
-`/v1/chat/completions`. Cada test crea su propio `httptest.NewServer` independiente.
+**Description:** Write the 6 Ollama adapter tests BEFORE implementing it
+(TDD Red cycle). The mock server simulates Ollama's OpenAI-compatible API at
+`/v1/chat/completions`. Each test creates its own independent `httptest.NewServer`.
 
-**Archivos afectados:**
-- `adapters/llm/ollama/client_test.go` (nuevo)
+**Affected files:**
+- `adapters/llm/ollama/client_test.go` (new)
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 package ollama_test
 
 // TestOllamaCompleteText
-// Escenario: LLMRequest sin tools, mock devuelve 200 con choices[0].message.content
-//            y finish_reason "stop".
-// Verifica: Content == texto esperado, StopReason == "end_turn",
+// Scenario: LLMRequest without tools, mock returns 200 with choices[0].message.content
+//            and finish_reason "stop".
+// Verifies: Content == expected text, StopReason == "end_turn",
 //           InputTokens > 0, OutputTokens > 0.
 
 // TestOllamaCompleteWithTools
-// Escenario: LLMRequest con ToolDefinition, mock devuelve 200 con
-//            finish_reason "tool_calls" y choices[0].message.tool_calls.
-// Verifica: StopReason == "tool_use", len(ToolUses) == 1,
-//           ToolUses[0].Name == nombre esperado, Content == "".
+// Scenario: LLMRequest with ToolDefinition, mock returns 200 with
+//            finish_reason "tool_calls" and choices[0].message.tool_calls.
+// Verifies: StopReason == "tool_use", len(ToolUses) == 1,
+//           ToolUses[0].Name == expected name, Content == "".
 
 // TestOllamaCompleteServerError
-// Escenario: mock devuelve HTTP 500.
-// Verifica: errors.Is(err, domain.ErrProviderUnavailable) es true.
+// Scenario: mock returns HTTP 500.
+// Verifies: errors.Is(err, domain.ErrProviderUnavailable) is true.
 
 // TestOllamaCompleteContextTimeout
-// Escenario: ctx con deadline 10ms, mock duerme 100ms antes de responder.
-// Verifica: error retornado envuelve context.DeadlineExceeded.
+// Scenario: ctx with 10ms deadline, mock sleeps 100ms before responding.
+// Verifies: returned error wraps context.DeadlineExceeded.
 
 // TestOllamaCompleteModelDefault
-// Escenario: LLMRequest con Model == "", mock verifica el body recibido.
-// Verifica: el campo "model" en el JSON enviado al mock es "mixtral".
+// Scenario: LLMRequest with Model == "", mock verifies the received body.
+// Verifies: the "model" field in the JSON sent to mock is "mixtral".
 
 // TestOllamaConvertFinishReason
-// Escenario: tabla de casos para convertFinishReason.
-// Verifica: "stop"→"end_turn", "tool_calls"→"tool_use",
+// Scenario: table of cases for convertFinishReason.
+// Verifies: "stop"→"end_turn", "tool_calls"→"tool_use",
 //           "length"→"max_tokens", ""→"end_turn" (fallback).
 ```
 
-**Criterios de aceptación:**
-- `go test ./adapters/llm/ollama/...` falla con compilación o "not implemented" (Red)
-- Sin frameworks de mock — solo `httptest.NewServer` y tabla de casos
-- Cada test es independiente, no comparte estado
+**Acceptance criteria:**
+- `go test ./adapters/llm/ollama/...` fails with compilation or "not implemented" (Red)
+- No mock frameworks — only `httptest.NewServer` and case tables
+- Each test is independent, does not share state
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #14 — impl: Conversión de tipos en adapters/llm/ollama/convert.go
+### TODO #14 — impl: Type conversion in adapters/llm/ollama/convert.go
 
 **Agente:** @developer
 
-**Descripción:** Funciones puras de traducción entre tipos del puerto y tipos del SDK
-`go-openai`. Sin estado, sin IO. `convertFinishReason` mapea `finish_reason` de la
-API OpenAI-compatible a los valores estándar del dominio.
+**Description:** Pure translation functions between port types and `go-openai` SDK
+types. No state, no IO. `convertFinishReason` maps `finish_reason` from the
+OpenAI-compatible API to standard domain values.
 
-**Archivos afectados:**
-- `adapters/llm/ollama/convert.go` (nuevo)
+**Affected files:**
+- `adapters/llm/ollama/convert.go` (new)
 
-**Funciones a implementar:**
+**Functions to implement:**
 ```go
 package ollama
 
-// toOpenAIMessages convierte []ports.Message en []openai.ChatCompletionMessage.
+// toOpenAIMessages converts []ports.Message to []openai.ChatCompletionMessage.
 // Roles: "user"→ChatMessageRoleUser, "assistant"→ChatMessageRoleAssistant,
-//        "tool_result"→ChatMessageRoleTool (con ToolCallID).
+//        "tool_result"→ChatMessageRoleTool (with ToolCallID).
 func toOpenAIMessages(messages []ports.Message) []openai.ChatCompletionMessage
 
-// toOpenAITools convierte []ports.ToolDefinition en []openai.Tool.
-// Cada herramienta: openai.Tool{Type:"function", Function:{Name, Description, Parameters}}.
-// InputSchema se pasa directamente como Parameters (json.RawMessage).
+// toOpenAITools converts []ports.ToolDefinition to []openai.Tool.
+// Each tool: openai.Tool{Type:"function", Function:{Name, Description, Parameters}}.
+// InputSchema is passed directly as Parameters (json.RawMessage).
 func toOpenAITools(tools []ports.ToolDefinition) []openai.Tool
 
-// fromOpenAIResponse convierte openai.ChatCompletionResponse en ports.LLMResponse.
+// fromOpenAIResponse converts openai.ChatCompletionResponse to ports.LLMResponse.
 // Content: choices[0].Message.Content.
 // ToolUses: choices[0].Message.ToolCalls → ports.ToolUse{ID, Name, Input}.
 // StopReason: via convertFinishReason(choices[0].FinishReason).
 // Tokens: Usage.PromptTokens, Usage.CompletionTokens.
 func fromOpenAIResponse(resp openai.ChatCompletionResponse) ports.LLMResponse
 
-// convertFinishReason mapea finish_reason → StopReason del dominio.
-// "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens", otros→"end_turn".
+// convertFinishReason maps finish_reason → domain StopReason.
+// "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens", others→"end_turn".
 func convertFinishReason(reason string) string
 ```
 
-**Criterios de aceptación:**
-- `go build ./adapters/llm/ollama/...` sin errores
-- Cada función ≤20 líneas (ADR-003)
-- `TestOllamaCompleteText`, `TestOllamaCompleteWithTools`, `TestOllamaConvertFinishReason` pasan
+**Acceptance criteria:**
+- `go build ./adapters/llm/ollama/...` without errors
+- Each function ≤20 lines (ADR-003)
+- `TestOllamaCompleteText`, `TestOllamaCompleteWithTools`, `TestOllamaConvertFinishReason` pass
 
-**Test asociado:** `TestOllamaCompleteText`, `TestOllamaCompleteWithTools`, `TestOllamaConvertFinishReason`
+**Associated test:** `TestOllamaCompleteText`, `TestOllamaCompleteWithTools`, `TestOllamaConvertFinishReason`
 
 ---
 
-### TODO #15 — impl: OllamaClient + mapeo de errores en adapters/llm/ollama/
+### TODO #15 — impl: OllamaClient + error mapping in adapters/llm/ollama/
 
 **Agente:** @developer
 
-**Descripción:** Implementar `OllamaClient` que satisface `ports.LLMClient` usando la
-API OpenAI-compatible de Ollama. Como Ollama no requiere API key, se pasa cadena vacía
-al SDK. `NewOllamaClient` no retorna error porque BaseURL siempre tiene un valor por
-defecto válido.
+**Description:** Implement `OllamaClient` that satisfies `ports.LLMClient` using
+Ollama's OpenAI-compatible API. Since Ollama does not require an API key, an empty string
+is passed to the SDK. `NewOllamaClient` does not return error because BaseURL always has a
+valid default value.
 
-**Archivos afectados:**
-- `adapters/llm/ollama/client.go` (nuevo)
-- `adapters/llm/ollama/errors.go` (nuevo)
+**Affected files:**
+- `adapters/llm/ollama/client.go` (new)
+- `adapters/llm/ollama/errors.go` (new)
 
-**Diseño de client.go:**
+**client.go design:**
 ```go
 package ollama
 
-// Config contiene la configuración del cliente Ollama.
+// Config contains the Ollama client configuration.
 type Config struct {
     BaseURL      string // OLLAMA_BASE_URL (default: http://localhost:11434)
     DefaultModel string // OLLAMA_DEFAULT_MODEL (default: mixtral)
 }
 
-// OllamaClient implementa ports.LLMClient usando la API OpenAI-compatible de Ollama.
+// OllamaClient implements ports.LLMClient using Ollama's OpenAI-compatible API.
 type OllamaClient struct {
     client       *openai.Client
     defaultModel string
 }
 
-// NewOllamaClient construye un OllamaClient.
-// Si BaseURL está vacío usa "http://localhost:11434".
-// Si DefaultModel está vacío usa "mixtral".
+// NewOllamaClient builds an OllamaClient.
+// If BaseURL is empty, uses "http://localhost:11434".
+// If DefaultModel is empty, uses "mixtral".
 func NewOllamaClient(cfg Config) *OllamaClient
 
-// Complete envía la petición a Ollama y retorna la respuesta del dominio.
+// Complete sends the request to Ollama and returns the domain response.
 func (c *OllamaClient) Complete(ctx context.Context, req ports.LLMRequest) (ports.LLMResponse, error)
 
 var _ ports.LLMClient = &OllamaClient{}
 ```
 
-**Comportamiento de Complete:**
-1. Si `req.Model == ""` usar `c.defaultModel`
-2. Construir `openai.ChatCompletionRequest` usando `convert.go`
-3. Llamar `c.client.CreateChatCompletion(ctx, chatReq)`
-4. Si error: `mapOllamaError("ollama complete", err)` y retornar
-5. `fromOpenAIResponse(resp)` y retornar
+**Complete behavior:**
+1. If `req.Model == ""` use `c.defaultModel`
+2. Build `openai.ChatCompletionRequest` using `convert.go`
+3. Call `c.client.CreateChatCompletion(ctx, chatReq)`
+4. If error: `mapOllamaError("ollama complete", err)` and return
+5. `fromOpenAIResponse(resp)` and return
 
-**Diseño de errors.go — mapeo:**
-- `*openai.APIError` con StatusCode 500 → `fmt.Errorf("%s: %w", op, domain.ErrProviderUnavailable)`
-- `context.DeadlineExceeded` / `context.Canceled` → propagar sin envolver
-- otros → `fmt.Errorf("%s: %w", op, err)`
+**errors.go design — mapping:**
+- `*openai.APIError` with StatusCode 500 → `fmt.Errorf("%s: %w", op, domain.ErrProviderUnavailable)`
+- `context.DeadlineExceeded` / `context.Canceled` → propagate without wrapping
+- others → `fmt.Errorf("%s: %w", op, err)`
 
-**Nota:** Ollama local no genera 401/429; si se expone detrás de un proxy autenticado,
-`mapOllamaError` se puede extender sin cambiar la interfaz.
+**Note:** Local Ollama does not generate 401/429; if exposed behind an authenticated proxy,
+`mapOllamaError` can be extended without changing the interface.
 
-**Criterios de aceptación:**
-- Los 6 tests de `ollama/client_test.go` pasan (Green)
-- `go build ./adapters/llm/ollama/...` sin errores
-- `golangci-lint run ./adapters/llm/ollama/...` sin errores
-- `Complete` ≤20 líneas (ADR-003)
+**Acceptance criteria:**
+- All 6 tests from `ollama/client_test.go` pass (Green)
+- `go build ./adapters/llm/ollama/...` without errors
+- `golangci-lint run ./adapters/llm/ollama/...` without errors
+- `Complete` ≤20 lines (ADR-003)
 
-**Test asociado:** todos los tests de `adapters/llm/ollama/client_test.go`
+**Associated test:** all tests from `adapters/llm/ollama/client_test.go`
 
 ---
 
-### TODO #16 — infra: Actualizar make test-llm e docs/index.md con Ollama
+### TODO #16 — infra: Update make test-llm and docs/index.md with Ollama
 
 **Agente:** @devops
 
-**Descripción:** Verificar que `make test-llm` (creado en TODO #10) ya cubre
-`./adapters/llm/...` por globbing e incluye los tests de Ollama. Actualizar
-`docs/index.md` añadiendo la fila del adaptador Ollama en la tabla de adaptadores.
+**Description:** Verify that `make test-llm` (created in TODO #10) already covers
+`./adapters/llm/...` by globbing and includes the Ollama tests. Update
+`docs/index.md` by adding the Ollama adapter row in the adapters table.
 
-**Archivos afectados:**
-- `Makefile` (verificar/ajustar si el patrón no cubre `ollama/`)
+**Affected files:**
+- `Makefile` (verify/adjust if the pattern does not cover `ollama/`)
 - `docs/index.md`
 
-**Fila a añadir en tabla de adaptadores de docs/index.md:**
+**Row to add in docs/index.md adapters table:**
 ```
-| LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planificado | SPRINT-008 |
+| LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | SPRINT-008 |
 ```
 
-**Criterios de aceptación:**
-- `make test-llm` ejecuta 14 tests en total (8 Anthropic+Fake + 6 Ollama), todos pasan
-- `grep "ollama" docs/index.md` retorna la fila del adaptador
-- `make ci` incluye los tests de Ollama (sin red ni instancia Ollama real)
+**Acceptance criteria:**
+- `make test-llm` runs 14 tests in total (8 Anthropic+Fake + 6 Ollama), all pass
+- `grep "ollama" docs/index.md` returns the adapter row
+- `make ci` includes the Ollama tests (without network or real Ollama instance)
 
-**Test asociado:** todos los tests de `adapters/llm/`
+**Associated test:** all tests in `adapters/llm/`
 
 ---
 
-## Matriz de trazabilidad
+## Traceability Matrix
 
-| TODO | Tipo   | ADR           | Spec                               | Test                                                                      | Impl                                    |
+| TODO | Type   | ADR           | Spec                               | Test                                                                      | Impl                                    |
 |------|--------|---------------|------------------------------------|---------------------------------------------------------------------------|-----------------------------------------|
-| #1   | data   | 001, 004      | —                                  | cubierto por tests del adaptador (#3)                                     | libs/domain/errors.go                   |
+| #1   | data   | 001, 004      | —                                  | covered by adapter tests (#3)                                             | libs/domain/errors.go                   |
 | #2   | impl   | 001, 003, 016 | specs/patterns/nodes/llm_call.json | —                                                                         | libs/ports/llm.go                       |
 | #3   | test   | 002, 003      | libs/ports/llm.go                  | client_test.go (7 tests, Red)                                             | —                                       |
 | #4   | test   | 002, 003      | libs/ports/llm.go                  | fake/client_test.go (1 test, Red)                                         | —                                       |
 | #5   | impl   | 001, 003      | libs/ports/llm.go                  | TestFakeLLMClientQueue                                                    | adapters/llm/fake/client.go             |
 | #6   | impl   | 001, 003, 004 | libs/ports/llm.go                  | TestCompleteText, TestCompleteWithTools, TestCompleteToolResult            | adapters/llm/anthropic/convert.go       |
 | #7   | impl   | 001, 003, 004 | libs/domain/errors.go              | TestCompleteRateLimit, TestCompleteServerError, TestCompleteUnauthorized, TestCompleteContextTimeout | adapters/llm/anthropic/errors.go |
-| #8   | impl   | 001, 003, 004 | libs/ports/llm.go                  | todos los tests de client_test.go (Green)                                 | adapters/llm/anthropic/client.go        |
-| #9   | infra  | 004, 013      | —                                  | habilita compilación y tests                                              | go.mod, go.sum, .env.example            |
-| #10  | infra  | 002           | —                                  | habilita ejecución en CI                                                  | Makefile                                |
+| #8   | impl   | 001, 003, 004 | libs/ports/llm.go                  | all tests from client_test.go (Green)                                     | adapters/llm/anthropic/client.go        |
+| #9   | infra  | 004, 013      | —                                  | enables compilation and tests                                             | go.mod, go.sum, .env.example            |
+| #10  | infra  | 002           | —                                  | enables CI execution                                                      | Makefile                                |
 | #11  | docs   | 020           | —                                  | —                                                                         | docs/index.md, docs/log.md              |
-| #12  | infra  | 004, 013      | —                                  | habilita compilación y tests Ollama                                       | go.mod, go.sum, .env.example            |
+| #12  | infra  | 004, 013      | —                                  | enables compilation and Ollama tests                                      | go.mod, go.sum, .env.example            |
 | #13  | test   | 002, 003      | libs/ports/llm.go                  | ollama/client_test.go (6 tests, Red)                                      | —                                       |
 | #14  | impl   | 001, 003, 004 | libs/ports/llm.go                  | TestOllamaCompleteText, TestOllamaCompleteWithTools, TestOllamaConvertFinishReason | adapters/llm/ollama/convert.go  |
-| #15  | impl   | 001, 003, 004 | libs/domain/errors.go, libs/ports/llm.go | todos los tests de ollama/client_test.go (Green)                    | adapters/llm/ollama/client.go, ollama/errors.go |
-| #16  | infra+docs | 002, 020  | —                                  | make test-llm ejecuta 14 tests                                            | Makefile, docs/index.md                 |
+| #15  | impl   | 001, 003, 004 | libs/domain/errors.go, libs/ports/llm.go | all tests from ollama/client_test.go (Green)                        | adapters/llm/ollama/client.go, ollama/errors.go |
+| #16  | infra+docs | 002, 020  | —                                  | make test-llm runs 14 tests                                               | Makefile, docs/index.md                 |
 
-## Notas de implementación
+## Implementation Notes
 
-**SDK de Anthropic Go:** `github.com/anthropics/anthropic-sdk-go`. Cliente con
-`BaseURL` personalizada via `option.WithBaseURL(cfg.BaseURL)` — imprescindible
-para que `httptest.NewServer` funcione en tests.
+**Anthropic Go SDK:** `github.com/anthropics/anthropic-sdk-go`. Client with
+custom `BaseURL` via `option.WithBaseURL(cfg.BaseURL)` — essential
+so that `httptest.NewServer` works in tests.
 
-**Mock server en tests:** Cada test de `client_test.go` crea su propio
-`httptest.NewServer` con un handler ad-hoc que devuelve JSON de la API de Anthropic
-(`/v1/messages`). El cliente se construye con `Config{APIKey: "test-key", BaseURL: ts.URL}`.
+**Mock server in tests:** Each test in `client_test.go` creates its own
+`httptest.NewServer` with an ad-hoc handler that returns Anthropic API JSON
+(`/v1/messages`). The client is built with `Config{APIKey: "test-key", BaseURL: ts.URL}`.
 
-**Estructura mínima del response JSON mock:**
+**Minimal mock response JSON structure:**
 ```json
 {
   "id": "msg_01",
@@ -835,12 +835,12 @@ para que `httptest.NewServer` funcione en tests.
 }
 ```
 
-**SDK Ollama:** `github.com/sashabaranov/go-openai` con `openai.ClientConfig{BaseURL: cfg.BaseURL + "/v1"}`.
-Ollama no requiere API key — se pasa `""`. El SDK `go-openai` es reutilizable para el
-adaptador OpenAI nativo en sprints futuros (solo cambiar BaseURL y añadir la key).
+**Ollama SDK:** `github.com/sashabaranov/go-openai` with `openai.ClientConfig{BaseURL: cfg.BaseURL + "/v1"}`.
+Ollama does not require an API key — `""` is passed. The `go-openai` SDK is reusable for the
+native OpenAI adapter in future sprints (just change BaseURL and add the key).
 
-**Mock server para Ollama:** cada test crea un `httptest.NewServer` que sirve
-`/v1/chat/completions`. Estructura mínima de la respuesta mock:
+**Mock server for Ollama:** each test creates an `httptest.NewServer` that serves
+`/v1/chat/completions`. Minimal mock response structure:
 ```json
 {
   "id": "chatcmpl-01",
@@ -850,21 +850,21 @@ adaptador OpenAI nativo en sprints futuros (solo cambiar BaseURL y añadir la ke
 }
 ```
 
-**Verificación de interface en tiempo de compilación** (incluir en cada fichero):
+**Compile-time interface verification** (include in each file):
 ```go
 var _ ports.LLMClient = &AnthropicClient{}
 var _ ports.LLMClient = &FakeLLMClient{}
 var _ ports.LLMClient = &OllamaClient{}
 ```
 
-**Orden de TODOs por dependencias:**
+**TODO order by dependencies:**
 ```
 #1 (domain errors) ─┐
-#2 (port)           ├─ paralelizables
+#2 (port)           ├─ parallelizable
 #9 (infra Anthropic)┤
 #12 (infra Ollama)  ┘
         ↓
-#3 (tests Red Anthropic) + #4 (test Red Fake) + #13 (tests Red Ollama)  ← bloque paralelo
+#3 (tests Red Anthropic) + #4 (test Red Fake) + #13 (tests Red Ollama)  ← parallel block
         ↓
 #5 (impl Fake) + #6 (convert Anthropic) + #7 (errors Anthropic) + #14 (convert Ollama)
         ↓
@@ -873,29 +873,29 @@ var _ ports.LLMClient = &OllamaClient{}
 #10+#16 (Makefile) + #11 (docs)
 ```
 
-## Resultado (completar al cerrar)
+## Result (complete on close)
 
-- [ ] `TestCompleteText` pasa
-- [ ] `TestCompleteWithTools` pasa
-- [ ] `TestCompleteToolResult` pasa
-- [ ] `TestCompleteRateLimit` pasa — `errors.Is(err, domain.ErrRateLimited)` true
-- [ ] `TestCompleteServerError` pasa — `errors.Is(err, domain.ErrProviderUnavailable)` true
-- [ ] `TestCompleteUnauthorized` pasa — `errors.Is(err, domain.ErrUnauthorized)` true
-- [ ] `TestCompleteContextTimeout` pasa — `context.DeadlineExceeded` propagado
-- [ ] `TestFakeLLMClientQueue` pasa
-- [ ] `var _ ports.LLMClient = &AnthropicClient{}` compila
-- [ ] `var _ ports.LLMClient = &FakeLLMClient{}` compila
-- [ ] `go build ./libs/... ./adapters/llm/...` sin errores
-- [ ] `golangci-lint run ./libs/... ./adapters/llm/...` sin errores
-- [ ] `make test-llm` ejecuta 14 tests (8 Anthropic+Fake + 6 Ollama), todos pasan, sin red real
-- [ ] `.env.example` actualizado con variables Anthropic y Ollama
-- [ ] `docs/index.md` y `docs/log.md` actualizados
-- [ ] `TestOllamaCompleteText` pasa
-- [ ] `TestOllamaCompleteWithTools` pasa
-- [ ] `TestOllamaCompleteServerError` pasa — `errors.Is(err, domain.ErrProviderUnavailable)` true
-- [ ] `TestOllamaCompleteContextTimeout` pasa — `context.DeadlineExceeded` propagado
-- [ ] `TestOllamaCompleteModelDefault` pasa — body contiene `"model":"mixtral"`
-- [ ] `TestOllamaConvertFinishReason` pasa — "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
-- [ ] `var _ ports.LLMClient = &OllamaClient{}` compila
-- [ ] `go build ./adapters/llm/ollama/...` sin errores
-- [ ] `golangci-lint run ./adapters/llm/ollama/...` sin errores
+- [ ] `TestCompleteText` passes
+- [ ] `TestCompleteWithTools` passes
+- [ ] `TestCompleteToolResult` passes
+- [ ] `TestCompleteRateLimit` passes — `errors.Is(err, domain.ErrRateLimited)` true
+- [ ] `TestCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
+- [ ] `TestCompleteUnauthorized` passes — `errors.Is(err, domain.ErrUnauthorized)` true
+- [ ] `TestCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
+- [ ] `TestFakeLLMClientQueue` passes
+- [ ] `var _ ports.LLMClient = &AnthropicClient{}` compiles
+- [ ] `var _ ports.LLMClient = &FakeLLMClient{}` compiles
+- [ ] `go build ./libs/... ./adapters/llm/...` without errors
+- [ ] `golangci-lint run ./libs/... ./adapters/llm/...` without errors
+- [ ] `make test-llm` runs 14 tests (8 Anthropic+Fake + 6 Ollama), all pass, without real network
+- [ ] `.env.example` updated with Anthropic and Ollama variables
+- [ ] `docs/index.md` and `docs/log.md` updated
+- [ ] `TestOllamaCompleteText` passes
+- [ ] `TestOllamaCompleteWithTools` passes
+- [ ] `TestOllamaCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
+- [ ] `TestOllamaCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
+- [ ] `TestOllamaCompleteModelDefault` passes — body contains `"model":"mixtral"`
+- [ ] `TestOllamaConvertFinishReason` passes — "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
+- [ ] `var _ ports.LLMClient = &OllamaClient{}` compiles
+- [ ] `go build ./adapters/llm/ollama/...` without errors
+- [ ] `golangci-lint run ./adapters/llm/ollama/...` without errors

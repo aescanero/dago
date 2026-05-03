@@ -1,202 +1,201 @@
-# SPRINT-002: Schemas Ent — Graph, Node y Execution
+# SPRINT-002: Ent Schemas — Graph, Node and Execution
 
 ## Metadata
 
-- **Fecha inicio:** 2026-04-28 (tras completar SPRINT-001)
-- **Fecha fin estimada:** 2026-04-29
-- **Estado:** planificado
-- **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-015, ADR-016
-- **Specs afectadas:**
-  - `specs/patterns/graph.json` (lectura — campo `Definition`)
-  - `ent/schema/` (fuente de verdad de datos — ADR-007 regla 1)
-- **Agente planificador:** planner
-- **Revisado por:** pendiente
-- **Bloqueante de:** SPRINT-003 (orchestrator), SPRINT-015 (memoria)
+- **Start date:** 2026-04-28 (after completing SPRINT-001)
+- **Estimated end date:** 2026-04-29
+- **Status:** planned
+- **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-015, ADR-016
+- **Affected specs:**
+  - `specs/patterns/graph.json` (read — `Definition` field)
+  - `ent/schema/` (data source of truth — ADR-007 rule 1)
+- **Planning agent:** planner
+- **Reviewed by:** pending
+- **Blocks:** SPRINT-003 (orchestrator), SPRINT-015 (memory)
 
-## Objetivo del sprint
+## Sprint Objective
 
-Implementar los tres schemas Ent base del modelo de orquestación —
-`Graph`, `Node` y `Execution` — con sus relaciones, campos y
-validaciones. Generar el código Ent con `go generate`, producir la
-primera migración con Atlas y verificar que se aplica limpiamente
-contra el PostgreSQL del docker-compose.
+Implement the three base Ent schemas of the orchestration model —
+`Graph`, `Node` and `Execution` — with their relationships, fields and
+validations. Generate the Ent code with `go generate`, produce the
+first migration with Atlas, and verify that it applies cleanly
+against the PostgreSQL from docker-compose.
 
-Al finalizar existe un modelo de datos compilable y migrado, con tests
-unitarios de los schemas y un test de integración que confirma
-persistencia real en PostgreSQL.
+At the end there is a compilable and migrated data model, with unit
+tests for the schemas and an integration test that confirms
+real persistence in PostgreSQL.
 
-## Alcance
+## Scope
 
-### Incluido
+### Included
 
-- `ent/schema/graph.go` — Schema Ent de la entidad `Graph`.
-- `ent/schema/node.go` — Schema Ent de la entidad `Node`.
-- `ent/schema/execution.go` — Schema Ent de la entidad `Execution`.
-- `go generate ./ent` — código generado commiteado (ADR-007 regla 2).
-- `atlas migrate diff init_graph_node_execution` — primera migración SQL.
-- `atlas migrate apply --env local` — migración aplicada contra PostgreSQL.
-- Tests unitarios de schemas (`tests/unit/schema/`) con testify.
-- Test de integración (`tests/integration/`) que crea y recupera los
-  tres tipos de entidades contra PostgreSQL real.
-- Actualización de `docs/index.md` con la tabla de schemas Ent.
-- Entrada en `docs/log.md`.
+- `ent/schema/graph.go` — Ent schema for the `Graph` entity.
+- `ent/schema/node.go` — Ent schema for the `Node` entity.
+- `ent/schema/execution.go` — Ent schema for the `Execution` entity.
+- `go generate ./ent` — generated code committed (ADR-007 rule 2).
+- `atlas migrate diff init_graph_node_execution` — first SQL migration.
+- `atlas migrate apply --env local` — migration applied against PostgreSQL.
+- Unit tests for schemas (`tests/unit/schema/`) with testify.
+- Integration test (`tests/integration/`) that creates and retrieves the
+  three entity types against real PostgreSQL.
+- Update of `docs/index.md` with the Ent schemas table.
+- Entry in `docs/log.md`.
 
-### Excluido
+### Excluded
 
-- `ent/schema/user.go`, `org_unit.go` — se implementan en SPRINT-auth.
-- `ent/schema/episode.go`, `semantic_fact.go` — se implementan en
-  SPRINT-015 (memoria).
-- `ent/schema/package.go`, `mcp_server.go`, `agent_card.go` — sprints
-  de soporte respectivos.
-- Puertos de repositorio (`libs/ports/`) — se implementan cuando el
-  primer servicio los necesite (SPRINT-003).
-- Adaptador de storage (`adapters/storage/`) — mismo criterio.
-- Lógica de validación de grafos (ADR-016) — SPRINT-003.
-- pgvector — solo se necesita para `SemanticFact` (SPRINT-015).
+- `ent/schema/user.go`, `org_unit.go` — implemented in SPRINT-auth.
+- `ent/schema/episode.go`, `semantic_fact.go` — implemented in
+  SPRINT-015 (memory).
+- `ent/schema/package.go`, `mcp_server.go`, `agent_card.go` — respective
+  support sprints.
+- Repository ports (`libs/ports/`) — implemented when the
+  first service needs them (SPRINT-003).
+- Storage adapter (`adapters/storage/`) — same criterion.
+- Graph validation logic (ADR-016) — SPRINT-003.
+- pgvector — only needed for `SemanticFact` (SPRINT-015).
 
-## Dependencias
+## Dependencies
 
-- **SPRINT-001 completado:** necesita `go.mod` con `entgo.io/ent`,
-  directorio `ent/schema/`, `atlas.hcl`, docker-compose con PostgreSQL.
-- **Specs de referencia:** `specs/patterns/graph.json` y ADR-016 para
-  los campos de `Graph` y `Node`. ADR-015 para `Execution`.
+- **SPRINT-001 completed:** needs `go.mod` with `entgo.io/ent`,
+  `ent/schema/` directory, `atlas.hcl`, docker-compose with PostgreSQL.
+- **Reference specs:** `specs/patterns/graph.json` and ADR-016 for
+  `Graph` and `Node` fields. ADR-015 for `Execution`.
 
-## Contratos de comportamiento
+## Behavior Contracts
 
-### C1 — Validación de version semver en Graph
+### C1 — Semver version validation in Graph
 
 ```
-Given: Un Graph con campo version = "abc" (no semver)
+Given: A Graph with field version = "abc" (not semver)
 When: ent.Client.Graph.Create().SetVersion("abc").Save(ctx)
-Then: El ORM retorna error de validación
-      El error referencia el campo "version"
-      No se inserta ninguna fila en la tabla graphs
+Then: The ORM returns a validation error
+      The error references the "version" field
+      No row is inserted in the graphs table
 ```
 
-### C2 — Status por defecto de Execution
+### C2 — Default status of Execution
 
 ```
-Given: Una Execution creada sin especificar status explícitamente
+Given: An Execution created without explicitly specifying status
 When: ent.Client.Execution.Create().SetGraphID(...).Save(ctx)
-Then: El campo status del registro persistido es "pending"
-      La fila se inserta correctamente
+Then: The status field of the persisted record is "pending"
+      The row is inserted correctly
 ```
 
-### C3 — Migración Atlas produce tablas correctas
+### C3 — Atlas migration produces correct tables
 
 ```
-Given: PostgreSQL disponible y archivo de migración generado con `atlas migrate diff`
-When: Se ejecuta `atlas migrate apply --env local`
-Then: Las tablas graphs, nodes, executions existen en PostgreSQL
-      La FK nodes.graph_id → graphs.id está activa
-      La FK executions.graph_id → graphs.id está activa
-      `atlas_schema_revisions` no contiene errores
+Given: PostgreSQL available and migration file generated with `atlas migrate diff`
+When: `atlas migrate apply --env local` is executed
+Then: Tables graphs, nodes, executions exist in PostgreSQL
+      The FK nodes.graph_id → graphs.id is active
+      The FK executions.graph_id → graphs.id is active
+      `atlas_schema_revisions` contains no errors
 ```
 
-## Modelo de datos
+## Data Model
 
-### Entidad `Graph`
+### Entity `Graph`
 
-Representa la **definición** de un grafo de ejecución (la plantilla,
-no una ejecución concreta).
+Represents the **definition** of an execution graph (the template,
+not a concrete execution).
 
-| Campo | Tipo Ent | Tipo PostgreSQL | Notas |
+| Field | Ent Type | PostgreSQL Type | Notes |
 |-------|----------|-----------------|-------|
-| `id` | `uuid.UUID` | `UUID PK` | Generado con `uuid.New()` |
-| `name` | `string` | `VARCHAR(255) NOT NULL` | Nombre descriptivo |
+| `id` | `uuid.UUID` | `UUID PK` | Generated with `uuid.New()` |
+| `name` | `string` | `VARCHAR(255) NOT NULL` | Descriptive name |
 | `version` | `string` | `VARCHAR(20) NOT NULL` | Semver: `^\d+\.\d+\.\d+$` |
-| `description` | `string` (optional) | `TEXT` | Descripción libre |
-| `entry_node` | `string` | `VARCHAR(255) NOT NULL` | Key del nodo de entrada |
-| `definition` | `json.RawMessage` | `JSONB NOT NULL` | JSON completo del grafo (nodos + aristas) |
+| `description` | `string` (optional) | `TEXT` | Free description |
+| `entry_node` | `string` | `VARCHAR(255) NOT NULL` | Key of the entry node |
+| `definition` | `json.RawMessage` | `JSONB NOT NULL` | Complete JSON of the graph (nodes + edges) |
 | `memory_config` | `json.RawMessage` (optional) | `JSONB` | `semantic_search`, `episode_context` |
 | `status` | `enum` | `VARCHAR(20) NOT NULL DEFAULT 'draft'` | `draft \| active \| archived` |
-| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Inmutable, auto |
-| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto en cada update |
+| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Immutable, auto |
+| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto on each update |
 
-Edges Ent:
-- `Nodes []Node` — one Graph tiene many Nodes (`O2M`)
-- `Executions []Execution` — one Graph tiene many Executions (`O2M`)
+Ent Edges:
+- `Nodes []Node` — one Graph has many Nodes (`O2M`)
+- `Executions []Execution` — one Graph has many Executions (`O2M`)
 
-Índices:
-- `(name, version)` UNIQUE — una versión de un grafo es única.
-- `status` — para filtrar grafos activos.
+Indexes:
+- `(name, version)` UNIQUE — a version of a graph is unique.
+- `status` — to filter active graphs.
 
-### Entidad `Node`
+### Entity `Node`
 
-Representa un **nodo individual** dentro de un grafo. Se almacena
-como entidad separada para permitir consultas y métricas por nodo.
+Represents an **individual node** within a graph. Stored
+as a separate entity to allow queries and metrics per node.
 
-| Campo | Tipo Ent | Tipo PostgreSQL | Notas |
+| Field | Ent Type | PostgreSQL Type | Notes |
 |-------|----------|-----------------|-------|
-| `id` | `uuid.UUID` | `UUID PK` | Generado con `uuid.New()` |
-| `graph_id` | `uuid.UUID` | `UUID FK → graphs.id` | FK obligatoria |
-| `node_key` | `string` | `VARCHAR(255) NOT NULL` | Key en el JSON del grafo (ej: `"classifier"`) |
+| `id` | `uuid.UUID` | `UUID PK` | Generated with `uuid.New()` |
+| `graph_id` | `uuid.UUID` | `UUID FK → graphs.id` | Required FK |
+| `node_key` | `string` | `VARCHAR(255) NOT NULL` | Key in the graph JSON (e.g., `"classifier"`) |
 | `pattern` | `enum` | `VARCHAR(50) NOT NULL` | `llm_call \| tool_use \| react \| reflection \| router \| guardrail \| subgraph` |
-| `config` | `json.RawMessage` | `JSONB NOT NULL` | Configuración específica del patrón |
-| `position` | `json.RawMessage` (optional) | `JSONB` | `{"x":0,"y":0}` para editor visual |
-| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Inmutable, auto |
-| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto en cada update |
+| `config` | `json.RawMessage` | `JSONB NOT NULL` | Pattern-specific configuration |
+| `position` | `json.RawMessage` (optional) | `JSONB` | `{"x":0,"y":0}` for visual editor |
+| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Immutable, auto |
+| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto on each update |
 
-Edges Ent:
-- `Graph *Graph` — many Nodes pertenecen a one Graph (`M2O`)
+Ent Edges:
+- `Graph *Graph` — many Nodes belong to one Graph (`M2O`)
 
-Índices:
-- `(graph_id, node_key)` UNIQUE — un key de nodo es único por grafo.
-- `(graph_id, pattern)` — para filtrar nodos por patrón.
+Indexes:
+- `(graph_id, node_key)` UNIQUE — a node key is unique per graph.
+- `(graph_id, pattern)` — to filter nodes by pattern.
 
-### Entidad `Execution`
+### Entity `Execution`
 
-Representa una **instancia de ejecución** de un grafo. Es la capa
-Working Memory de ADR-015: estado vivo de la ejecución actual.
+Represents an **execution instance** of a graph. This is the
+Working Memory layer from ADR-015: live state of the current execution.
 
-| Campo | Tipo Ent | Tipo PostgreSQL | Notas |
+| Field | Ent Type | PostgreSQL Type | Notes |
 |-------|----------|-----------------|-------|
-| `id` | `uuid.UUID` | `UUID PK` | Generado con `uuid.New()` |
-| `graph_id` | `uuid.UUID` | `UUID FK → graphs.id` | FK obligatoria |
+| `id` | `uuid.UUID` | `UUID PK` | Generated with `uuid.New()` |
+| `graph_id` | `uuid.UUID` | `UUID FK → graphs.id` | Required FK |
 | `status` | `enum` | `VARCHAR(20) NOT NULL DEFAULT 'pending'` | `pending \| running \| completed \| failed \| cancelled \| interrupted` |
-| `current_node` | `string` (optional) | `VARCHAR(255)` | Nodo en ejecución activa |
-| `variables` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '{}'` | Variables acumuladas del grafo |
-| `messages` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '[]'` | Historial conversacional |
-| `node_results` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '{}'` | Resultados por nodo |
-| `error` | `string` (optional) | `TEXT` | Mensaje de error si `status=failed` |
-| `started_at` | `time.Time` (optional) | `TIMESTAMPTZ` | Cuando pasó a `running` |
-| `completed_at` | `time.Time` (optional) | `TIMESTAMPTZ` | Cuando terminó (éxito o fallo) |
-| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Inmutable, auto |
-| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto en cada update |
+| `current_node` | `string` (optional) | `VARCHAR(255)` | Node in active execution |
+| `variables` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '{}'` | Accumulated graph variables |
+| `messages` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '[]'` | Conversation history |
+| `node_results` | `json.RawMessage` | `JSONB NOT NULL DEFAULT '{}'` | Results per node |
+| `error` | `string` (optional) | `TEXT` | Error message if `status=failed` |
+| `started_at` | `time.Time` (optional) | `TIMESTAMPTZ` | When it moved to `running` |
+| `completed_at` | `time.Time` (optional) | `TIMESTAMPTZ` | When it finished (success or failure) |
+| `created_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Immutable, auto |
+| `updated_at` | `time.Time` | `TIMESTAMPTZ NOT NULL` | Auto on each update |
 
-Edges Ent:
-- `Graph *Graph` — many Executions pertenecen a one Graph (`M2O`)
+Ent Edges:
+- `Graph *Graph` — many Executions belong to one Graph (`M2O`)
 
-Índices:
-- `(graph_id, status)` — para consultar ejecuciones activas de un grafo.
-- `status` — para el orchestrator al recuperar ejecuciones pendientes.
-- `created_at` — para paginación cronológica.
+Indexes:
+- `(graph_id, status)` — to query active executions of a graph.
+- `status` — for the orchestrator when recovering pending executions.
+- `created_at` — for chronological pagination.
 
 ## TODOs
 
-### 1. [spec] Revisar graph.json y derivar campos finales
+### 1. [spec] Review graph.json and derive final fields
 
 - **Agente:** @developer
-- **Descripción:** Leer `specs/patterns/graph.json` y los patrones de
-  nodo en `specs/patterns/nodes/` para confirmar que los campos del
-  modelo de datos reflejan correctamente la spec. Cualquier discrepancia
-  entre spec y plan se resuelve a favor de la spec (ADR-007 regla 1).
-  Documentar decisiones en la sección de resultados de este sprint.
-- **Criterio de aceptación:** Los campos de las tablas anteriores están
-  alineados con `specs/patterns/graph.json`. Sin discrepancias
-  no documentadas.
-- **Depende de:** ninguno
+- **Description:** Read `specs/patterns/graph.json` and the node
+  patterns in `specs/patterns/nodes/` to confirm that the data model
+  fields correctly reflect the spec. Any discrepancy
+  between spec and plan is resolved in favor of the spec (ADR-007 rule 1).
+  Document decisions in the results section of this sprint.
+- **Acceptance criteria:** The fields in the tables above are
+  aligned with `specs/patterns/graph.json`. No undocumented discrepancies.
+- **Dependencies:** none
 - **Commit:** `docs(schema): verify graph.json alignment with data model [SPRINT-002 #1]`
 
-### 2. [data] Implementar `ent/schema/graph.go`
+### 2. [data] Implement `ent/schema/graph.go`
 
 - **Agente:** @developer
-- **Descripción:** Crear el schema Ent para `Graph` según el modelo
-  de datos de este documento. Aplicar las convenciones de ADR-007:
-  UUIDs, TIMESTAMPTZ, inmutabilidad de `created_at`, validaciones
-  Ent para `version` (regex semver) y `status` (enum).
+- **Description:** Create the Ent schema for `Graph` according to the data
+  model in this document. Apply ADR-007 conventions:
+  UUIDs, TIMESTAMPTZ, immutability of `created_at`, Ent validations
+  for `version` (semver regex) and `status` (enum).
 
-  Estructura del archivo:
+  File structure:
 
   ```go
   // Package schema contains Ent schema definitions.
@@ -228,66 +227,66 @@ Edges Ent:
   func (Graph) Indexes() []ent.Index { ... }
   ```
 
-  Validaciones a incluir:
+  Validations to include:
   - `version`: `field.String("version").Match(regexp.MustCompile(...))`
   - `status`: `field.Enum("status").Values("draft", "active", "archived").Default("draft")`
   - `definition`: `field.JSON("definition", json.RawMessage{}).SchemaType(map[string]string{"postgres": "jsonb"})`
   - `created_at`: `field.Time("created_at").Default(time.Now).Immutable()`
   - `updated_at`: `field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now)`
 
-- **Criterio de aceptación:** `go build ./ent/...` compila sin errores.
-  Schema tiene todos los campos, edges e índices del modelo de datos.
-- **Depende de:** #1
+- **Acceptance criteria:** `go build ./ent/...` compiles without errors.
+  Schema has all the fields, edges and indexes from the data model.
+- **Dependencies:** #1
 - **Commit:** `feat(schema): add Graph Ent schema [SPRINT-002 #2]`
 
-### 3. [data] Implementar `ent/schema/node.go`
+### 3. [data] Implement `ent/schema/node.go`
 
 - **Agente:** @developer
-- **Descripción:** Crear el schema Ent para `Node`. El campo `pattern`
-  es un enum con los 7 valores de ADR-016. La relación `M2O` con `Graph`
-  se define con `edge.From("graph", Graph.Type).Ref("nodes").Unique().Required()`.
+- **Description:** Create the Ent schema for `Node`. The `pattern` field
+  is an enum with the 7 values from ADR-016. The `M2O` relationship with `Graph`
+  is defined with `edge.From("graph", Graph.Type).Ref("nodes").Unique().Required()`.
 
-  Validaciones a incluir:
-  - `pattern`: enum con exactamente 7 valores:
+  Validations to include:
+  - `pattern`: enum with exactly 7 values:
     `llm_call`, `tool_use`, `react`, `reflection`, `router`,
     `guardrail`, `subgraph`.
   - `config`: JSONB not null.
   - `(graph_id, node_key)` UNIQUE via index.
 
-- **Criterio de aceptación:** `go build ./ent/...` compila. El schema
-  tiene el índice único `(graph_id, node_key)` declarado.
-- **Depende de:** #2
+- **Acceptance criteria:** `go build ./ent/...` compiles. The schema
+  has the unique index `(graph_id, node_key)` declared.
+- **Dependencies:** #2
 - **Commit:** `feat(schema): add Node Ent schema [SPRINT-002 #3]`
 
-### 4. [data] Implementar `ent/schema/execution.go`
+### 4. [data] Implement `ent/schema/execution.go`
 
 - **Agente:** @developer
-- **Descripción:** Crear el schema Ent para `Execution`. El campo
-  `status` es un enum con 6 valores (ADR-015). `variables`, `messages`
-  y `node_results` son JSONB con valores por defecto vacíos. Los campos
-  `started_at` y `completed_at` son opcionales (nillable).
+- **Description:** Create the Ent schema for `Execution`. The
+  `status` field is an enum with 6 values (ADR-015). `variables`, `messages`
+  and `node_results` are JSONB with empty default values. The fields
+  `started_at` and `completed_at` are optional (nillable).
 
-  Validaciones:
+  Validations:
   - `status`: enum `pending | running | completed | failed | cancelled | interrupted`. Default `pending`.
   - `variables`: `field.JSON("variables", json.RawMessage{}).Default(json.RawMessage("{}"))`.
   - `messages`: `field.JSON("messages", json.RawMessage{}).Default(json.RawMessage("[]"))`.
   - `node_results`: `field.JSON("node_results", json.RawMessage{}).Default(json.RawMessage("{}"))`.
   - `started_at`, `completed_at`: `.Optional().Nillable()`.
 
-- **Criterio de aceptación:** `go build ./ent/...` compila. Todos los
-  campos opcionales son nillable. Índices `(graph_id, status)` y
-  `status` declarados.
-- **Depende de:** #2
+- **Acceptance criteria:** `go build ./ent/...` compiles. All
+  optional fields are nillable. Indexes `(graph_id, status)` and
+  `status` declared.
+- **Dependencies:** #2
 - **Commit:** `feat(schema): add Execution Ent schema [SPRINT-002 #4]`
 
-### 5. [data] Ejecutar `go generate ./ent` y commitear código generado
+### 5. [data] Run `go generate ./ent` and commit generated code
 
 - **Agente:** @developer
-- **Descripción:** Ejecutar `go generate ./ent` desde la raíz del
-  proyecto. Este comando genera el cliente Ent tipado a partir de los
-  tres schemas. El código generado se commitea (ADR-007 regla 2).
+- **Description:** Run `go generate ./ent` from the project root.
+  This command generates the typed Ent client from the
+  three schemas. The generated code is committed (ADR-007 rule 2).
 
-  Verificar que se generan los archivos:
+  Verify that the following files are generated:
   ```
   ent/client.go
   ent/ent.go
@@ -295,7 +294,7 @@ Edges Ent:
   ent/graph.go, ent/graph_create.go, ent/graph_update.go, ent/graph_query.go, ent/graph_delete.go
   ent/node.go, ent/node_create.go, ent/node_update.go, ent/node_query.go, ent/node_delete.go
   ent/execution.go, ent/execution_create.go, ent/execution_update.go, ent/execution_query.go, ent/execution_delete.go
-  ent/schema/ (los tres schemas manuales)
+  ent/schema/ (the three manual schemas)
   ent/predicate/
   ent/internal/
   ent/enttest/
@@ -303,89 +302,89 @@ Edges Ent:
   ent/migrate/
   ```
 
-  **Nota:** `ent/generate.go` debe existir en el directorio `ent/`
-  con el contenido `//go:generate go run entgo.io/ent/cmd/ent generate ./schema`.
+  **Note:** `ent/generate.go` must exist in the `ent/` directory
+  with the content `//go:generate go run entgo.io/ent/cmd/ent generate ./schema`.
 
-- **Criterio de aceptación:** `go build ./...` compila después de
-  `go generate`. `go vet ./...` sin errores. El directorio `ent/`
-  tiene todos los archivos generados.
-- **Depende de:** #3, #4
+- **Acceptance criteria:** `go build ./...` compiles after
+  `go generate`. `go vet ./...` without errors. The `ent/` directory
+  has all generated files.
+- **Dependencies:** #3, #4
 - **Commit:** `feat(schema): generate Ent client for Graph, Node, Execution [SPRINT-002 #5]`
 
-### 6. [test] Tests unitarios de schemas (Red → Green)
+### 6. [test] Schema unit tests (Red → Green)
 
 - **Agente:** @qa
-- **Descripción:** Crear `tests/unit/schema/graph_test.go`,
-  `node_test.go` y `execution_test.go` siguiendo TDD (ADR-002).
-  Usar `ent/enttest` con SQLite en memoria para tests sin PostgreSQL.
+- **Description:** Create `tests/unit/schema/graph_test.go`,
+  `node_test.go` and `execution_test.go` following TDD (ADR-002).
+  Use `ent/enttest` with in-memory SQLite for tests without PostgreSQL.
 
-  Tests a implementar:
+  Tests to implement:
 
   **graph_test.go:**
   ```go
-  // TestGraphCreate verifica que se puede crear un Graph válido.
+  // TestGraphCreate verifies that a valid Graph can be created.
   func TestGraphCreate(t *testing.T)
 
-  // TestGraphVersionValidation verifica que una versión no semver
-  // es rechazada por el schema.
+  // TestGraphVersionValidation verifies that a non-semver version
+  // is rejected by the schema.
   func TestGraphVersionValidation(t *testing.T)
 
-  // TestGraphStatusDefault verifica que el status por defecto es "draft".
+  // TestGraphStatusDefault verifies that the default status is "draft".
   func TestGraphStatusDefault(t *testing.T)
 
-  // TestGraphUniqueNameVersion verifica que (name, version) es único.
+  // TestGraphUniqueNameVersion verifies that (name, version) is unique.
   func TestGraphUniqueNameVersion(t *testing.T)
   ```
 
   **node_test.go:**
   ```go
-  // TestNodeCreate verifica que se puede crear un Node válido.
+  // TestNodeCreate verifies that a valid Node can be created.
   func TestNodeCreate(t *testing.T)
 
-  // TestNodePatternValidation verifica que un patrón inválido
-  // es rechazado.
+  // TestNodePatternValidation verifies that an invalid pattern
+  // is rejected.
   func TestNodePatternValidation(t *testing.T)
 
-  // TestNodeUniqueKeyPerGraph verifica que (graph_id, node_key) es único.
+  // TestNodeUniqueKeyPerGraph verifies that (graph_id, node_key) is unique.
   func TestNodeUniqueKeyPerGraph(t *testing.T)
 
-  // TestNodeBelongsToGraph verifica la relación M2O con Graph.
+  // TestNodeBelongsToGraph verifies the M2O relationship with Graph.
   func TestNodeBelongsToGraph(t *testing.T)
   ```
 
   **execution_test.go:**
   ```go
-  // TestExecutionCreate verifica que se puede crear una Execution válida.
+  // TestExecutionCreate verifies that a valid Execution can be created.
   func TestExecutionCreate(t *testing.T)
 
-  // TestExecutionStatusDefault verifica que el status por defecto
-  // es "pending".
+  // TestExecutionStatusDefault verifies that the default status
+  // is "pending".
   func TestExecutionStatusDefault(t *testing.T)
 
-  // TestExecutionJSONDefaults verifica que variables, messages y
-  // node_results tienen valores por defecto válidos.
+  // TestExecutionJSONDefaults verifies that variables, messages and
+  // node_results have valid default values.
   func TestExecutionJSONDefaults(t *testing.T)
 
-  // TestExecutionOptionalFields verifica que started_at y
-  // completed_at son opcionales.
+  // TestExecutionOptionalFields verifies that started_at and
+  // completed_at are optional.
   func TestExecutionOptionalFields(t *testing.T)
   ```
 
-  Usar `enttest.Open(t, "sqlite3", "file:ent?mode=memory&...")`.
-  Añadir `github.com/mattn/go-sqlite3` al `go.mod` solo para tests
+  Use `enttest.Open(t, "sqlite3", "file:ent?mode=memory&...")`.
+  Add `github.com/mattn/go-sqlite3` to `go.mod` only for tests
   (tag `sqlite3`).
 
-- **Criterio de aceptación:** `go test ./tests/unit/schema/...` pasa
-  con todos los tests en PASS. Los tests de validación fallan si se
-  elimina la validación del schema (verificación activa).
-- **Depende de:** #5
+- **Acceptance criteria:** `go test ./tests/unit/schema/...` passes
+  with all tests in PASS. Validation tests fail if the schema
+  validation is removed (active verification).
+- **Dependencies:** #5
 - **Commit:** `test(schema): add unit tests for Graph, Node, Execution schemas [SPRINT-002 #6]`
 
-### 7. [infra] Generar migración con Atlas
+### 7. [infra] Generate migration with Atlas
 
 - **Agente:** @developer
-- **Descripción:** Con docker-compose levantado (`make docker-up`),
-  ejecutar Atlas para generar la primera migración SQL:
+- **Description:** With docker-compose running (`make docker-up`),
+  run Atlas to generate the first SQL migration:
 
   ```bash
   atlas migrate diff init_graph_node_execution \
@@ -394,43 +393,43 @@ Edges Ent:
       --dev-url "docker://postgres/16/dev?search_path=public"
   ```
 
-  O bien, usando `atlas.hcl`:
+  Or, using `atlas.hcl`:
 
   ```bash
   atlas migrate diff init_graph_node_execution --env local
   ```
 
-  Revisar el SQL generado en `migrations/` antes de commitear.
-  El SQL debe incluir:
-  - `CREATE TABLE graphs (...)` con todos los campos y constraints.
-  - `CREATE TABLE nodes (...)` con FK a `graphs`.
-  - `CREATE TABLE executions (...)` con FK a `graphs`.
-  - Índices declarados en los schemas.
-  - Constraints de enum para `status` y `pattern`.
+  Review the SQL generated in `migrations/` before committing.
+  The SQL must include:
+  - `CREATE TABLE graphs (...)` with all fields and constraints.
+  - `CREATE TABLE nodes (...)` with FK to `graphs`.
+  - `CREATE TABLE executions (...)` with FK to `graphs`.
+  - Indexes declared in the schemas.
+  - Enum constraints for `status` and `pattern`.
 
-  Aplicar linting de Atlas:
+  Apply Atlas linting:
   ```bash
   atlas migrate lint --env local
   ```
-  No debe reportar cambios destructivos ni bloqueos.
+  It must not report destructive changes or locks.
 
-- **Criterio de aceptación:** Existe `migrations/YYYYMMDDHHMMSS_init_graph_node_execution.sql`
-  con el SQL correcto. `atlas migrate lint` termina sin errores.
-  El SQL es legible y refleja exactamente los schemas.
-- **Depende de:** #5, docker-compose levantado
+- **Acceptance criteria:** `migrations/YYYYMMDDHHMMSS_init_graph_node_execution.sql`
+  exists with the correct SQL. `atlas migrate lint` finishes without errors.
+  The SQL is readable and exactly reflects the schemas.
+- **Dependencies:** #5, docker-compose running
 - **Commit:** `chore(migration): add initial migration for Graph, Node, Execution [SPRINT-002 #7]`
 
-### 8. [infra] Aplicar migración y verificar contra PostgreSQL
+### 8. [infra] Apply migration and verify against PostgreSQL
 
 - **Agente:** @developer
-- **Descripción:** Aplicar la migración al PostgreSQL del docker-compose
-  y verificar el resultado:
+- **Description:** Apply the migration to the docker-compose PostgreSQL
+  and verify the result:
 
   ```bash
   atlas migrate apply --env local
   ```
 
-  Después verificar que las tablas existen con la estructura correcta:
+  Then verify that the tables exist with the correct structure:
 
   ```bash
   docker compose exec postgres psql -U dago -d dago \
@@ -440,142 +439,142 @@ Edges Ent:
       -c "\d executions"
   ```
 
-  Verificar específicamente:
-  - Las tres tablas existen.
-  - Los campos UUID son de tipo `uuid`.
-  - Los campos JSON/JSONB son de tipo `jsonb`.
-  - Los campos de tiempo son `timestamptz`.
-  - Las FKs de `nodes.graph_id` y `executions.graph_id` apuntan a `graphs.id`.
-  - Los índices únicos existen.
+  Verify specifically:
+  - The three tables exist.
+  - UUID fields are of type `uuid`.
+  - JSON/JSONB fields are of type `jsonb`.
+  - Time fields are `timestamptz`.
+  - FKs for `nodes.graph_id` and `executions.graph_id` point to `graphs.id`.
+  - Unique indexes exist.
 
-- **Criterio de aceptación:** `atlas migrate apply` termina con
-  `Applied N migration(s)`. Las tres tablas existen en PostgreSQL con
-  la estructura correcta verificada por los comandos `\d`.
-- **Depende de:** #7
-- **Commit:** no aplica (la migración ya fue commiteada en #7)
+- **Acceptance criteria:** `atlas migrate apply` finishes with
+  `Applied N migration(s)`. The three tables exist in PostgreSQL with
+  the correct structure verified by the `\d` commands.
+- **Dependencies:** #7
+- **Commit:** not applicable (the migration was already committed in #7)
 
-### 9. [test] Test de integración contra PostgreSQL real
+### 9. [test] Integration test against real PostgreSQL
 
 - **Agente:** @qa
-- **Descripción:** Crear `tests/integration/schema_integration_test.go`
-  con build tag `integration`. El test se conecta al PostgreSQL del
-  docker-compose y verifica persistencia real.
+- **Description:** Create `tests/integration/schema_integration_test.go`
+  with build tag `integration`. The test connects to the docker-compose
+  PostgreSQL and verifies real persistence.
 
   ```go
   //go:build integration
 
   package integration_test
 
-  // TestGraphNodeExecutionPersistence verifica que se puede:
-  // 1. Crear un Graph con entidad Ent.
-  // 2. Crear 2 Nodes asociados al Graph.
-  // 3. Crear una Execution asociada al Graph.
-  // 4. Recuperar el Graph con sus Nodes y Executions.
-  // 5. Actualizar el status de la Execution a "running".
-  // 6. Verificar que los JSON fields se persisten y recuperan correctamente.
+  // TestGraphNodeExecutionPersistence verifies that you can:
+  // 1. Create a Graph with Ent entity.
+  // 2. Create 2 Nodes associated with the Graph.
+  // 3. Create an Execution associated with the Graph.
+  // 4. Retrieve the Graph with its Nodes and Executions.
+  // 5. Update the Execution status to "running".
+  // 6. Verify that JSON fields are persisted and retrieved correctly.
   func TestGraphNodeExecutionPersistence(t *testing.T)
 
-  // TestExecutionStatusTransitions verifica las transiciones de estado
-  // válidas de una Execution.
+  // TestExecutionStatusTransitions verifies the valid state transitions
+  // of an Execution.
   func TestExecutionStatusTransitions(t *testing.T)
   ```
 
-  La cadena de conexión se lee de la variable de entorno
-  `DATABASE_URL` (con fallback a `postgres://dago:dago@localhost:5432/dago?sslmode=disable`).
+  The connection string is read from the environment variable
+  `DATABASE_URL` (with fallback to `postgres://dago:dago@localhost:5432/dago?sslmode=disable`).
 
-  **Prerequisito:** `make docker-up` y migración aplicada.
+  **Prerequisite:** `make docker-up` and migration applied.
 
-- **Criterio de aceptación:** `make test-integration` (con docker-compose
-  activo) pasa con todos los tests en PASS. Falla si PostgreSQL no está
-  disponible (no silencia el error — el test debe ser activo).
-- **Depende de:** #6, #8
+- **Acceptance criteria:** `make test-integration` (with docker-compose
+  active) passes with all tests in PASS. Fails if PostgreSQL is not
+  available (does not silence the error — the test must be active).
+- **Dependencies:** #6, #8
 - **Commit:** `test(integration): add PostgreSQL integration tests for schemas [SPRINT-002 #9]`
 
-### 10. [docs] Actualizar docs/index.md y docs/log.md
+### 10. [docs] Update docs/index.md and docs/log.md
 
 - **Agente:** @docs
-- **Descripción:** Actualizar la sección "Dominio" de `docs/index.md`
-  marcando los tres schemas como implementados. Añadir enlace al
-  documento de sprint SPRINT-002. Actualizar `docs/log.md` con la
-  entrada de cierre del sprint.
-- **Criterio de aceptación:** `docs/index.md` refleja los schemas
-  creados. SPRINT-002 aparece en la tabla de sprints. `docs/log.md`
-  tiene la entrada con el resultado del sprint.
-- **Depende de:** #9
+- **Description:** Update the "Domain" section of `docs/index.md`
+  marking the three schemas as implemented. Add a link to the
+  SPRINT-002 sprint document. Update `docs/log.md` with the
+  sprint closing entry.
+- **Acceptance criteria:** `docs/index.md` reflects the created schemas.
+  SPRINT-002 appears in the sprints table. `docs/log.md`
+  has the entry with the sprint result.
+- **Dependencies:** #9
 - **Commit:** `docs(schema): update index with SPRINT-002 results [SPRINT-002 #10]`
 
-## Matriz de trazabilidad
+## Traceability Matrix
 
-| Spec / ADR | Regla | TODO | Artefacto | Verificado por |
-|------------|-------|------|-----------|----------------|
-| ADR-007 regla 1 | Schema Ent = spec de datos | #1 | alineación con `graph.json` | revisión TODO #1 |
-| ADR-007 regla 2 | `go generate` → commitear | #5 | `ent/` generado | `go build ./...` |
-| ADR-007 regla 3 | Atlas genera migraciones | #7 | `migrations/` | `atlas migrate lint` |
-| ADR-007 regla 4 | Linting de migraciones en CI | #7 | `atlas migrate lint` | sin errores |
-| ADR-007 regla 8 | UUIDs + TIMESTAMPTZ | #2, #3, #4 | campos de schemas | `\d` PostgreSQL |
-| ADR-016 | 7 patrones de nodo | #3 | `Node.pattern` enum | `TestNodePatternValidation` |
-| ADR-016 | Grafo: id, name, version, entry_node | #2 | `Graph` schema | `TestGraphCreate` |
+| Spec / ADR | Rule | TODO | Artifact | Verified by |
+|------------|------|------|----------|-------------|
+| ADR-007 rule 1 | Ent schema = data spec | #1 | alignment with `graph.json` | TODO #1 review |
+| ADR-007 rule 2 | `go generate` → commit | #5 | generated `ent/` | `go build ./...` |
+| ADR-007 rule 3 | Atlas generates migrations | #7 | `migrations/` | `atlas migrate lint` |
+| ADR-007 rule 4 | Migration linting in CI | #7 | `atlas migrate lint` | no errors |
+| ADR-007 rule 8 | UUIDs + TIMESTAMPTZ | #2, #3, #4 | schema fields | `\d` PostgreSQL |
+| ADR-016 | 7 node patterns | #3 | `Node.pattern` enum | `TestNodePatternValidation` |
+| ADR-016 | Graph: id, name, version, entry_node | #2 | `Graph` schema | `TestGraphCreate` |
 | ADR-015 | Working Memory: status, variables, messages, node_results | #4 | `Execution` schema | `TestExecutionCreate` |
-| ADR-015 | Nunca borrar — solo superseder | #4 | sin `DeleteExecution` en uso | tests de integración |
-| `specs/patterns/graph.json` | version semver `^\d+\.\d+\.\d+$` | #2 | `Graph.version` validado | `TestGraphVersionValidation` |
-| ADR-002 | TDD (Red → Green) | #6, #9 | tests antes de TODO #5 | `make test` |
-| ADR-001 | Tipos Ent no salen del adaptador | #2–#4 | schemas en `ent/schema/` | code review |
-| ADR-003 | Funciones ≤20 líneas | #2–#4 | schemas Go | `make lint` |
+| ADR-015 | Never delete — only supersede | #4 | no `DeleteExecution` in use | integration tests |
+| `specs/patterns/graph.json` | semver version `^\d+\.\d+\.\d+$` | #2 | `Graph.version` validated | `TestGraphVersionValidation` |
+| ADR-002 | TDD (Red → Green) | #6, #9 | tests before TODO #5 | `make test` |
+| ADR-001 | Ent types do not leave the adapter | #2–#4 | schemas in `ent/schema/` | code review |
+| ADR-003 | Functions ≤20 lines | #2–#4 | Go schemas | `make lint` |
 
-## Criterios de aceptación del sprint
+## Sprint Acceptance Criteria
 
 ```bash
-# 1. El código Ent compila
+# 1. Ent code compiles
 go build ./ent/...
 
-# 2. Tests unitarios pasan (sin Docker)
+# 2. Unit tests pass (without Docker)
 go test ./tests/unit/schema/...
 
-# 3. Linter sin errores
+# 3. Linter without errors
 make lint
 
-# 4. Migración generada y sin errores de lint
+# 4. Migration generated and without lint errors
 atlas migrate lint --env local
 
-# 5. Migración aplicada
+# 5. Migration applied
 atlas migrate apply --env local
 
-# 6. Tablas verificadas en PostgreSQL
+# 6. Tables verified in PostgreSQL
 docker compose exec postgres psql -U dago -d dago -c "\dt"
 
-# 7. Tests de integración pasan (con Docker)
+# 7. Integration tests pass (with Docker)
 make test-integration
 
-# 8. Pipeline CI completa
+# 8. Complete CI pipeline
 make ci
 ```
 
-Adicionalmente:
-- `migrations/` tiene exactamente un fichero `*_init_graph_node_execution.sql`.
-- El SQL no contiene `DROP`, `DELETE` ni cambios destructivos.
-- Los tres schemas tienen `created_at` inmutable y `updated_at` auto.
-- Los campos JSON usan tipo `jsonb` en PostgreSQL (no `json`).
-- `Node.pattern` solo acepta los 7 valores de ADR-016.
-- `Execution.status` solo acepta los 6 valores de ADR-015.
+Additionally:
+- `migrations/` has exactly one file `*_init_graph_node_execution.sql`.
+- The SQL does not contain `DROP`, `DELETE` or destructive changes.
+- The three schemas have `created_at` immutable and `updated_at` auto.
+- JSON fields use type `jsonb` in PostgreSQL (not `json`).
+- `Node.pattern` only accepts the 7 values from ADR-016.
+- `Execution.status` only accepts the 6 values from ADR-015.
 
-## Resultado del sprint
+## Sprint Result
 
-_Se completa al finalizar el sprint._
+_Completed at the end of the sprint._
 
-### Tests ejecutados
+### Tests executed
 
 - Total: —
 - Passed: —
 - Failed: —
 
-### Ficheros creados/modificados
+### Files created/modified
 
-_Lista generada al cierre._
+_List generated at close._
 
-### Decisiones tomadas durante el sprint
+### Decisions made during the sprint
 
-_Cualquier decisión no prevista que requiera un ADR o nota se documenta aquí._
+_Any unforeseen decision that requires an ADR or note is documented here._
 
-### Observaciones del reviewer
+### Reviewer notes
 
-_Pendiente de revisión._
+_Pending review._

@@ -1,138 +1,138 @@
-# SPRINT-009: Executor — Handler del patrón llm_call
+# SPRINT-009: Executor — llm_call pattern handler
 
 ## Metadata
 
-- **Fecha inicio:** 2026-04-30
-- **Fecha fin estimada:** 2026-05-02
-- **Estado:** planificado
-- **ADRs aplicados:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-011, ADR-013, ADR-014, ADR-016, ADR-020
-- **Specs afectadas:** specs/asyncapi.yaml (operaciones executor), specs/patterns/nodes/llm_call.json
-- **Agente planificador:** planner
-- **Revisado por:** pendiente
-- **Bloqueado por:** SPRINT-007 (eventbus), SPRINT-008 (LLMClient + errores de dominio)
-- **Bloquea:** SPRINT-010 (orchestrator state machine consume node.executed)
+- **Start date:** 2026-04-30
+- **Estimated end date:** 2026-05-02
+- **Status:** planned
+- **Applied ADRs:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-011, ADR-013, ADR-014, ADR-016, ADR-020
+- **Affected specs:** specs/asyncapi.yaml (executor operations), specs/patterns/nodes/llm_call.json
+- **Planning agent:** planner
+- **Reviewed by:** pending
+- **Blocked by:** SPRINT-007 (eventbus), SPRINT-008 (LLMClient + domain errors)
+- **Blocks:** SPRINT-010 (orchestrator state machine consumes node.executed)
 
-## Objetivo
+## Objective
 
-Implementar el servicio `executor` como worker de eventos: consume `node.execute.requested`
-del stream Valkey, detecta el patrón `llm_call`, construye la petición LLM aplicando
-`input_mapping`, invoca `LLMClient.Complete`, aplica `output_mapping` sobre la respuesta
-y publica `node.executed` o `node.execute.failed` según el resultado. Al finalizar,
-el executor puede ejecutar nodos `llm_call` de extremo a extremo con Anthropic, Ollama
-y `FakeLLMClient` en tests.
+Implement the `executor` service as an event worker: consumes `node.execute.requested`
+from the Valkey stream, detects the `llm_call` pattern, builds the LLM request applying
+`input_mapping`, invokes `LLMClient.Complete`, applies `output_mapping` on the response
+and publishes `node.executed` or `node.execute.failed` based on the result. At completion,
+the executor can run `llm_call` nodes end-to-end with Anthropic, Ollama
+and `FakeLLMClient` in tests.
 
-## Alcance
+## Scope
 
-**Entra:**
-- Operaciones del executor en `specs/asyncapi.yaml`:
+**Included:**
+- Executor operations in `specs/asyncapi.yaml`:
   - `executorConsumeNodeExecuteRequested` (receive)
   - `executorPublishNodeExecuted` (send)
   - `executorPublishNodeExecuteFailed` (send)
-- Schemas de payload: `NodeExecuteRequestedData`, `NodeExecutedData`, `NodeExecuteFailedData`
-- Estructura interna del servicio `services/executor/`:
-  - `main.go` — wiring: config, puertos, arranque del consumer
-  - `internal/handler/node_handler.go` — interfaz `NodeHandler`
+- Payload schemas: `NodeExecuteRequestedData`, `NodeExecutedData`, `NodeExecuteFailedData`
+- Internal structure of `services/executor/`:
+  - `main.go` — wiring: config, ports, consumer startup
+  - `internal/handler/node_handler.go` — `NodeHandler` interface
   - `internal/handler/llm_call.go` — `LLMCallHandler` + `LLMCallConfig`
-  - `internal/handler/dispatcher.go` — `Dispatcher` despacha por `pattern`
+  - `internal/handler/dispatcher.go` — `Dispatcher` dispatches by `pattern`
   - `internal/mapping/input.go` — `ApplyInputMapping`
   - `internal/mapping/output.go` — `ApplyOutputMapping`
   - `internal/consumer/node_execute.go` — `NodeExecuteConsumer`
-- Evaluador de paths simplificado: `state.variables.<name>`, `state.messages[-1].content`,
+- Simplified path evaluator: `state.variables.<name>`, `state.messages[-1].content`,
   `output.content`, `output.stop_reason`
-- Mapeo de errores LLM: `ErrRateLimited`/`ErrProviderUnavailable` → retryable; `ErrUnauthorized` → no retryable
-- 10 tests unitarios sin red (FakeLLMClient + fakePublisher inline)
-- 1 test de integración (build tag `integration`) con Valkey real
-- Variables de entorno en `.env.example`, target `make test-executor`
+- LLM error mapping: `ErrRateLimited`/`ErrProviderUnavailable` → retryable; `ErrUnauthorized` → non-retryable
+- 10 unit tests without network (FakeLLMClient + inline fakePublisher)
+- 1 integration test (build tag `integration`) with real Valkey
+- Environment variables in `.env.example`, `make test-executor` target
 
-**No entra:**
-- Otros patrones de nodo (`tool_use`, `react`, `reflection`, `router`, `guardrail`, `subgraph`)
-- Streaming de tokens — requiere ADR separado
-- Evaluador de expresiones arbitrarias para mappings — sprint futuro
-- Persistencia del estado de ejecución en Ent — requiere SPRINT-002
-- Retry con backoff propio — se usa la política DLQ de SPRINT-007
-- Tests contra la API real de Anthropic/Ollama — excluidos de `make ci`
-- Telemetría OpenTelemetry — sprint dedicado futuro
+**Excluded:**
+- Other node patterns (`tool_use`, `react`, `reflection`, `router`, `guardrail`, `subgraph`)
+- Token streaming — requires a separate ADR
+- Arbitrary expression evaluator for mappings — future sprint
+- Execution state persistence in Ent — requires SPRINT-002
+- Own retry with backoff — uses SPRINT-007 DLQ policy
+- Tests against real Anthropic/Ollama API — excluded from `make ci`
+- OpenTelemetry telemetry — dedicated future sprint
 
-## Dependencias
+## Dependencies
 
-- **Bloqueado por:**
+- **Blocked by:**
   - SPRINT-007 (`libs/ports/eventbus.go`, `adapters/eventbus/valkey/`, DLQ, ACK/NACK)
   - SPRINT-008 (`libs/ports/llm.go`, `adapters/llm/anthropic/`, `adapters/llm/ollama/`,
-    `adapters/llm/fake/`, errores `ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable`)
-- **Paralelo a:** SPRINT-005, SPRINT-006 (dashboard — sin conflicto de ficheros)
-- **Bloquea:** executor patrón `tool_use` (SPRINT-010+), tests end-to-end orchestrator→executor
+    `adapters/llm/fake/`, errors `ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable`)
+- **Parallel with:** SPRINT-005, SPRINT-006 (dashboard — no file conflicts)
+- **Blocks:** executor `tool_use` pattern (SPRINT-010+), end-to-end orchestrator→executor tests
 
-## Contratos de comportamiento
+## Behavior Contracts
 
-### C1 — `LLMCallHandler.Handle` — éxito sin mappings
+### C1 — `LLMCallHandler.Handle` — success without mappings
 
 ```
-Given: Evento node.execute.requested con pattern="llm_call", config={model:"claude-sonnet-4-6",max_tokens:100}
-      FakeLLMClient configurado con Responses=[{Content:"respuesta ok",StopReason:"end_turn"}]
-When: LLMCallHandler.Handle(ctx, data) se ejecuta
-Then: Se publica exactamente un evento en el stream "node.executed"
-      variables_update["response"] == "respuesta ok"
+Given: node.execute.requested event with pattern="llm_call", config={model:"claude-sonnet-4-6",max_tokens:100}
+      FakeLLMClient configured with Responses=[{Content:"ok response",StopReason:"end_turn"}]
+When: LLMCallHandler.Handle(ctx, data) is executed
+Then: Exactly one event is published to the "node.executed" stream
+      variables_update["response"] == "ok response"
       duration_ms >= 0
-      Handler retorna nil (consumer hace ACK)
+      Handler returns nil (consumer ACKs)
 ```
 
 ### C2 — `LLMCallHandler.Handle` — ErrRateLimited → retryable
 
 ```
-Given: FakeLLMClient que retorna fmt.Errorf("test: %w", domain.ErrRateLimited)
+Given: FakeLLMClient that returns fmt.Errorf("test: %w", domain.ErrRateLimited)
 When: LLMCallHandler.Handle(ctx, data)
-Then: Se publica evento en "node.execute.failed" con error_code="rate_limited", retryable=true
-      Handler retorna error (consumer NO hace ACK → NACK en Valkey)
-      No se publica evento en "node.executed"
+Then: Event published to "node.execute.failed" with error_code="rate_limited", retryable=true
+      Handler returns error (consumer does NOT ACK → NACK in Valkey)
+      No event published to "node.executed"
 ```
 
-### C3 — `ApplyInputMapping` — path state.variables
+### C3 — `ApplyInputMapping` — state.variables path
 
 ```
-Given: inputMapping={"user_message":"state.variables.query"}, variables={"query":"¿qué es dago?"}
+Given: inputMapping={"user_message":"state.variables.query"}, variables={"query":"what is dago?"}
 When: ApplyInputMapping(inputMapping, variables, [])
-Then: Retorna []ports.Message{{Role:"user", Content:"¿qué es dago?"}}
-      No retorna error
-      La función es pura: misma entrada → mismo resultado
+Then: Returns []ports.Message{{Role:"user", Content:"what is dago?"}}
+      Returns no error
+      The function is pure: same input → same result
 ```
 
 ## TODOs
 
-### TODO #1 — spec: Definir operaciones del executor en specs/asyncapi.yaml
+### TODO #1 — spec: Define executor operations in specs/asyncapi.yaml
 
 **Agente:** @developer
 
-**Descripción:** Añadir en la sección `operations` las tres operaciones del executor y
-en `components/schemas` los tres payloads con campos tipados. Los canales ya existen;
-lo que falta son los schemas de datos completos y el enlace operación-canal.
+**Description:** Add the three executor operations to the `operations` section and
+the three payloads with typed fields to `components/schemas`. Channels already exist;
+what is missing are the complete data schemas and the operation-channel link.
 
-**Archivos afectados:**
+**Affected files:**
 - `specs/asyncapi.yaml`
 
-**Operaciones a añadir:**
+**Operations to add:**
 ```yaml
 operations:
   executorConsumeNodeExecuteRequested:
     action: receive
     channel:
       $ref: '#/channels/nodeExecuteRequested'
-    summary: Executor consume petición de ejecución de nodo
+    summary: Executor consumes node execution request
   executorPublishNodeExecuted:
     action: send
     channel:
       $ref: '#/channels/nodeExecuted'
-    summary: Executor publica resultado exitoso de ejecución de nodo
+    summary: Executor publishes successful node execution result
   executorPublishNodeExecuteFailed:
     action: send
     channel:
       $ref: '#/channels/nodeExecuteFailed'
-    summary: Executor publica fallo en ejecución de nodo
+    summary: Executor publishes node execution failure
 ```
 
-**Schemas a añadir:**
+**Schemas to add:**
 
 `NodeExecuteRequestedData`: `execution_id`, `graph_id`, `node_id`, `node_key`, `pattern`,
-`config` (object), `variables` (object), `messages` (array de `{role, content}`), `auth` (string)
+`config` (object), `variables` (object), `messages` (array of `{role, content}`), `auth` (string)
 
 `NodeExecutedData`: `execution_id`, `graph_id`, `node_id`, `node_key`,
 `output` (object), `variables_update` (object), `duration_ms` (integer)
@@ -141,139 +141,139 @@ operations:
 `error` (string), `error_code` (string: "rate_limited"|"provider_unavailable"|"unauthorized"|"execution_error"),
 `retryable` (boolean)
 
-**Criterios de aceptación:**
-- `asyncapi validate specs/asyncapi.yaml` sin errores
-- Cada operación referencia correctamente su canal
-- Los tres schemas tienen todos los campos con tipos correctos
+**Acceptance criteria:**
+- `asyncapi validate specs/asyncapi.yaml` with no errors
+- Each operation correctly references its channel
+- All three schemas have all fields with correct types
 
-**Test asociado:** — (spec pura)
+**Associated test:** — (pure spec)
 
 ---
 
-### TODO #2 — spec: Verificar specs/patterns/nodes/llm_call.json
+### TODO #2 — spec: Verify specs/patterns/nodes/llm_call.json
 
 **Agente:** @developer
 
-**Descripción:** Revisar que `llm_call.json` documenta defaults (`temperature: 0.7`,
-`max_tokens: 2048`) y el alcance de los paths soportados en `input_mapping`/`output_mapping`
-para SPRINT-009. Solo enriquecer descripciones — no cambiar la estructura.
+**Description:** Review that `llm_call.json` documents defaults (`temperature: 0.7`,
+`max_tokens: 2048`) and the scope of supported paths in `input_mapping`/`output_mapping`
+for SPRINT-009. Only enrich descriptions — do not change the structure.
 
-**Archivos afectados:**
+**Affected files:**
 - `specs/patterns/nodes/llm_call.json`
 
-**Criterios de aceptación:**
-- El schema documenta los defaults y los paths soportados
-- La validación JSON Schema del schema no reporta errores
+**Acceptance criteria:**
+- Schema documents the defaults and supported paths
+- JSON Schema validation reports no errors
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-### TODO #3 — test: Tests Red de ApplyInputMapping
+### TODO #3 — test: Red tests for ApplyInputMapping
 
 **Agente:** @qa
 
-**Descripción:** Escribir los tests de `mapping/input.go` ANTES de implementarlo (Red).
+**Description:** Write tests for `mapping/input.go` BEFORE implementing it (Red).
 
-**Archivos afectados:**
-- `services/executor/internal/mapping/input_test.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/mapping/input_test.go` (new)
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 package mapping_test
 
 // TestApplyInputMapping_NoMapping
-// Entrada: inputMapping nil, variables {}, messages [{role:"user",content:"hola"}]
-// Esperado: []ports.Message{{Role:"user",Content:"hola"}}
+// Input: inputMapping nil, variables {}, messages [{role:"user",content:"hello"}]
+// Expected: []ports.Message{{Role:"user",Content:"hello"}}
 
 // TestApplyInputMapping_EmptyMapping
-// Entrada: inputMapping {}, messages [{role:"user",content:"test"}]
-// Esperado: messages sin modificar (igual que sin mapping)
+// Input: inputMapping {}, messages [{role:"user",content:"test"}]
+// Expected: messages unchanged (same as without mapping)
 
 // TestApplyInputMapping_StateMessagesLast
-// Entrada: inputMapping {"user_message":"state.messages[-1].content"}
-//          messages [{role:"user",content:"primero"},{role:"assistant",content:"resp"},{role:"user",content:"segundo"}]
-// Esperado: []ports.Message con último mensaje content="segundo"
+// Input: inputMapping {"user_message":"state.messages[-1].content"}
+//        messages [{role:"user",content:"first"},{role:"assistant",content:"resp"},{role:"user",content:"second"}]
+// Expected: []ports.Message with last message content="second"
 
 // TestApplyInputMapping_StateVariables
-// Entrada: inputMapping {"user_message":"state.variables.query"}
-//          variables {"query":"¿qué es dago?"}
-// Esperado: []ports.Message{{Role:"user",Content:"¿qué es dago?"}}
+// Input: inputMapping {"user_message":"state.variables.query"}
+//        variables {"query":"what is dago?"}
+// Expected: []ports.Message{{Role:"user",Content:"what is dago?"}}
 
 // TestApplyInputMapping_StateVariables_Missing
-// Entrada: inputMapping {"user_message":"state.variables.nonexistent"}, variables {}
-// Esperado: error descriptivo (variable no existe)
+// Input: inputMapping {"user_message":"state.variables.nonexistent"}, variables {}
+// Expected: descriptive error (variable does not exist)
 
 // TestApplyInputMapping_UnknownPath
-// Entrada: inputMapping {"x":"state.unknown.path"}
-// Esperado: error (path no soportado)
+// Input: inputMapping {"x":"state.unknown.path"}
+// Expected: error (unsupported path)
 ```
 
-**Criterios de aceptación:**
-- Los 6 tests fallan en rojo (Red confirmado)
-- Solo importan `libs/ports/` — sin infraestructura
+**Acceptance criteria:**
+- All 6 tests fail in red (Red confirmed)
+- Only import `libs/ports/` — no infrastructure
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #4 — test: Tests Red de ApplyOutputMapping
+### TODO #4 — test: Red tests for ApplyOutputMapping
 
 **Agente:** @qa
 
-**Descripción:** Escribir los tests de `mapping/output.go` ANTES de implementarlo (Red).
+**Description:** Write tests for `mapping/output.go` BEFORE implementing it (Red).
 
-**Archivos afectados:**
-- `services/executor/internal/mapping/output_test.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/mapping/output_test.go` (new)
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 package mapping_test
 
 // TestApplyOutputMapping_NoMapping
-// Entrada: outputMapping nil, response.Content="respuesta generada"
-// Esperado: map[string]any{"response":"respuesta generada"}
+// Input: outputMapping nil, response.Content="generated response"
+// Expected: map[string]any{"response":"generated response"}
 
 // TestApplyOutputMapping_ContentToVariable
-// Entrada: outputMapping {"state.variables.summary":"output.content"}, Content="resumen"
-// Esperado: map[string]any{"summary":"resumen"}
+// Input: outputMapping {"state.variables.summary":"output.content"}, Content="summary"
+// Expected: map[string]any{"summary":"summary"}
 
 // TestApplyOutputMapping_StopReasonToVariable
-// Entrada: outputMapping {"state.variables.reason":"output.stop_reason"}, StopReason="max_tokens"
-// Esperado: map[string]any{"reason":"max_tokens"}
+// Input: outputMapping {"state.variables.reason":"output.stop_reason"}, StopReason="max_tokens"
+// Expected: map[string]any{"reason":"max_tokens"}
 
 // TestApplyOutputMapping_MultipleTargets
-// Entrada: outputMapping {"state.variables.text":"output.content","state.variables.stop":"output.stop_reason"}
-// Esperado: map con ambas claves correctas
+// Input: outputMapping {"state.variables.text":"output.content","state.variables.stop":"output.stop_reason"}
+// Expected: map with both keys correct
 
 // TestApplyOutputMapping_UnknownSourcePath
-// Entrada: outputMapping {"state.variables.x":"output.unknown_field"}
-// Esperado: error (campo de output no soportado)
+// Input: outputMapping {"state.variables.x":"output.unknown_field"}
+// Expected: error (unsupported output field)
 
 // TestApplyOutputMapping_InvalidTargetPath
-// Entrada: outputMapping {"not.a.state.variable":"output.content"}
-// Esperado: error (destino debe ser state.variables.<name>)
+// Input: outputMapping {"not.a.state.variable":"output.content"}
+// Expected: error (target must be state.variables.<name>)
 ```
 
-**Criterios de aceptación:**
-- Los 6 tests fallan en rojo
-- Solo importan `libs/ports/` (tipo `LLMResponse`)
+**Acceptance criteria:**
+- All 6 tests fail in red
+- Only import `libs/ports/` (type `LLMResponse`)
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #5 — test: Tests Red de LLMCallHandler
+### TODO #5 — test: Red tests for LLMCallHandler
 
 **Agente:** @qa
 
-**Descripción:** Escribir los tests de `handler/llm_call.go` ANTES de implementarlo.
-Usan `FakeLLMClient` (SPRINT-008) y un `fakePublisher` inline definido en el test.
+**Description:** Write tests for `handler/llm_call.go` BEFORE implementing it.
+Use `FakeLLMClient` (SPRINT-008) and an inline `fakePublisher` defined in the test.
 
-**Archivos afectados:**
-- `services/executor/internal/handler/llm_call_test.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/handler/llm_call_test.go` (new)
 
-**fakePublisher inline (privado al test):**
+**Inline fakePublisher (test-private):**
 ```go
 type fakePublisher struct{ published []ports.Event }
 func (f *fakePublisher) Publish(_ context.Context, _ ports.PublishOptions, e ports.Event) error {
@@ -283,79 +283,79 @@ func (f *fakePublisher) Publish(_ context.Context, _ ports.PublishOptions, e por
 func (f *fakePublisher) Close() error { return nil }
 ```
 
-**Tests a implementar:**
+**Tests to implement:**
 ```go
 // TestLLMCallHandler_Success
-// Config: {"model":"claude-sonnet-4-6","max_tokens":100}; sin mappings
-// FakeLLMClient: Content="respuesta ok", StopReason="end_turn"
-// Esperado: evento node.executed publicado; variables_update["response"]=="respuesta ok"; duration_ms>=0
+// Config: {"model":"claude-sonnet-4-6","max_tokens":100}; no mappings
+// FakeLLMClient: Content="ok response", StopReason="end_turn"
+// Expected: node.executed event published; variables_update["response"]=="ok response"; duration_ms>=0
 
 // TestLLMCallHandler_WithInputMapping
 // Config: input_mapping={"user_message":"state.variables.query"}
-// Variables: {"query":"explica dago"}
-// Esperado: FakeLLMClient.Calls[0].Messages[0].Content=="explica dago"
+// Variables: {"query":"explain dago"}
+// Expected: FakeLLMClient.Calls[0].Messages[0].Content=="explain dago"
 
 // TestLLMCallHandler_WithOutputMapping
 // Config: output_mapping={"state.variables.answer":"output.content"}
-// FakeLLMClient: Content="respuesta mapeada"
-// Esperado: variables_update["answer"]=="respuesta mapeada"
+// FakeLLMClient: Content="mapped response"
+// Expected: variables_update["answer"]=="mapped response"
 
 // TestLLMCallHandler_RateLimited
-// FakeLLMClient: retorna fmt.Errorf("...%w",domain.ErrRateLimited)
-// Esperado: node.execute.failed con error_code=="rate_limited", retryable==true; handler retorna error
+// FakeLLMClient: returns fmt.Errorf("...%w",domain.ErrRateLimited)
+// Expected: node.execute.failed with error_code=="rate_limited", retryable==true; handler returns error
 
 // TestLLMCallHandler_ProviderUnavailable
-// FakeLLMClient: retorna domain.ErrProviderUnavailable
-// Esperado: error_code=="provider_unavailable", retryable==true
+// FakeLLMClient: returns domain.ErrProviderUnavailable
+// Expected: error_code=="provider_unavailable", retryable==true
 
 // TestLLMCallHandler_Unauthorized
-// FakeLLMClient: retorna domain.ErrUnauthorized
-// Esperado: error_code=="unauthorized", retryable==false
+// FakeLLMClient: returns domain.ErrUnauthorized
+// Expected: error_code=="unauthorized", retryable==false
 
 // TestLLMCallHandler_ExecutionError
-// FakeLLMClient: retorna errors.New("internal error")
-// Esperado: error_code=="execution_error", retryable==false
+// FakeLLMClient: returns errors.New("internal error")
+// Expected: error_code=="execution_error", retryable==false
 ```
 
-**Criterios de aceptación:**
-- Los 7 tests fallan en rojo
-- Ningún test importa adaptadores concretos ni llama a Valkey ni APIs reales
-- Cada test verifica el payload exacto del evento publicado
+**Acceptance criteria:**
+- All 7 tests fail in red
+- No test imports concrete adapters or calls Valkey or real APIs
+- Each test verifies the exact payload of the published event
 
-**Test asociado:** este TODO ES el test (fase Red)
+**Associated test:** this TODO IS the test (Red phase)
 
 ---
 
-### TODO #6 — test: Test de integración del consumer (build tag `integration`)
+### TODO #6 — test: Consumer integration test (build tag `integration`)
 
 **Agente:** @qa
 
-**Descripción:** Test que ejercita `NodeExecuteConsumer` con Valkey real. Publica
-`node.execute.requested` y verifica que el consumer procesa el mensaje y publica
-`node.executed` en el stream correcto. Usa `FakeLLMClient` inyectado.
+**Description:** Test that exercises `NodeExecuteConsumer` with real Valkey. Publishes
+`node.execute.requested` and verifies that the consumer processes the message and publishes
+`node.executed` on the correct stream. Uses injected `FakeLLMClient`.
 
-**Archivos afectados:**
-- `services/executor/internal/consumer/node_execute_test.go` (nuevo, `//go:build integration`)
+**Affected files:**
+- `services/executor/internal/consumer/node_execute_test.go` (new, `//go:build integration`)
 
-**Test a implementar:**
+**Test to implement:**
 ```go
 //go:build integration
 
 // TestExecutorConsumer_LLMCallSuccess
-// Precondición: Valkey en EXECUTOR_VALKEY_ADDR (default localhost:6379)
-// Setup: crear consumer group "executor-group" en "node.execute.requested"
-// Acción: publicar node.execute.requested con pattern="llm_call" y config mínimo
-// Verificación: stream "node.executed" contiene evento con execution_id y node_id correctos
-//               y variables_update.response presente
-// FakeLLMClient inyectado, timeout: 5 segundos
+// Precondition: Valkey at EXECUTOR_VALKEY_ADDR (default localhost:6379)
+// Setup: create consumer group "executor-group" on "node.execute.requested"
+// Action: publish node.execute.requested with pattern="llm_call" and minimal config
+// Verification: stream "node.executed" contains event with correct execution_id and node_id
+//               and variables_update.response present
+// FakeLLMClient injected, timeout: 5 seconds
 ```
 
-**Criterios de aceptación:**
-- `go test -tags=integration ./services/executor/...` pasa
-- No se ejecuta en `make ci`
-- El test falla si el consumer no hace ACK del mensaje
+**Acceptance criteria:**
+- `go test -tags=integration ./services/executor/...` passes
+- Does not run in `make ci`
+- Test fails if the consumer does not ACK the message
 
-**Test asociado:** este TODO ES el test
+**Associated test:** this TODO IS the test
 
 ---
 
@@ -363,20 +363,20 @@ func (f *fakePublisher) Close() error { return nil }
 
 **Agente:** @developer
 
-**Descripción:** Implementar `ApplyInputMapping` siguiendo el contrato de los tests #3.
-Evaluador de paths simplificado para SPRINT-009.
+**Description:** Implement `ApplyInputMapping` following the contract from tests #3.
+Simplified path evaluator for SPRINT-009.
 
-**Archivos afectados:**
-- `services/executor/internal/mapping/input.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/mapping/input.go` (new)
 
-**Firma:**
+**Signature:**
 ```go
 package mapping
 
 import "github.com/aescanero/dago/libs/ports"
 
-// ApplyInputMapping construye []ports.Message para LLMRequest.
-// Si inputMapping es nil o vacío, devuelve messages tal cual.
+// ApplyInputMapping builds []ports.Message for LLMRequest.
+// If inputMapping is nil or empty, returns messages as-is.
 func ApplyInputMapping(
     inputMapping map[string]string,
     variables    map[string]any,
@@ -384,17 +384,17 @@ func ApplyInputMapping(
 ) ([]ports.Message, error)
 ```
 
-**Paths soportados (valores del mapa):**
-- `state.messages[-1].content` → último mensaje del slice `messages`
-- `state.variables.<name>` → `variables["<name>"]`; error si no existe
-- Cualquier otro path → `fmt.Errorf("mapping/input: unsupported path %q: %w", path, ErrUnsupportedPath)`
+**Supported paths (map values):**
+- `state.messages[-1].content` → last message in the `messages` slice
+- `state.variables.<name>` → `variables["<name>"]`; error if not found
+- Any other path → `fmt.Errorf("mapping/input: unsupported path %q: %w", path, ErrUnsupportedPath)`
 
-**Criterios de aceptación:**
-- Los 6 tests del TODO #3 pasan en verde
-- Función ≤20 líneas (ADR-003)
-- Sin imports de infraestructura
+**Acceptance criteria:**
+- All 6 tests from TODO #3 pass in green
+- Function ≤20 lines (ADR-003)
+- No infrastructure imports
 
-**Test asociado:** TODO #3
+**Associated test:** TODO #3
 
 ---
 
@@ -402,34 +402,34 @@ func ApplyInputMapping(
 
 **Agente:** @developer
 
-**Descripción:** Implementar `ApplyOutputMapping` siguiendo el contrato de los tests #4.
+**Description:** Implement `ApplyOutputMapping` following the contract from tests #4.
 
-**Archivos afectados:**
-- `services/executor/internal/mapping/output.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/mapping/output.go` (new)
 
-**Firma:**
+**Signature:**
 ```go
 package mapping
 
 import "github.com/aescanero/dago/libs/ports"
 
-// ApplyOutputMapping construye map[string]any de actualizaciones de variables.
-// Si outputMapping es nil devuelve {"response": response.Content}.
+// ApplyOutputMapping builds map[string]any of variable updates.
+// If outputMapping is nil returns {"response": response.Content}.
 func ApplyOutputMapping(
     outputMapping map[string]string,
     response      ports.LLMResponse,
 ) (map[string]any, error)
 ```
 
-**Campos de origen soportados:** `output.content`, `output.stop_reason`
+**Supported source fields:** `output.content`, `output.stop_reason`
 
-**Formato de destino válido:** `state.variables.<name>` (extrae `<name>` como clave del resultado)
+**Valid target format:** `state.variables.<name>` (extracts `<name>` as the result key)
 
-**Criterios de aceptación:**
-- Los 6 tests del TODO #4 pasan en verde
-- Función ≤20 líneas (ADR-003)
+**Acceptance criteria:**
+- All 6 tests from TODO #4 pass in green
+- Function ≤20 lines (ADR-003)
 
-**Test asociado:** TODO #4
+**Associated test:** TODO #4
 
 ---
 
@@ -437,15 +437,15 @@ func ApplyOutputMapping(
 
 **Agente:** @developer
 
-**Descripción:** Implementar la interfaz `NodeHandler`, `LLMCallHandler` y `Dispatcher`.
-El handler recibe `LLMClient` y `EventPublisher` por inyección en el constructor.
+**Description:** Implement the `NodeHandler` interface, `LLMCallHandler` and `Dispatcher`.
+The handler receives `LLMClient` and `EventPublisher` via constructor injection.
 
-**Archivos afectados:**
-- `services/executor/internal/handler/node_handler.go` (nuevo)
-- `services/executor/internal/handler/llm_call.go` (nuevo)
-- `services/executor/internal/handler/dispatcher.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/handler/node_handler.go` (new)
+- `services/executor/internal/handler/llm_call.go` (new)
+- `services/executor/internal/handler/dispatcher.go` (new)
 
-**Tipos de datos del evento (en `node_handler.go`):**
+**Event data types (in `node_handler.go`):**
 ```go
 type NodeExecuteRequestedData struct {
     ExecutionID string          `json:"execution_id"`
@@ -492,37 +492,37 @@ type LLMCallConfig struct {
 }
 ```
 
-**Algoritmo de LLMCallHandler.Handle:**
-1. Deserializar `data.Config` → `LLMCallConfig`; defaults: temperature=0.7, max_tokens=2048
+**LLMCallHandler.Handle algorithm:**
+1. Deserialize `data.Config` → `LLMCallConfig`; defaults: temperature=0.7, max_tokens=2048
 2. `ApplyInputMapping(config.InputMapping, data.Variables, data.Messages)` → messages
-3. Construir `ports.LLMRequest{Model, System, MaxTokens, Temperature, Messages}`
+3. Build `ports.LLMRequest{Model, System, MaxTokens, Temperature, Messages}`
 4. `start := time.Now()`
-5. `llmClient.Complete(ctx, req)` → si error: mapear → publicar `node.execute.failed` → retornar error
+5. `llmClient.Complete(ctx, req)` → on error: map → publish `node.execute.failed` → return error
 6. `ApplyOutputMapping(config.OutputMapping, resp)` → variablesUpdate
-7. Serializar output y variablesUpdate → publicar `node.executed`
-8. Retornar nil
+7. Serialize output and variablesUpdate → publish `node.executed`
+8. Return nil
 
-**Mapeo de errores LLM → ErrorCode+Retryable:**
+**LLM error → ErrorCode+Retryable mapping:**
 - `errors.Is(err, domain.ErrRateLimited)` → "rate_limited", true
 - `errors.Is(err, domain.ErrProviderUnavailable)` → "provider_unavailable", true
 - `errors.Is(err, domain.ErrUnauthorized)` → "unauthorized", false
-- otros → "execution_error", false
+- others → "execution_error", false
 
 **Dispatcher:**
 ```go
 type Dispatcher struct{ handlers map[string]NodeHandler }
 func NewDispatcher(handlers map[string]NodeHandler) *Dispatcher
 func (d *Dispatcher) Dispatch(ctx context.Context, data NodeExecuteRequestedData) error
-// Si pattern no registrado: publicar node.execute.failed con error_code="execution_error"
+// If pattern not registered: publish node.execute.failed with error_code="execution_error"
 ```
 
-**Criterios de aceptación:**
-- Los 7 tests del TODO #5 pasan en verde
-- Handlers solo importan `libs/ports/` y `libs/domain/` — cero acoplamiento a adapters
-- Streams de publicación: exactamente `"node.executed"` y `"node.execute.failed"`
-- `LLMCallHandler.Handle` ≤20 líneas (extraer funciones privadas si es necesario)
+**Acceptance criteria:**
+- All 7 tests from TODO #5 pass in green
+- Handlers only import `libs/ports/` and `libs/domain/` — zero coupling to adapters
+- Publish streams: exactly `"node.executed"` and `"node.execute.failed"`
+- `LLMCallHandler.Handle` ≤20 lines (extract private functions if needed)
 
-**Test asociado:** TODO #5
+**Associated test:** TODO #5
 
 ---
 
@@ -530,14 +530,14 @@ func (d *Dispatcher) Dispatch(ctx context.Context, data NodeExecuteRequestedData
 
 **Agente:** @developer
 
-**Descripción:** `NodeExecuteConsumer` suscribe a `node.execute.requested`, deserializa
-el envelope del evento y delega al `Dispatcher`. ACK si éxito o error no-retryable;
-NACK si error retryable.
+**Description:** `NodeExecuteConsumer` subscribes to `node.execute.requested`, deserializes
+the event envelope and delegates to `Dispatcher`. ACK on success or non-retryable error;
+NACK on retryable error.
 
-**Archivos afectados:**
-- `services/executor/internal/consumer/node_execute.go` (nuevo)
+**Affected files:**
+- `services/executor/internal/consumer/node_execute.go` (new)
 
-**Diseño:**
+**Design:**
 ```go
 type NodeExecuteConsumer struct {
     consumer   ports.EventConsumer
@@ -546,22 +546,22 @@ type NodeExecuteConsumer struct {
 
 func NewNodeExecuteConsumer(consumer ports.EventConsumer, d *handler.Dispatcher) *NodeExecuteConsumer
 
-// Run bloquea hasta ctx cancelado. Por cada evento de node.execute.requested:
-//   1. Deserializar data como NodeExecuteRequestedData
-//   2. Si pattern != soportado: ACK silencioso + log
+// Run blocks until ctx is cancelled. For each node.execute.requested event:
+//   1. Deserialize data as NodeExecuteRequestedData
+//   2. If pattern not supported: silent ACK + log
 //   3. dispatcher.Dispatch(ctx, data)
-//   4. Si nil → ACK
-//   5. Si errors.Is(err, domain.ErrRateLimited||ErrProviderUnavailable) → NACK
-//   6. Si otro error → ACK (failure ya publicado como node.execute.failed)
+//   4. If nil → ACK
+//   5. If errors.Is(err, domain.ErrRateLimited||ErrProviderUnavailable) → NACK
+//   6. If other error → ACK (failure already published as node.execute.failed)
 func (c *NodeExecuteConsumer) Run(ctx context.Context) error
 ```
 
-**Criterios de aceptación:**
-- Test de integración del TODO #6 pasa en verde
-- ACK correcto para errores no-retryable
-- NACK para rate_limited y provider_unavailable
+**Acceptance criteria:**
+- Integration test from TODO #6 passes in green
+- Correct ACK for non-retryable errors
+- NACK for rate_limited and provider_unavailable
 
-**Test asociado:** TODO #6
+**Associated test:** TODO #6
 
 ---
 
@@ -569,27 +569,27 @@ func (c *NodeExecuteConsumer) Run(ctx context.Context) error
 
 **Agente:** @developer
 
-**Descripción:** Punto de entrada del servicio. Lee config desde env, instancia adaptadores,
-construye Dispatcher con `LLMCallHandler` registrado para `"llm_call"`, arranca consumer
-con signal handling (SIGTERM, SIGINT).
+**Description:** Service entry point. Reads config from env, instantiates adapters,
+builds Dispatcher with `LLMCallHandler` registered for `"llm_call"`, starts consumer
+with signal handling (SIGTERM, SIGINT).
 
-**Archivos afectados:**
-- `services/executor/main.go` (nuevo)
+**Affected files:**
+- `services/executor/main.go` (new)
 
-**Variables de entorno:**
+**Environment variables:**
 - `EXECUTOR_VALKEY_ADDR` (default: `localhost:6379`)
 - `EXECUTOR_GROUP` (default: `executor-group`)
 - `EXECUTOR_CONSUMER_NAME` (default: `executor-1`)
-- `EXECUTOR_LLM_PROVIDER` (default: `anthropic`; valores: `anthropic`, `ollama`)
+- `EXECUTOR_LLM_PROVIDER` (default: `anthropic`; values: `anthropic`, `ollama`)
 - `EXECUTOR_BLOCK_DURATION_MS` (default: `5000`)
-- Si `anthropic`: lee `ANTHROPIC_API_KEY`
-- Si `ollama`: lee `OLLAMA_BASE_URL` (default `http://localhost:11434`)
+- If `anthropic`: reads `ANTHROPIC_API_KEY`
+- If `ollama`: reads `OLLAMA_BASE_URL` (default `http://localhost:11434`)
 
-**Criterios de aceptación:**
-- `go build ./services/executor/` compila sin errores
-- El servicio termina limpiamente con SIGTERM
+**Acceptance criteria:**
+- `go build ./services/executor/` compiles without errors
+- Service shuts down cleanly on SIGTERM
 
-**Test asociado:** smoke — `go build ./services/executor/`
+**Associated test:** smoke — `go build ./services/executor/`
 
 ---
 
@@ -597,21 +597,21 @@ con signal handling (SIGTERM, SIGINT).
 
 **Agente:** @devops
 
-**Descripción:** Target `make test-executor` para tests unitarios. Variables de entorno
-del executor en `.env.example`.
+**Description:** `make test-executor` target for unit tests. Executor environment variables
+in `.env.example`.
 
-**Archivos afectados:**
+**Affected files:**
 - `Makefile`
 - `.env.example`
 
 **Target:**
 ```makefile
-## test-executor: tests unitarios del servicio executor
+## test-executor: executor service unit tests
 test-executor:
 	go test -count=1 -timeout 30s ./services/executor/...
 ```
 
-**Variables en `.env.example`:**
+**Variables in `.env.example`:**
 ```
 # Executor
 EXECUTOR_VALKEY_ADDR=localhost:6379
@@ -621,35 +621,35 @@ EXECUTOR_LLM_PROVIDER=anthropic
 EXECUTOR_BLOCK_DURATION_MS=5000
 ```
 
-**Criterios de aceptación:**
-- `make test-executor` pasa los 10 tests unitarios sin red ni credenciales reales
+**Acceptance criteria:**
+- `make test-executor` passes 10 unit tests without network or real credentials
 
-**Test asociado:** todos los tests unitarios del executor
+**Associated test:** all executor unit tests
 
 ---
 
-### TODO #13 — docs: Actualizar docs/index.md y docs/log.md
+### TODO #13 — docs: Update docs/index.md and docs/log.md
 
 **Agente:** @docs
 
-**Descripción:** Registrar SPRINT-009 en el índice y log. Anotar en la tabla de Servicios
-que `executor` tiene implementación parcial (patrón `llm_call`).
+**Description:** Register SPRINT-009 in the index and log. Annotate in the Services table
+that `executor` has partial implementation (pattern `llm_call`).
 
-**Archivos afectados:**
+**Affected files:**
 - `docs/index.md`
 - `docs/log.md`
 
-**Criterios de aceptación:**
-- `grep "SPRINT-009" docs/index.md` retorna la fila
-- `grep "SPRINT-009" docs/log.md` retorna la entrada
+**Acceptance criteria:**
+- `grep "SPRINT-009" docs/index.md` returns the row
+- `grep "SPRINT-009" docs/log.md` returns the entry
 
-**Test asociado:** —
+**Associated test:** —
 
 ---
 
-## Matriz de trazabilidad
+## Traceability Matrix
 
-| TODO | Tipo  | ADR              | Spec                             | Test                                   | Impl                                    |
+| TODO | Type  | ADR              | Spec                             | Test                                   | Impl                                    |
 |------|-------|------------------|----------------------------------|----------------------------------------|-----------------------------------------|
 | #1   | spec  | 011, 014         | asyncapi.yaml                    | —                                      | specs/asyncapi.yaml                     |
 | #2   | spec  | 016              | llm_call.json                    | —                                      | specs/patterns/nodes/llm_call.json      |
@@ -665,49 +665,49 @@ que `executor` tiene implementación parcial (patrón `llm_call`).
 | #12  | infra | 002, 013         | —                                | make test-executor                     | Makefile, .env.example                  |
 | #13  | docs  | 020              | —                                | —                                      | docs/index.md, docs/log.md              |
 
-## Notas de implementación
+## Implementation notes
 
-**Orden de TODOs por dependencias:**
+**TODO order by dependencies:**
 ```
 #1 (spec asyncapi) ─┐
-#2 (spec llm_call)  ┘ paralelizables
+#2 (spec llm_call)  ┘ parallelizable
          ↓
-#3 (test input)  + #4 (test output)  ← paralelizables
+#3 (test input)  + #4 (test output)  ← parallelizable
          ↓
 #5 (test LLMCallHandler)
          ↓
-#7 (impl input) + #8 (impl output)  ← paralelizables
+#7 (impl input) + #8 (impl output)  ← parallelizable
          ↓
 #9 (impl handler)
          ↓
-#6 (test consumer) + #10 (impl consumer)  ← en paralelo si se tiene stub del consumer
+#6 (test consumer) + #10 (impl consumer)  ← in parallel if consumer stub available
          ↓
 #11 (impl main.go)
          ↓
 #12 (infra) + #13 (docs)
 ```
 
-**Reglas de arquitectura críticas:**
-- `services/executor/internal/` es código privado del servicio — ningún otro servicio lo importa
-- Los handlers solo importan `libs/ports/` y `libs/domain/` (no `adapters/`)
-- Los adaptadores concretos solo se instancian en `main.go`
-- El consumer importa `libs/ports/` + `internal/handler/` + `internal/mapping/`
+**Critical architecture rules:**
+- `services/executor/internal/` is service-private code — no other service imports it
+- Handlers only import `libs/ports/` and `libs/domain/` (not `adapters/`)
+- Concrete adapters are only instantiated in `main.go`
+- The consumer imports `libs/ports/` + `internal/handler/` + `internal/mapping/`
 
-**FakeEventPublisher en tests unitarios:**
-El `fakePublisher` se define como tipo privado en cada fichero `_test.go` que lo necesite.
-No se exporta hasta que otro handler lo necesite — en ese momento se extrae a
+**FakeEventPublisher in unit tests:**
+The `fakePublisher` is defined as a private type in each `_test.go` file that needs it.
+It is not exported until another handler needs it — at that point it is extracted to
 `adapters/eventbus/fake/`.
 
-**Selección de LLMClient:**
-La selección de proveedor se hace en `main.go` según `EXECUTOR_LLM_PROVIDER`, no dentro
-del handler. El handler recibe un único `ports.LLMClient` ya configurado.
+**LLMClient selection:**
+Provider selection happens in `main.go` based on `EXECUTOR_LLM_PROVIDER`, not inside
+the handler. The handler receives a single already-configured `ports.LLMClient`.
 
-**ACK/NACK en el consumer:**
-El consumer usa `errors.Is` sobre los centinelas de dominio para determinar retryable,
-no el campo `Retryable` del evento publicado. Errores no-retryable reciben ACK para que
-no se reintentan (el `node.execute.failed` ya fue publicado para que el orchestrator actúe).
+**ACK/NACK in the consumer:**
+The consumer uses `errors.Is` on domain sentinels to determine retryability,
+not the `Retryable` field of the published event. Non-retryable errors receive ACK so
+they are not retried (the `node.execute.failed` was already published for the orchestrator to act).
 
-**Commits del sprint:**
+**Sprint commits:**
 ```
 spec: add executor operations and data schemas to asyncapi.yaml [SPRINT-009 #1]
 test: add unit tests for ApplyInputMapping [SPRINT-009 #3]
@@ -722,25 +722,25 @@ chore: add test-executor Makefile target and env vars [SPRINT-009 #12]
 docs: update index.md and log.md for SPRINT-009 [SPRINT-009 #13]
 ```
 
-## Resultado (completar al cerrar)
+## Result (complete on close)
 
-- [ ] `TestApplyInputMapping_NoMapping` pasa
-- [ ] `TestApplyInputMapping_StateMessagesLast` pasa
-- [ ] `TestApplyInputMapping_StateVariables` pasa
-- [ ] `TestApplyInputMapping_StateVariables_Missing` pasa — error descriptivo
-- [ ] `TestApplyOutputMapping_NoMapping` pasa — default {"response": content}
-- [ ] `TestApplyOutputMapping_ContentToVariable` pasa
-- [ ] `TestApplyOutputMapping_MultipleTargets` pasa
-- [ ] `TestLLMCallHandler_Success` pasa — node.executed publicado con variables_update
-- [ ] `TestLLMCallHandler_WithInputMapping` pasa — LLMRequest.Messages[0].Content correcto
-- [ ] `TestLLMCallHandler_WithOutputMapping` pasa — variables_update mapeado correctamente
-- [ ] `TestLLMCallHandler_RateLimited` pasa — error_code=="rate_limited", retryable==true
-- [ ] `TestLLMCallHandler_ProviderUnavailable` pasa — retryable==true
-- [ ] `TestLLMCallHandler_Unauthorized` pasa — retryable==false
-- [ ] `TestLLMCallHandler_ExecutionError` pasa — error_code=="execution_error", retryable==false
-- [ ] `TestExecutorConsumer_LLMCallSuccess` pasa (build tag integration)
-- [ ] `go build ./services/executor/` sin errores
-- [ ] `golangci-lint run ./services/executor/...` sin errores
-- [ ] `make test-executor` ejecuta 10 tests unitarios, todos pasan, sin red
-- [ ] `specs/asyncapi.yaml` validado con operaciones del executor
-- [ ] `docs/index.md` y `docs/log.md` actualizados
+- [ ] `TestApplyInputMapping_NoMapping` passes
+- [ ] `TestApplyInputMapping_StateMessagesLast` passes
+- [ ] `TestApplyInputMapping_StateVariables` passes
+- [ ] `TestApplyInputMapping_StateVariables_Missing` passes — descriptive error
+- [ ] `TestApplyOutputMapping_NoMapping` passes — default {"response": content}
+- [ ] `TestApplyOutputMapping_ContentToVariable` passes
+- [ ] `TestApplyOutputMapping_MultipleTargets` passes
+- [ ] `TestLLMCallHandler_Success` passes — node.executed published with variables_update
+- [ ] `TestLLMCallHandler_WithInputMapping` passes — LLMRequest.Messages[0].Content correct
+- [ ] `TestLLMCallHandler_WithOutputMapping` passes — variables_update mapped correctly
+- [ ] `TestLLMCallHandler_RateLimited` passes — error_code=="rate_limited", retryable==true
+- [ ] `TestLLMCallHandler_ProviderUnavailable` passes — retryable==true
+- [ ] `TestLLMCallHandler_Unauthorized` passes — retryable==false
+- [ ] `TestLLMCallHandler_ExecutionError` passes — error_code=="execution_error", retryable==false
+- [ ] `TestExecutorConsumer_LLMCallSuccess` passes (build tag integration)
+- [ ] `go build ./services/executor/` no errors
+- [ ] `golangci-lint run ./services/executor/...` no errors
+- [ ] `make test-executor` runs 10 unit tests, all pass, no network
+- [ ] `specs/asyncapi.yaml` validated with executor operations
+- [ ] `docs/index.md` and `docs/log.md` updated

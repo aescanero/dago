@@ -4,10 +4,10 @@ paths:
   - "ent/schema/**"
 ---
 
-# Reglas de specs (Spec Driven Development)
+# Spec rules (Spec Driven Development)
 
-- Endpoint nuevo → definir en `specs/openapi.yaml` ANTES de implementar.
-- Evento nuevo → definir en `specs/asyncapi.yaml` ANTES de implementar.
-- Patrón nuevo → crear JSON Schema en `specs/patterns/` ANTES de implementar.
-- Entidad nueva → crear schema Ent en `ent/schema/` + `go generate ./ent` + `atlas migrate diff`.
-- Si hay discrepancia entre spec y código, la spec tiene razón.
+- New endpoint → define in `specs/openapi.yaml` BEFORE implementing.
+- New event → define in `specs/asyncapi.yaml` BEFORE implementing.
+- New pattern → create JSON Schema in `specs/patterns/` BEFORE implementing.
+- New entity → create Ent schema in `ent/schema/` + `go generate ./ent` + `atlas migrate diff`.
+- If there is a discrepancy between spec and code, the spec is right.

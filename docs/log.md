@@ -1,292 +1,289 @@
-# Log del Proyecto dago
+# dago Project Log
 
-> Registro cronológico append-only de operaciones del proyecto.
-> Cada entrada registra qué se hizo, cuándo, y con qué resultado.
+> Append-only chronological record of project operations.
+> Each entry records what was done, when, and with what result.
 >
-> Formato: `## [YYYY-MM-DD] tipo | Descripción`
-> Tipos: `init`, `sprint`, `adr`, `spec`, `deploy`, `fix`, `decision`, `lint`
+> Format: `## [YYYY-MM-DD] type | Description`
+> Types: `init`, `sprint`, `adr`, `spec`, `deploy`, `fix`, `decision`, `lint`
 >
-> Parseable con: `grep "^## \[" docs/log.md | tail -10`
+> Parseable with: `grep "^## \[" docs/log.md | tail -10`
 
 ---
 
-## [2026-04-20] init | Proyecto dago inicializado
+## [2026-04-20] init | dago project initialised
 
-**Artefactos creados:**
-- CLAUDE.md con instrucciones para Claude Code
-- 20 ADRs (001-020) cubriendo arquitectura, stack, procesos
-- Skills catalog con 22 skills y 6 agentes
-- Specs: OpenAPI 3.1, AsyncAPI 3.0, 13 JSON Schemas de patrones
-- Documentación 4+1 (Kruchten) con placeholders
-- Configuración Claude Code (.claude/settings.json, rules, commands, agents)
-- Script de setup (setup-dago.sh)
+**Artifacts created:**
+- CLAUDE.md with instructions for Claude Code
+- 20 ADRs (001-020) covering architecture, stack, processes
+- Skills catalog with 22 skills and 6 agents
+- Specs: OpenAPI 3.1, AsyncAPI 3.0, 13 JSON Schemas for patterns
+- 4+1 documentation (Kruchten) with placeholders
+- Claude Code configuration (.claude/settings.json, rules, commands, agents)
+- Setup script (setup-dago.sh)
 
-**Decisiones tomadas:**
-- Monorepo con un solo módulo Go (8 servicios backend + 1 frontend)
-- Spec Driven Development con 4 specs como fuentes de verdad
-- Comunicación: eventos Valkey para orquestación, HTTP para soporte
-- OAuth 2.1 propio (auth-server) + ABAC por etiquetas
-- Memoria de agentes en 3 capas (working + episodic + semantic)
-- 7 patrones de nodo + 5 patrones de flujo con JSON Schema
-- Paquetes como unidad de distribución (workflow + skills + tools + UI)
-- AG-UI + A2UI para comunicación frontend
-- shadcn/ui + Module Federation para UI
-- Sprints reducidos con trazabilidad completa
-- Conventional Commits + semver + changelog automático (git-cliff)
+**Decisions made:**
+- Monorepo with single Go module (8 backend services + 1 frontend)
+- Spec Driven Development with 4 specs as sources of truth
+- Communication: Valkey events for orchestration, HTTP for support
+- Custom OAuth 2.1 (auth-server) + tag-based ABAC
+- Three-layer agent memory (working + episodic + semantic)
+- 7 node patterns + 5 flow patterns with JSON Schema
+- Packages as distribution unit (workflow + skills + tools + UI)
+- AG-UI + A2UI for frontend communication
+- shadcn/ui + Module Federation for UI
+- Reduced sprints with full traceability
+- Conventional Commits + semver + automatic changelog (git-cliff)
 
-**Estado:** Fase de definición completada. Listo para primer sprint.
+**Status:** Definition phase complete. Ready for first sprint.
 
 ---
 
-## [2026-04-27] sprint | SPRINT-001: Bootstrap del monorepo Go
+## [2026-04-27] sprint | SPRINT-001: Go monorepo bootstrap
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-001-bootstrap-monorepo.md`
 
-**Alcance:** Infraestructura base del monorepo: go.mod, Makefile,
+**Scope:** Monorepo base infrastructure: go.mod, Makefile,
 docker-compose (PostgreSQL 16 + pgvector + Valkey 8), .golangci.yml,
-estructura de directorios completa (libs/, adapters/, services/ ×8),
-stubs Go compilables, atlas.hcl, smoke tests del pipeline.
+complete directory structure (libs/, adapters/, services/ ×8),
+compilable Go stubs, atlas.hcl, pipeline smoke tests.
 
-**TODOs:** 9 (infra ×7, test ×1, docs ×1) — ver documento de sprint.
+**TODOs:** 9 (infra ×7, test ×1, docs ×1) — see sprint document.
 
-**Estado:** completado
+**Status:** completed
 
 ---
 
-## [2026-04-30] sprint | SPRINT-001: completado
+## [2026-04-30] sprint | SPRINT-001: completed
 
-**Resultado:** Todos los TODOs implementados. 13/13 smoke tests pasan.
-`make ci` finaliza en 0. 8 binarios en bin/. Monorepo compilable.
+**Result:** All TODOs implemented. 13/13 smoke tests pass.
+`make ci` exits 0. 8 binaries in bin/. Compilable monorepo.
 
-**Artefactos creados:**
-- `go.mod` + `go.sum` (módulo github.com/aescanero/dago, Go 1.25)
+**Artifacts created:**
+- `go.mod` + `go.sum` (module github.com/aescanero/dago, Go 1.25)
 - `Makefile` (20 targets)
 - `docker-compose.yml` (pgvector:pg16 + valkey:8, healthchecks)
 - `.golangci.yml` (17 linters, ADR-003 + ADR-004)
-- `atlas.hcl` (configuración mínima)
+- `atlas.hcl` (minimal configuration)
 - Package stubs: libs/ (4), adapters/ (5), services/ ×8 cmd/main.go
 - `tests/smoke/build_test.go` (5 tests, build tag: smoke)
 
-**Verificaciones:**
+**Verifications:**
 - `go mod verify` → OK
-- `go build ./...` → 0 errores
-- `go vet ./...` → 0 problemas
-- `golangci-lint run ./...` → 0 errores
+- `go build ./...` → 0 errors
+- `go vet ./...` → 0 issues
+- `golangci-lint run ./...` → 0 errors
 - `make test-smoke` → 13/13 PASS
 - `make ci` → 0 (lint + build-all + test)
-- `bin/` → 8 binarios
+- `bin/` → 8 binaries
 
 ---
 
-## [2026-04-27] sprint | SPRINT-002: Schemas Ent — Graph, Node, Execution
+## [2026-04-27] sprint | SPRINT-002: Ent schemas — Graph, Node, Execution
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-002-ent-schemas-graph-node-execution.md`
 
-**Alcance:** Schemas Ent de Graph (definición de grafo), Node (vértice
-con 7 patrones de ADR-016) y Execution (instancia de ejecución, working
-memory de ADR-015). `go generate ./ent`, migración Atlas, tests unitarios
-con SQLite en memoria y tests de integración contra PostgreSQL real.
+**Scope:** Ent schemas for Graph (graph definition), Node (vertex with
+7 ADR-016 patterns) and Execution (execution instance, ADR-015 working memory).
+`go generate ./ent`, Atlas migration, unit tests with in-memory SQLite,
+integration tests against real PostgreSQL.
 
-**TODOs:** 10 (spec ×1, data ×4, test ×2, infra ×2, docs ×1) — ver documento de sprint.
+**TODOs:** 10 (spec ×1, data ×4, test ×2, infra ×2, docs ×1) — see sprint document.
 
-**Bloquea:** SPRINT-003 (orchestrator), SPRINT-015 (memoria).
+**Blocks:** SPRINT-003 (orchestrator), SPRINT-015 (memory).
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-27] sprint | SPRINT-003: API REST orchestrator — CRUD grafos y ejecuciones
+## [2026-04-27] sprint | SPRINT-003: Orchestrator REST API — graph CRUD + executions
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-003-api-rest-orchestrator.md`
 
-**Alcance:** Spec OpenAPI completa para 6 endpoints (POST/GET/GET list/PUT/DELETE
-grafos + POST ejecuciones). Tipos de dominio en `libs/domain/`, puertos en
-`libs/ports/`. Casos de uso, handlers Gin, adaptador Ent. Tests de contrato,
-unitarios y smoke.
+**Scope:** Full OpenAPI spec for 6 endpoints (POST/GET/GET list/PUT/DELETE
+graphs + POST executions). Domain types in `libs/domain/`, ports in
+`libs/ports/`. Use cases, Gin handlers, Ent adapter. Contract, unit, and smoke tests.
 
 **TODOs:** 14 (spec ×2, domain ×2, test ×4, impl ×4, docs ×1 + smoke ×1).
 
-**Decisiones clave:** DELETE archiva (no borra físicamente); PUT solo grafos
-`draft`; POST /executions crea en `pending` sin publicar evento (eso es SPRINT-004).
+**Key decisions:** DELETE archives (no physical delete); PUT only for `draft` graphs;
+POST /executions creates as `pending` without publishing events (that is SPRINT-004).
 
-**Bloquea:** SPRINT-004 (eventos Valkey), SPRINT-dashboard-001 (frontend).
-**Bloqueado por:** SPRINT-001 (go.mod + Gin), SPRINT-002 (Ent schemas).
+**Blocks:** SPRINT-004 (Valkey events), SPRINT-dashboard-001 (frontend).
+**Blocked by:** SPRINT-001 (go.mod + Gin), SPRINT-002 (Ent schemas).
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-29] sprint | SPRINT-004: Auth-server básico — login local, JWT RS256, JWKS, middleware
+## [2026-04-29] sprint | SPRINT-004: Basic auth-server — local login, JWT RS256, JWKS, middleware
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-004-auth-server-jwt-basico.md`
 
-**Alcance:** Ent schemas User+OrgUnit, login local con argon2id (OWASP),
-emisión JWT RS256 con claims ABAC, endpoint `/.well-known/jwks.json`,
-adaptador JWKS validator, middleware JWT para orchestrator (bypass en dev).
+**Scope:** Ent schemas User+OrgUnit, local login with argon2id (OWASP),
+JWT RS256 issuance with ABAC claims, `/.well-known/jwks.json` endpoint,
+JWKS validator adapter, JWT middleware for orchestrator (bypass in dev).
 
 **TODOs:** 16 (spec ×1, data ×2, domain ×1, test ×4, impl ×6, docs ×1 + integration ×1).
 
-**Decisiones clave:** LOGIN no revela si email existe (same error para not found
-y wrong password); UserResponse nunca incluye password_hash; middleware en modo
-bypass (AUTH_REQUIRED=false) no afecta rutas SPRINT-003.
+**Key decisions:** LOGIN does not reveal whether email exists (same error for not found
+and wrong password); UserResponse never includes password_hash; middleware in bypass mode
+(AUTH_REQUIRED=false) does not affect SPRINT-003 routes.
 
-**Paralelo a:** SPRINT-002, SPRINT-003 (solo depende de SPRINT-001).
-**Bloquea:** SPRINT-005 (rutas protegidas orchestrator), SPRINT-ABAC.
+**Parallel to:** SPRINT-002, SPRINT-003 (only depends on SPRINT-001).
+**Blocks:** SPRINT-005 (protected orchestrator routes), SPRINT-ABAC.
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-29] sprint | SPRINT-005: Dashboard bootstrap — React 19, shadcn/ui, PKCE, tipos OpenAPI
+## [2026-04-29] sprint | SPRINT-005: Dashboard bootstrap — React 19, shadcn/ui, PKCE, OpenAPI types
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-005-dashboard-bootstrap-pkce.md`
 
-**Alcance:** Extensión auth-server con GET/POST /authorize + POST /token (PKCE completo).
-Bootstrap dashboard: Vite + React 19 + TypeScript strict + Tailwind + shadcn/ui + dark mode.
-Generación tipos TypeScript desde OpenAPI (`openapi-typescript`). Módulo PKCE con Web Crypto
-API (tokens en memoria, nunca localStorage). GraphsPage con TanStack Query.
-Tests con Vitest + RTL + MSW.
+**Scope:** auth-server extension with GET/POST /authorize + POST /token (full PKCE).
+Dashboard bootstrap: Vite + React 19 + TypeScript strict + Tailwind + shadcn/ui + dark mode.
+TypeScript type generation from OpenAPI (`openapi-typescript`). PKCE module with Web Crypto
+API (tokens in memory, never localStorage). GraphsPage with TanStack Query.
+Tests with Vitest + RTL + MSW.
 
 **TODOs:** 13 (spec ×1, infra ×3, test ×4, impl ×3, docs ×1 + smoke ×1).
 
-**Decisiones clave:** PKCE S256 con Web Crypto nativa (sin dependencias). `code_verifier`
-en sessionStorage solo durante el redirect (se limpia). Códigos de autorización en
-sync.Map in-memory con TTL (limitación documentada: no distribuido).
+**Key decisions:** PKCE S256 with native Web Crypto (no dependencies). `code_verifier`
+in sessionStorage only during redirect (cleaned up). Authorization codes in
+in-memory sync.Map with TTL (documented limitation: not distributed).
 
-**Bloquea:** SPRINT-006 (graph editor), SPRINT-007 (execution monitor AG-UI).
-**Bloqueado por:** SPRINT-003 (GET /api/v1/graphs), SPRINT-004 (JWT emisión).
+**Blocks:** SPRINT-006 (graph editor), SPRINT-007 (execution monitor AG-UI).
+**Blocked by:** SPRINT-003 (GET /api/v1/graphs), SPRINT-004 (JWT issuance).
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-29] sprint | SPRINT-006: Dashboard feature grafos — listado, detalle, creación, edición
+## [2026-04-29] sprint | SPRINT-006: Dashboard graph feature — list, detail, create, edit
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-006-dashboard-feature-grafos.md`
 
-**Alcance:** Feature module `dashboard/src/features/graphs/`. Componentes shadcn/ui adicionales
+**Scope:** Feature module `dashboard/src/features/graphs/`. Additional shadcn/ui components
 (form, textarea, alert-dialog, breadcrumb, alert, tabs, switch, select, tooltip, scroll-area,
-collapsible). Schema Zod con 4 templates ADR-016. 5 hooks TanStack Query. Badges de estado y
-patrón. GraphDefinitionViewer (colapsible). GraphForm (React Hook Form + Zod). 4 páginas
-(GraphsPage mejorada, GraphCreatePage, GraphDetailPage 3 tabs, GraphEditPage). Rutas actualizadas.
+collapsible). Zod schema with 4 ADR-016 templates. 5 TanStack Query hooks. Status and
+pattern badges. GraphDefinitionViewer (collapsible). GraphForm (React Hook Form + Zod). 4 pages
+(improved GraphsPage, GraphCreatePage, GraphDetailPage 3 tabs, GraphEditPage). Updated routes.
 
 **TODOs:** 15 (infra ×1, spec ×1, test ×4, impl ×7, smoke ×1, docs ×1).
 
-**Decisiones clave:** DELETE archiva vía AlertDialog (409 muestra "tiene ejecuciones activas");
-edición bloqueada para grafos no-draft (Alert en lugar de form); filtro de estado persiste en
-URL query params; GraphDefinitionViewer colapsible sin editor pesado.
+**Key decisions:** DELETE archives via AlertDialog (409 shows "has active executions");
+editing blocked for non-draft graphs (Alert instead of form); status filter persists in
+URL query params; collapsible GraphDefinitionViewer without heavy editor.
 
-**Bloquea:** SPRINT-007 (execution monitor AG-UI).
-**Bloqueado por:** SPRINT-005 (dashboard bootstrap, PKCE, hooks base).
+**Blocks:** SPRINT-007 (execution monitor AG-UI).
+**Blocked by:** SPRINT-005 (dashboard bootstrap, PKCE, base hooks).
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-29] sprint | SPRINT-007: Adaptador Event Bus — Valkey Streams + consumer groups
+## [2026-04-29] sprint | SPRINT-007: Event Bus adapter — Valkey Streams + consumer groups
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-007-eventbus-valkey-adapter.md`
 
-**Alcance:** Puerto `EventPublisher`/`EventConsumer` en `libs/ports/eventbus.go`. Tipos de
-dominio `Event`+`EventAuth` en `libs/domain/events.go`. Adaptador Valkey Streams en
+**Scope:** `EventPublisher`/`EventConsumer` port in `libs/ports/eventbus.go`. Domain
+types `Event`+`EventAuth` in `libs/domain/events.go`. Valkey Streams adapter in
 `adapters/eventbus/valkey/`: publisher (XADD + XGROUP CREATE MKSTREAM), consumer
-(XREADGROUP + ACK/NACK), pending recovery (XAUTOCLAIM), envelope CloudEvents con campo auth,
-DLQ tras MaxRetries (default 3). Spec AsyncAPI con 7 canales. Tests de integración con
-Testcontainers (6 casos).
+(XREADGROUP + ACK/NACK), pending recovery (XAUTOCLAIM), CloudEvents envelope with auth field,
+DLQ after MaxRetries (default 3). AsyncAPI spec with 7 channels. Integration tests with
+Testcontainers (6 cases).
 
-**TODOs:** 11 (spec ×1, domain ×1, port ×1, test ×1, impl ×4, infra ×2, docs ×1).
+**TODOs:** 11 (spec ×1, data ×1, impl ×1, test ×1, impl ×4, infra ×2, docs ×1).
 
-**Decisiones clave:** cliente `valkey-io/valkey-go` (no go-redis, ADR-008); envelope único
-campo JSON en el stream entry; DLQ tras MaxRetries con XACK para purgar del pending;
-XAUTOCLAIM para recovery de consumers caídos; tests de integración con build tag `integration`
-separados del target `make ci`.
+**Key decisions:** `valkey-io/valkey-go` client (not go-redis, ADR-008); single JSON field
+envelope in stream entry; DLQ after MaxRetries with XACK to purge from pending;
+XAUTOCLAIM for recovery of crashed consumers; integration tests with `integration` build tag
+separate from `make ci`.
 
-**Paralelo a:** SPRINT-002, SPRINT-003, SPRINT-004 (solo depende de SPRINT-001).
-**Bloquea:** orchestrator (publicar `execution.requested`), executor y router (consumir eventos).
+**Parallel to:** SPRINT-002, SPRINT-003, SPRINT-004 (only depends on SPRINT-001).
+**Blocks:** orchestrator (publish `execution.requested`), executor and router (consume events).
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-29] sprint | SPRINT-008: Adaptador LLM — Puerto LLMClient + Anthropic + Ollama/Mixtral
+## [2026-04-29] sprint | SPRINT-008: LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-008-llm-adapter-anthropic.md`
 
-**Alcance:** Puerto `LLMClient` en `libs/ports/llm.go`. Tres errores de dominio nuevos
-(`ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable`). Adaptador Anthropic
-en `adapters/llm/anthropic/` (7 tests con `httptest.NewServer`). Adaptador Ollama
-(API OpenAI-compatible) en `adapters/llm/ollama/` con modelo default `mixtral` y
-`convertFinishReason` (6 tests con `httptest.NewServer`). `FakeLLMClient` determinista.
-Dependencias `anthropic-sdk-go` y `go-openai` en go.mod. 14 tests unitarios en total.
+**Scope:** `LLMClient` port in `libs/ports/llm.go`. Three new domain errors
+(`ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable`). Anthropic adapter
+in `adapters/llm/anthropic/` (7 tests with `httptest.NewServer`). Ollama adapter
+(OpenAI-compatible API) in `adapters/llm/ollama/` with default model `mixtral` and
+`convertFinishReason` (6 tests with `httptest.NewServer`). Deterministic `FakeLLMClient`.
+`anthropic-sdk-go` and `go-openai` dependencies in go.mod. 14 unit tests total.
 
-**TODOs:** 16 (domain ×1, port ×1, test ×3, impl ×7, infra ×3, docs ×1).
+**TODOs:** 16 (data ×1, impl ×1, test ×3, impl ×7, infra ×3, docs ×1).
 
-**Decisiones clave:** tests con `httptest.NewServer` sin credenciales reales en CI;
-`go-openai` para Ollama (reutilizable para OpenAI nativo en sprints futuros);
-`NewOllamaClient` sin error de retorno (BaseURL con default válido); errores de dominio
-como centinelas para `errors.Is`; `FakeLLMClient` sin mock frameworks (ADR-003).
+**Key decisions:** tests with `httptest.NewServer` without real credentials in CI;
+`go-openai` for Ollama (reusable for native OpenAI in future sprints);
+`NewOllamaClient` with no error return (BaseURL has valid default); domain errors
+as sentinels for `errors.Is`; `FakeLLMClient` without mock frameworks (ADR-003).
 
-**Paralelo a:** SPRINT-002, SPRINT-003, SPRINT-004, SPRINT-007 (solo depende de SPRINT-001).
-**Bloquea:** executor (`llm_call`, `react`, `reflection`), router LLM.
+**Parallel to:** SPRINT-002, SPRINT-003, SPRINT-004, SPRINT-007 (only depends on SPRINT-001).
+**Blocks:** executor (`llm_call`, `react`, `reflection`), LLM router.
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
-## [2026-04-30] sprint | SPRINT-009: Executor — Handler del patrón llm_call
+## [2026-04-30] sprint | SPRINT-009: Executor — llm_call pattern handler
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-009-executor-llm-call.md`
 
-**Alcance:** Consumer del stream `node.execute.requested`. Handler `LLMCallHandler`
-para el patrón `llm_call` según `specs/patterns/nodes/llm_call.json`. Evaluador
-simplificado de `input_mapping`/`output_mapping` (paths: `state.variables.<name>`,
-`state.messages[-1].content`, `output.content`, `output.stop_reason`). `Dispatcher`
-por patrón. Publisher de `node.executed` y `node.execute.failed`. Wiring en
-`services/executor/main.go`. Operaciones AsyncAPI del executor. 10 tests unitarios con
-`FakeLLMClient`; 1 test de integración con Valkey real (build tag `integration`).
+**Scope:** `node.execute.requested` stream consumer. `LLMCallHandler` for the `llm_call`
+pattern per `specs/patterns/nodes/llm_call.json`. Simplified `input_mapping`/`output_mapping`
+evaluator (paths: `state.variables.<name>`, `state.messages[-1].content`, `output.content`,
+`output.stop_reason`). Pattern-based `Dispatcher`. Publisher of `node.executed` and
+`node.execute.failed`. Wiring in `services/executor/main.go`. Executor AsyncAPI operations.
+10 unit tests with `FakeLLMClient`; 1 integration test with real Valkey (build tag `integration`).
 
 **TODOs:** 13 (spec ×2, test ×4, impl ×5, infra ×1, docs ×1).
 
-**Decisiones clave:** selección de LLMClient por provider en `main.go` (no en el handler);
-ACK de errores no-retryable (el `node.execute.failed` ya fue publicado); `fakePublisher`
-inline en tests hasta que otro handler lo necesite; evaluador de paths limitado a los
-casos de uso de SPRINT-009.
+**Key decisions:** LLMClient provider selection in `main.go` (not in the handler);
+ACK for non-retryable errors (`node.execute.failed` already published); inline `fakePublisher`
+in tests until another handler needs it; path evaluator limited to SPRINT-009 use cases.
 
-**Bloqueado por:** SPRINT-007 (eventbus), SPRINT-008 (LLMClient + errores de dominio).
-**Bloquea:** executor patrones `tool_use`, `react`, `reflection`.
+**Blocked by:** SPRINT-007 (eventbus), SPRINT-008 (LLMClient + domain errors).
+**Blocks:** executor patterns `tool_use`, `react`, `reflection`.
 
-**Estado:** planificado
+**Status:** planned
 
 ---
 
 ## [2026-04-29] sprint | SPRINT-010: Orchestrator state machine
 
-**Artefactos planificados:**
+**Planned artifacts:**
 - `docs/sprints/SPRINT-010-orchestrator-state-machine.md`
 
-**Alcance:** Validar grafos con `dominikbraun/graph` (solo aristas `sequential`).
-Extender `StartExecution`: validar → publicar `node.execute.requested` → estado `running`.
-`ExecutionStateMachine` con `HandleNodeExecuted` y `HandleNodeExecuteFailed`.
-Consumer `node_result` consume `node.executed` y `node.execute.failed`. `ErrRetryable`
-para NACK. `UpdateExecution` en port + adaptador Ent. 4 tests unitarios + 2 integración.
+**Scope:** Graph validation with `dominikbraun/graph` (only `sequential` edges).
+Extend `StartExecution`: validate → publish `node.execute.requested` → status `running`.
+`ExecutionStateMachine` with `HandleNodeExecuted` and `HandleNodeExecuteFailed`.
+`node_result` consumer consumes `node.executed` and `node.execute.failed`. `ErrRetryable`
+for NACK. `UpdateExecution` in port + Ent adapter. 4 unit tests + 2 integration tests.
 
-**TODOs:** 17 (spec ×2, test ×4, domain ×1, port ×1, impl ×6, infra ×1, docs ×1 + integración ×1).
+**TODOs:** 17 (spec ×2, test ×4, data ×1, impl ×1, impl ×6, infra ×1, docs ×1 + integration ×1).
 
-**Decisiones clave:** Solo aristas `sequential` (conditional/parallel/loop/interrupt → 422
-GRAPH_VALIDATION_ERROR). Timeout por nodo excluido (documentado como TODO futuro).
-`StartExecution` pasa directo a `running` (no `pending`). Checkpointing antes de publicar
-siguiente evento. `CanTransitionTo` para idempotencia.
+**Key decisions:** Only `sequential` edges (conditional/parallel/loop/interrupt → 422
+GRAPH_VALIDATION_ERROR). Per-node timeout excluded (documented as future TODO).
+`StartExecution` goes directly to `running` (not `pending`). Checkpointing before publishing
+next event. `CanTransitionTo` for idempotency.
 
-**Bloqueado por:** SPRINT-003 (repos, use cases), SPRINT-007 (event bus), SPRINT-009 (executor).
-**Bloquea:** SPRINT-011 (executor tool_use), SPRINT-015 (memoria episódica).
+**Blocked by:** SPRINT-003 (repos, use cases), SPRINT-007 (event bus), SPRINT-009 (executor).
+**Blocks:** SPRINT-011 (executor tool_use), SPRINT-015 (episodic memory).
 
-**Estado:** planificado
+**Status:** planned

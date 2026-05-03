@@ -1,57 +1,57 @@
-# ADR-010: Versionado de API por URL path y contrato OpenAPI
+# ADR-010: API versioning by URL path and OpenAPI contract
 
-**Estado:** Aceptado
-**Fecha:** 2026-04-20
-**Autores:** [Equipo de arquitectura]
+**Status:** Accepted
+**Date:** 2026-04-20
+**Authors:** [Architecture team]
 
-## Contexto
+## Context
 
-El sistema expone una API REST consumida por el frontend React (ADR-009)
-y potencialmente por clientes externos en el futuro. Se necesita una
-estrategia de versionado que permita evolucionar la API sin romper clientes
-existentes, y un formato de contrato formal que sea la fuente única de
-verdad tanto para el backend como para el frontend.
+The system exposes a REST API consumed by the React frontend (ADR-009)
+and potentially by external clients in the future. A versioning strategy
+is needed that allows the API to evolve without breaking existing clients,
+and a formal contract format that is the single source of truth for
+both backend and frontend.
 
-## Decisión
+## Decision
 
-### Versionado: URL path
+### Versioning: URL path
 
-Se adopta **versionado por URL path** como estrategia de versionado de la API.
+**URL path versioning** is adopted as the API versioning strategy.
 
 ```
 /api/v1/orders
 /api/v1/customers/:id
-/api/v2/orders          ← versión futura con breaking changes
+/api/v2/orders          ← future version with breaking changes
 ```
 
-### Contrato: OpenAPI 3.1
+### Contract: OpenAPI 3.1
 
-Se adopta **OpenAPI 3.1** como formato de especificación de la API REST.
-El fichero spec vive en `specs/openapi.yaml` y es el artefacto central
-del enfoque Spec Driven Development.
+**OpenAPI 3.1** is adopted as the REST API specification format.
+The spec file lives in `specs/openapi.yaml` and is the central artifact
+of the Spec Driven Development approach.
 
-### Reglas concretas
+### Concrete rules
 
-#### Versionado
+#### Versioning
 
-1. **El prefijo de versión es obligatorio.** Toda ruta de la API
-   comienza con `/api/v{N}/`. No existen endpoints sin versión.
+1. **The version prefix is mandatory.** Every API route
+   starts with `/api/v{N}/`. No unversioned endpoints exist.
 
-2. **Semántica del número de versión.** Solo se incrementa la versión
-   major (v1 → v2) cuando hay **breaking changes**:
-   - Eliminación de un endpoint o campo.
-   - Cambio de tipo de un campo existente.
-   - Cambio de semántica de un endpoint existente.
-   - Cambio en el formato de errores.
+2. **Semantics of the version number.** Only the major version
+   is incremented (v1 → v2) when there are **breaking changes**:
+   - Removal of an endpoint or field.
+   - Type change of an existing field.
+   - Semantic change of an existing endpoint.
+   - Change in the error format.
 
-   Los cambios no-breaking (añadir campos opcionales, añadir endpoints
-   nuevos) se hacen **dentro de la misma versión**.
+   Non-breaking changes (adding optional fields, adding new endpoints)
+   are made **within the same version**.
 
-3. **Coexistencia de versiones.** Cuando se crea v2, v1 sigue activa
-   con un periodo de deprecación documentado. Ambas versiones pueden
-   coexistir servidas por el mismo proceso Go.
+3. **Version coexistence.** When v2 is created, v1 remains active
+   with a documented deprecation period. Both versions can
+   coexist served by the same Go process.
 
-4. **Agrupación en Gin:**
+4. **Grouping in Gin:**
 
    ```go
    v1 := router.Group("/api/v1")
@@ -66,32 +66,32 @@ del enfoque Spec Driven Development.
    }
    ```
 
-5. **Versionado interno del código.** Si v1 y v2 comparten lógica
-   de dominio (que debería ser la norma), solo los handlers difieren.
-   El dominio no conoce versiones — la versión es un detalle del
-   adaptador HTTP.
+5. **Internal code versioning.** If v1 and v2 share domain logic
+   (which should be the norm), only the handlers differ.
+   The domain does not know about versions — the version is a detail of the
+   HTTP adapter.
 
 #### OpenAPI
 
-6. **Spec-first, no code-first.** La spec OpenAPI se escribe primero.
-   El código se implementa para cumplirla. No se genera la spec desde
-   el código.
+6. **Spec-first, not code-first.** The OpenAPI spec is written first.
+   The code is implemented to comply with it. The spec is not generated
+   from the code.
 
-7. **Ubicación y formato:**
+7. **Location and format:**
 
    ```
    specs/
-   ├── openapi.yaml              # Spec principal (referencia $ref)
+   ├── openapi.yaml              # Main spec (references $ref)
    ├── paths/
-   │   ├── orders.yaml           # Endpoints de orders
+   │   ├── orders.yaml           # Orders endpoints
    │   └── customers.yaml
    └── schemas/
-       ├── order.yaml             # Esquemas reutilizables
+       ├── order.yaml             # Reusable schemas
        ├── customer.yaml
-       └── error.yaml             # Formato de error estándar
+       └── error.yaml             # Standard error format
    ```
 
-8. **Formato de error estándar en toda la API:**
+8. **Standard error format across the entire API:**
 
    ```yaml
    ErrorResponse:
@@ -115,74 +115,74 @@ del enfoque Spec Driven Development.
                type: string
    ```
 
-9. **Generación de tipos para el frontend.** Los tipos TypeScript del
-   cliente API en React (ADR-009) se generan automáticamente desde
-   la spec OpenAPI con `openapi-typescript`. Esto garantiza que el
-   contrato se cumple en ambos extremos.
+9. **TypeScript type generation for the frontend.** The TypeScript types of the
+   API client in React (ADR-009) are generated automatically from
+   the OpenAPI spec using `openapi-typescript`. This guarantees that the
+   contract is enforced on both ends.
 
-10. **Validación en CI.** El pipeline de CI valida que la spec OpenAPI
-    es válida (con herramientas como `spectral` o `swagger-cli validate`)
-    y opcionalmente que la implementación cumple la spec (tests de contrato).
+10. **Validation in CI.** The CI pipeline validates that the OpenAPI spec
+    is valid (with tools such as `spectral` or `swagger-cli validate`)
+    and optionally that the implementation meets the spec (contract tests).
 
-11. **Documentación auto-generada.** La spec OpenAPI se sirve como
-    documentación interactiva (Swagger UI o Redoc) en `/api/docs`
-    en entornos de desarrollo y staging. No en producción.
+11. **Auto-generated documentation.** The OpenAPI spec is served as
+    interactive documentation (Swagger UI or Redoc) at `/api/docs`
+    in development and staging environments. Not in production.
 
-## Alternativas consideradas
+## Alternatives considered
 
-### Versionado
+### Versioning
 
 - **Header versioning (`Accept: application/vnd.api.v1+json`):**
-  Más "puro" según REST pero menos visible, más difícil de probar
-  (no se puede abrir en navegador), y más complejo de implementar
-  en Gin. Descartado por complejidad sin beneficio claro.
+  More "pure" according to REST but less visible, harder to test
+  (cannot be opened in a browser), and more complex to implement
+  in Gin. Discarded for complexity without clear benefit.
 
-- **Query parameter (`?version=1`):** Poco estándar, fácil de olvidar
-  o perder en copias de URLs. Descartado.
+- **Query parameter (`?version=1`):** Non-standard, easy to forget
+  or lose when copying URLs. Discarded.
 
-- **Sin versionado (evitar breaking changes siempre):** Idealista
-  pero impracticable a largo plazo. Descartado.
+- **No versioning (always avoid breaking changes):** Idealistic
+  but impractical in the long term. Discarded.
 
-### Contrato
+### Contract
 
-- **gRPC + Protobuf:** Excelente para comunicación entre servicios
-  pero no adecuado como API pública consumida por una SPA. Se
-  reserva para comunicación inter-servicios si se necesita en el futuro.
+- **gRPC + Protobuf:** Excellent for service-to-service communication
+  but not suitable as a public API consumed by an SPA. Reserved
+  for inter-service communication if needed in the future.
 
-- **JSON Schema standalone:** Cubre solo los tipos, no los endpoints
-  ni las operaciones. OpenAPI es un superset que incluye JSON Schema.
+- **Standalone JSON Schema:** Covers only types, not endpoints
+  or operations. OpenAPI is a superset that includes JSON Schema.
 
-- **GraphQL:** Elimina el problema de versionado pero añade complejidad
-  significativa (resolvers, N+1, autorización por campo). Descartado
-  para este proyecto.
+- **GraphQL:** Eliminates the versioning problem but adds significant
+  complexity (resolvers, N+1, field-level authorization). Discarded
+  for this project.
 
-## Consecuencias
+## Consequences
 
-**Positivas:**
-- Versionado visible y explícito en la URL — sin ambigüedad.
-- OpenAPI como contrato único — backend y frontend alineados.
-- Generación automática de tipos TypeScript — cero drift de contrato.
-- Documentación interactiva gratis desde la spec.
-- Validación automatizada en CI.
+**Positive:**
+- Versioning visible and explicit in the URL — no ambiguity.
+- OpenAPI as the single contract — backend and frontend aligned.
+- Automatic TypeScript type generation — zero contract drift.
+- Interactive documentation for free from the spec.
+- Automated validation in CI.
 
-**Negativas:**
-- Mantener la spec a mano requiere disciplina (mitigado con
-  validación en CI).
-- Coexistencia de versiones añade código en handlers (aceptable
-  porque el dominio no se duplica).
-- URL path versioning mezcla contrato en la URL (trade-off aceptado
-  por simplicidad).
+**Negative:**
+- Maintaining the spec by hand requires discipline (mitigated with
+  CI validation).
+- Version coexistence adds code in handlers (acceptable
+  because the domain is not duplicated).
+- URL path versioning mixes contract into the URL (trade-off accepted
+  for simplicity).
 
-## Notas para Claude Code
+## Notes for Claude Code
 
-- Al crear un nuevo endpoint, añádelo primero a `specs/openapi.yaml`.
-  Luego implementa el handler en Gin.
-- Toda ruta comienza con `/api/v1/`. Nunca crees endpoints sin prefijo
-  de versión.
-- Los errores siempre siguen el formato `ErrorResponse` definido en
-  la spec. Nunca inventes formatos de error ad-hoc.
-- Si se te pide generar el cliente API para React, usa los tipos
-  generados desde OpenAPI. No crees tipos manuales que dupliquen
-  la spec.
-- La spec OpenAPI es la fuente de verdad. Si hay discrepancia entre
-  la spec y el código, la spec tiene razón y el código debe corregirse.
+- When creating a new endpoint, add it to `specs/openapi.yaml` first.
+  Then implement the handler in Gin.
+- Every route starts with `/api/v1/`. Never create endpoints without a
+  version prefix.
+- Errors always follow the `ErrorResponse` format defined in
+  the spec. Never invent ad-hoc error formats.
+- If asked to generate the API client for React, use the types
+  generated from OpenAPI. Do not create manual types that duplicate
+  the spec.
+- The OpenAPI spec is the source of truth. If there is a discrepancy between
+  the spec and the code, the spec is correct and the code must be fixed.

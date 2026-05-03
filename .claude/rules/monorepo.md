@@ -5,11 +5,11 @@ paths:
   - "adapters/**"
 ---
 
-# Reglas del monorepo
+# Monorepo rules
 
-- Un solo `go.mod` en la raíz. Nunca crear `go.mod` dentro de un servicio.
-- Imports: `github.com/org/dago/libs/...`, `github.com/org/dago/adapters/...`.
-- Código interno de servicio: `services/{nombre}/internal/`.
-- Código compartido: `libs/` (dominio, puertos) o `adapters/` (implementaciones).
-- El dominio (`libs/domain/`, `libs/ports/`) no importa infraestructura.
-- Tipos Ent no salen de `adapters/storage/`.
+- Single `go.mod` at the root. Never create a `go.mod` inside a service.
+- Imports: `github.com/aescanero/dago/libs/...`, `github.com/aescanero/dago/adapters/...`.
+- Service-private code: `services/{name}/internal/`.
+- Shared code: `libs/` (domain, ports) or `adapters/` (implementations).
+- Domain (`libs/domain/`, `libs/ports/`) must not import infrastructure.
+- Ent types must not leave `adapters/storage/`.
