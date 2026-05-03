@@ -34,7 +34,7 @@
 | Sprint | Title | Status |
 |--------|-------|--------|
 | [SPRINT-001](sprints/SPRINT-001-bootstrap-monorepo.md) | Go monorepo bootstrap | completed |
-| [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Ent schemas: Graph, Node, Execution | planned |
+| [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Ent schemas: Graph, Node, Execution | completed |
 | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | planned |
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | planned |
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | planned |
@@ -133,13 +133,13 @@ _Artifacts created in SPRINT-001. Status: completed (2026-04-30)._
 
 ## Domain — Ent Schemas
 
-_Note: Ent schemas are created in SPRINT-002. The `ent/schema/` directory exists but is empty._
+_Ent schemas implemented in SPRINT-002. Ent client generated. Migration applied to PostgreSQL._
 
 | Entity | Ent Schema | Status | Sprint |
 |--------|------------|--------|--------|
-| Graph | ent/schema/graph.go | planned | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
-| Node | ent/schema/node.go | planned | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
-| Execution | ent/schema/execution.go | planned | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
+| Graph | ent/schema/graph.go | implemented | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
+| Node | ent/schema/node.go | implemented | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
+| Execution | ent/schema/execution.go | implemented | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
 | Episode | ent/schema/episode.go | pending | SPRINT-015 (memory) |
 | SemanticFact | ent/schema/semantic_fact.go | pending | SPRINT-015 (memory, pgvector) |
 | User | ent/schema/user.go | planned | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |

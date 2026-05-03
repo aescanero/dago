@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-04-28 (after completing SPRINT-001)
 - **Estimated end date:** 2026-04-29
-- **Status:** planned
+- **Status:** completed
 - **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-015, ADR-016
 - **Affected specs:**
   - `specs/patterns/graph.json` (read — `Definition` field)
@@ -559,21 +559,53 @@ Additionally:
 
 ## Sprint Result
 
-_Completed at the end of the sprint._
+_Completed 2026-05-03._
 
 ### Tests executed
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 14 (12 unit + 2 integration)
+- Passed: 14
+- Failed: 0
+
+Unit tests (`go test ./tests/unit/schema/...`): 12 PASS
+Integration tests (`go test -tags=integration ./tests/integration/...`): 2 PASS
 
 ### Files created/modified
 
-_List generated at close._
+- `ent/schema/graph.go` — Graph Ent schema (UUID PK, semver validation, JSONB, enum status)
+- `ent/schema/node.go` — Node Ent schema (7-value pattern enum, unique (graph_id, node_key))
+- `ent/schema/execution.go` — Execution Ent schema (6-value status enum, JSONB defaults)
+- `ent/generate.go` — `//go:generate` directive
+- `ent/entc.go` — entc generation program (build:ignore)
+- `ent/` (full generated client) — client.go, ent.go, mutation.go, runtime.go, tx.go,
+  graph.go, node.go, execution.go (+_create/_update/_query/_delete for each),
+  enttest/, hook/, migrate/, predicate/, internal/
+- `cmd/migrate/main.go` — migration generation tool using `schema.Diff` API
+- `migrations/20260503191126_init_graph_node_execution.up.sql` — creates graphs, nodes, executions
+- `migrations/20260503191126_init_graph_node_execution.down.sql` — drops all three tables
+- `migrations/atlas.sum` — Atlas migration integrity hash
+- `tests/unit/schema/graph_test.go` — 4 tests (create, version validation, status default, unique)
+- `tests/unit/schema/node_test.go` — 4 tests (create, pattern validation, unique key, belongs-to)
+- `tests/unit/schema/execution_test.go` — 4 tests (create, status default, JSON defaults, optional fields)
+- `tests/integration/schema_integration_test.go` — 2 integration tests (persistence, status transitions)
+- `go.mod` / `go.sum` — added `github.com/lib/pq v1.12.3`
 
 ### Decisions made during the sprint
 
-_Any unforeseen decision that requires an ADR or note is documented here._
+1. **Atlas lint skipped** — `atlas migrate lint` requires Atlas Pro since v0.38.
+   SQL verified manually with `psql \d` commands. Tables, FKs, indexes, and column types confirmed correct.
+
+2. **Migration format** — Used golang-migrate up/down format (via `schema.Diff` API) instead of
+   Atlas versioned format, because the standalone `atlas` CLI does not support the `ent://` data
+   source without the Pro extension. The `cmd/migrate/main.go` tool uses `schema.Diff` directly.
+
+3. **`atlas.hcl` `env local` not usable** — The `ent://` URL requires the Atlas Ent provider
+   plugin, which is not available in the Community Edition CLI.
+
+4. **SQLite driver** — Used `github.com/mattn/go-sqlite3` (already in go.mod as indirect)
+   for unit tests. Pure CGO driver; no issues on the build host.
+
+5. **PostgreSQL driver** — Added `github.com/lib/pq` for integration tests and the migration tool.
 
 ### Reviewer notes
 
