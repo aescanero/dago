@@ -97,6 +97,14 @@ integration tests against real PostgreSQL.
 
 ---
 
+## [2026-05-04] sprint | SPRINT-002: PR #3 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/3 — squash-merged.
+**Reviewer verdict:** APPROVED. Non-blocking observations propagated to SPRINT-003.
+**main** is now at commit `0953baf` with full Ent data model for Graph, Node, Execution.
+
+---
+
 ## [2026-05-03] sprint | SPRINT-002: completed
 
 **Result:** All 10 TODOs implemented. 14/14 tests pass (12 unit + 2 integration).
