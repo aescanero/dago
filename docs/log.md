@@ -93,7 +93,35 @@ integration tests against real PostgreSQL.
 
 **Blocks:** SPRINT-003 (orchestrator), SPRINT-015 (memory).
 
-**Status:** planned
+**Status:** completed
+
+---
+
+## [2026-05-03] sprint | SPRINT-002: completed
+
+**Result:** All 10 TODOs implemented. 14/14 tests pass (12 unit + 2 integration).
+`go build ./...` and `go vet ./...` exit 0. Migration applied to PostgreSQL.
+
+**Artifacts created:**
+- `ent/schema/graph.go`, `node.go`, `execution.go` — 3 Ent schemas
+- `ent/` full generated client (27+ files) — `go generate ./ent`
+- `cmd/migrate/main.go` — migration generation tool
+- `migrations/20260503191126_init_graph_node_execution.up.sql` — SQL migration
+- `migrations/20260503191126_init_graph_node_execution.down.sql` — rollback SQL
+- `tests/unit/schema/` — 12 unit tests (graph, node, execution)
+- `tests/integration/schema_integration_test.go` — 2 PostgreSQL integration tests
+- `go.mod` updated: `github.com/lib/pq v1.12.3`
+
+**Verifications:**
+- `go build ./...` → 0 errors
+- `go vet ./...` → 0 issues
+- `go test ./tests/unit/schema/...` → 12/12 PASS
+- `go test -tags=integration ./tests/integration/...` → 2/2 PASS
+- `psql \dt` → graphs, nodes, executions tables confirmed
+- FK nodes.graph_nodes → graphs.id and executions.graph_executions → graphs.id active
+- jsonb, uuid, timestamptz column types verified
+
+**Decisions:** Atlas lint Pro-only since v0.38; used `schema.Diff` API instead of CLI `ent://` URL.
 
 ---
 
