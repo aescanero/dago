@@ -609,4 +609,22 @@ Integration tests (`go test -tags=integration ./tests/integration/...`): 2 PASS
 
 ### Reviewer notes
 
-_Pending review._
+Reviewed 2026-05-04. **APPROVED.**
+
+**All acceptance criteria met:**
+- `go build ./...` and `go vet ./...` — no errors.
+- `go test ./tests/unit/schema/...` — 12/12 PASS.
+- Migration SQL is clean: no DROP/DELETE/destructive statements.
+- All JSONB fields use `jsonb` PostgreSQL type (not `json`).
+- `Node.pattern` enum has exactly 7 values (ADR-016). ✅
+- `Execution.status` enum has exactly 6 values (ADR-015). ✅
+- `created_at` immutable, `updated_at` auto on all three schemas. ✅
+- FKs present: `nodes.graph_nodes → graphs.id`, `executions.graph_executions → graphs.id`. ✅
+- ADR-001: Ent types confined to `ent/schema/`. ✅
+- ADR-003: All schema methods ≤20 lines; `jsonbField` helper is a clean DRY extraction. ✅
+
+**Non-blocking observations:**
+1. FK column names use Ent convention (`graph_nodes`, `graph_executions`) rather than the `graph_id` shown in the data model table. Functionally equivalent; document in SPRINT-003 if needed.
+2. `golangci-lint` not available locally — CI pipeline must enforce it.
+3. `atlas migrate lint` skipped (requires Pro); manual SQL verification is documented and acceptable for this sprint.
+4. Integration tests require Docker Compose running — excluded from default `go test ./...` via `//go:build integration` tag.
