@@ -14,6 +14,13 @@ import (
 // Execution holds the schema definition for the Execution entity.
 type Execution struct{ ent.Schema }
 
+// jsonbField returns a JSON field with postgres jsonb schema type.
+func jsonbField(name string, def json.RawMessage) ent.Field {
+	return field.JSON(name, json.RawMessage{}).
+		Default(def).
+		SchemaType(map[string]string{"postgres": "jsonb"})
+}
+
 // Fields of the Execution.
 func (Execution) Fields() []ent.Field {
 	return []ent.Field{
@@ -23,15 +30,9 @@ func (Execution) Fields() []ent.Field {
 			"failed", "cancelled", "interrupted",
 		).Default("pending"),
 		field.String("current_node").MaxLen(255).Optional().Nillable(),
-		field.JSON("variables", json.RawMessage{}).
-			Default(json.RawMessage("{}")).
-			SchemaType(map[string]string{"postgres": "jsonb"}),
-		field.JSON("messages", json.RawMessage{}).
-			Default(json.RawMessage("[]")).
-			SchemaType(map[string]string{"postgres": "jsonb"}),
-		field.JSON("node_results", json.RawMessage{}).
-			Default(json.RawMessage("{}")).
-			SchemaType(map[string]string{"postgres": "jsonb"}),
+		jsonbField("variables", json.RawMessage("{}")),
+		jsonbField("messages", json.RawMessage("[]")),
+		jsonbField("node_results", json.RawMessage("{}")),
 		field.String("error").Optional().Nillable(),
 		field.Time("started_at").Optional().Nillable(),
 		field.Time("completed_at").Optional().Nillable(),

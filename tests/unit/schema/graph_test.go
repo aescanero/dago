@@ -5,20 +5,15 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/aescanero/dago/ent/enttest"
-	"github.com/aescanero/dago/ent/graph"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/aescanero/dago/ent/enttest"
+	"github.com/aescanero/dago/ent/graph"
 )
 
 const sqliteDSN = "file:ent?mode=memory&cache=shared&_fk=1"
-
-func newGraphClient(t *testing.T) interface{ Close() error } {
-	t.Helper()
-	return enttest.Open(t, "sqlite3", sqliteDSN)
-}
 
 func TestGraphCreate(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)

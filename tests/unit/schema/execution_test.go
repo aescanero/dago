@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"testing"
 
+	_ "github.com/mattn/go-sqlite3"
+
 	"github.com/aescanero/dago/ent/enttest"
 	"github.com/aescanero/dago/ent/execution"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	_ "github.com/mattn/go-sqlite3"
 )
 
 func TestExecutionCreate(t *testing.T) {
