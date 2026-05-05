@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/aescanero/dago/libs/domain"
 	"github.com/aescanero/dago/libs/ports"
-	"github.com/google/uuid"
 )
 
 // InMemoryGraphRepository is a thread-safe in-memory implementation of ports.GraphRepository.
@@ -21,6 +22,7 @@ func NewInMemoryGraphRepository() *InMemoryGraphRepository {
 	return &InMemoryGraphRepository{data: make(map[uuid.UUID]*domain.Graph)}
 }
 
+// Create stores a new graph or returns domain.ErrConflict if (name, version) already exists.
 func (r *InMemoryGraphRepository) Create(ctx context.Context, g *domain.Graph) (*domain.Graph, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -34,6 +36,7 @@ func (r *InMemoryGraphRepository) Create(ctx context.Context, g *domain.Graph) (
 	return &copy, nil
 }
 
+// FindByID returns the graph with the given ID or domain.ErrNotFound.
 func (r *InMemoryGraphRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Graph, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -45,6 +48,7 @@ func (r *InMemoryGraphRepository) FindByID(ctx context.Context, id uuid.UUID) (*
 	return &copy, nil
 }
 
+// List returns a paginated slice of graphs filtered by status if provided.
 func (r *InMemoryGraphRepository) List(ctx context.Context, opts ports.ListOptions) ([]*domain.Graph, int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -76,6 +80,7 @@ func (r *InMemoryGraphRepository) List(ctx context.Context, opts ports.ListOptio
 	return all[start:end], total, nil
 }
 
+// Update replaces the stored graph with the provided one.
 func (r *InMemoryGraphRepository) Update(ctx context.Context, g *domain.Graph) (*domain.Graph, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -87,6 +92,7 @@ func (r *InMemoryGraphRepository) Update(ctx context.Context, g *domain.Graph) (
 	return &copy, nil
 }
 
+// Archive sets the graph status to archived.
 func (r *InMemoryGraphRepository) Archive(ctx context.Context, id uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -1,8 +1,9 @@
 package router
 
 import (
-	"github.com/aescanero/dago/services/orchestrator/internal/handler"
 	"github.com/gin-gonic/gin"
+
+	"github.com/aescanero/dago/services/orchestrator/internal/handler"
 )
 
 // NewRouter builds the Gin engine with all routes registered under /api/v1/.

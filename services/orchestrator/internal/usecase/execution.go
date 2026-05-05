@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
 
 	"github.com/aescanero/dago/libs/domain"
 	"github.com/aescanero/dago/libs/ports"
-	"github.com/google/uuid"
 )
 
 // StartExecutionInput carries validated data for starting an execution.
@@ -27,12 +29,13 @@ func NewExecutionUseCase(graphRepo ports.GraphRepository, execRepo ports.Executi
 	return &ExecutionUseCase{graphRepo: graphRepo, execRepo: execRepo}
 }
 
+// StartExecution creates a pending execution for the given graph.
 func (u *ExecutionUseCase) StartExecution(ctx context.Context, in StartExecutionInput) (*domain.Execution, error) {
 	if _, err := u.graphRepo.FindByID(ctx, in.GraphID); err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			return nil, domain.ErrNotFound
 		}
-		return nil, err
+		return nil, fmt.Errorf("StartExecution.findGraph: %w", err)
 	}
 	vars := in.Variables
 	if vars == nil {
@@ -46,5 +49,9 @@ func (u *ExecutionUseCase) StartExecution(ctx context.Context, in StartExecution
 		Messages:    json.RawMessage("[]"),
 		NodeResults: json.RawMessage("{}"),
 	}
-	return u.execRepo.Create(ctx, e)
+	created, err := u.execRepo.Create(ctx, e)
+	if err != nil {
+		return nil, fmt.Errorf("StartExecution.create: %w", err)
+	}
+	return created, nil
 }

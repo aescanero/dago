@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/google/uuid"
+
 	"github.com/aescanero/dago/libs/domain"
 	"github.com/aescanero/dago/libs/ports"
-	"github.com/google/uuid"
 )
 
 // InMemoryExecutionRepository is a thread-safe in-memory implementation of ports.ExecutionRepository.
@@ -21,6 +22,7 @@ func NewInMemoryExecutionRepository() *InMemoryExecutionRepository {
 	return &InMemoryExecutionRepository{data: make(map[uuid.UUID]*domain.Execution)}
 }
 
+// Create stores a new execution record.
 func (r *InMemoryExecutionRepository) Create(ctx context.Context, e *domain.Execution) (*domain.Execution, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -29,6 +31,7 @@ func (r *InMemoryExecutionRepository) Create(ctx context.Context, e *domain.Exec
 	return &copy, nil
 }
 
+// FindByID returns the execution with the given ID or domain.ErrNotFound.
 func (r *InMemoryExecutionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Execution, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -40,6 +43,7 @@ func (r *InMemoryExecutionRepository) FindByID(ctx context.Context, id uuid.UUID
 	return &copy, nil
 }
 
+// CountActiveByGraph returns the number of running executions for the given graph.
 func (r *InMemoryExecutionRepository) CountActiveByGraph(ctx context.Context, graphID uuid.UUID) (int, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

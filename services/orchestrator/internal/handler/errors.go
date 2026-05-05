@@ -4,8 +4,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/aescanero/dago/libs/domain"
 	"github.com/gin-gonic/gin"
+
+	"github.com/aescanero/dago/libs/domain"
 )
 
 type errResponse struct {

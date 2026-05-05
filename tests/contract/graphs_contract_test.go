@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/aescanero/dago/tests/testutil/fakes"
-	orchutil "github.com/aescanero/dago/services/orchestrator/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	orchutil "github.com/aescanero/dago/services/orchestrator/testutil"
+	"github.com/aescanero/dago/tests/testutil/fakes"
 )
 
 func newContractServer(t *testing.T) string {

@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/aescanero/dago/ent"
 	"github.com/aescanero/dago/ent/execution"
 	entgraph "github.com/aescanero/dago/ent/graph"
 	"github.com/aescanero/dago/libs/domain"
 	"github.com/aescanero/dago/libs/ports"
-	"github.com/google/uuid"
 )
 
 // EntGraphRepository implements ports.GraphRepository using Ent.
@@ -22,6 +23,7 @@ func NewEntGraphRepository(client *ent.Client) *EntGraphRepository {
 	return &EntGraphRepository{client: client}
 }
 
+// Create persists a new graph and returns it with its generated fields.
 func (r *EntGraphRepository) Create(ctx context.Context, g *domain.Graph) (*domain.Graph, error) {
 	q := r.client.Graph.Create().
 		SetID(g.ID).
@@ -46,6 +48,7 @@ func (r *EntGraphRepository) Create(ctx context.Context, g *domain.Graph) (*doma
 	return entGraphToDomain(created), nil
 }
 
+// FindByID returns the graph with the given ID or domain.ErrNotFound.
 func (r *EntGraphRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Graph, error) {
 	g, err := r.client.Graph.Get(ctx, id)
 	if err != nil {
@@ -57,6 +60,7 @@ func (r *EntGraphRepository) FindByID(ctx context.Context, id uuid.UUID) (*domai
 	return entGraphToDomain(g), nil
 }
 
+// List returns a paginated slice of graphs and the total count.
 func (r *EntGraphRepository) List(ctx context.Context, opts ports.ListOptions) ([]*domain.Graph, int, error) {
 	q := r.client.Graph.Query()
 	if opts.Status != "" {
@@ -85,6 +89,7 @@ func (r *EntGraphRepository) List(ctx context.Context, opts ports.ListOptions) (
 	return result, total, nil
 }
 
+// Update persists changes to an existing graph.
 func (r *EntGraphRepository) Update(ctx context.Context, g *domain.Graph) (*domain.Graph, error) {
 	q := r.client.Graph.UpdateOneID(g.ID).
 		SetName(g.Name).
@@ -112,6 +117,7 @@ func (r *EntGraphRepository) Update(ctx context.Context, g *domain.Graph) (*doma
 	return entGraphToDomain(updated), nil
 }
 
+// Archive sets the graph status to archived (soft delete).
 func (r *EntGraphRepository) Archive(ctx context.Context, id uuid.UUID) error {
 	err := r.client.Graph.UpdateOneID(id).
 		SetStatus(entgraph.StatusArchived).
@@ -135,6 +141,7 @@ func NewEntExecutionRepository(client *ent.Client) *EntExecutionRepository {
 	return &EntExecutionRepository{client: client}
 }
 
+// Create persists a new execution record.
 func (r *EntExecutionRepository) Create(ctx context.Context, e *domain.Execution) (*domain.Execution, error) {
 	q := r.client.Execution.Create().
 		SetID(e.ID).
@@ -156,6 +163,7 @@ func (r *EntExecutionRepository) Create(ctx context.Context, e *domain.Execution
 	return entExecToDomain(created, e.GraphID), nil
 }
 
+// FindByID returns the execution with the given ID or domain.ErrNotFound.
 func (r *EntExecutionRepository) FindByID(ctx context.Context, id uuid.UUID) (*domain.Execution, error) {
 	e, err := r.client.Execution.Get(ctx, id)
 	if err != nil {
@@ -171,6 +179,7 @@ func (r *EntExecutionRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 	return entExecToDomain(e, graphID), nil
 }
 
+// CountActiveByGraph returns the number of running executions for the given graph.
 func (r *EntExecutionRepository) CountActiveByGraph(ctx context.Context, graphID uuid.UUID) (int, error) {
 	count, err := r.client.Execution.Query().
 		Where(
@@ -229,4 +238,3 @@ var (
 	_ ports.GraphRepository     = (*EntGraphRepository)(nil)
 	_ ports.ExecutionRepository = (*EntExecutionRepository)(nil)
 )
-

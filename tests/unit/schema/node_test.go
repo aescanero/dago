@@ -14,7 +14,7 @@ import (
 
 func TestNodeCreate(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -44,7 +44,7 @@ func TestNodeCreate(t *testing.T) {
 
 func TestNodePatternValidation(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -70,7 +70,7 @@ func TestNodePatternValidation(t *testing.T) {
 
 func TestNodeUniqueKeyPerGraph(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -104,7 +104,7 @@ func TestNodeUniqueKeyPerGraph(t *testing.T) {
 
 func TestNodeBelongsToGraph(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)

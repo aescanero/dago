@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/aescanero/dago/libs/domain"
-	"github.com/aescanero/dago/services/orchestrator/internal/usecase"
-	"github.com/aescanero/dago/tests/testutil/fakes"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aescanero/dago/libs/domain"
+	"github.com/aescanero/dago/services/orchestrator/internal/usecase"
+	"github.com/aescanero/dago/tests/testutil/fakes"
 )
 
 func newGraphUC() (*usecase.GraphUseCase, *fakes.InMemoryGraphRepository, *fakes.InMemoryExecutionRepository) {

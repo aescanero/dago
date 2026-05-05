@@ -8,13 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aescanero/dago/libs/domain"
-	"github.com/aescanero/dago/services/orchestrator/internal/handler"
-	"github.com/aescanero/dago/services/orchestrator/internal/usecase"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aescanero/dago/libs/domain"
+	"github.com/aescanero/dago/services/orchestrator/internal/handler"
+	"github.com/aescanero/dago/services/orchestrator/internal/usecase"
 )
 
 func init() { gin.SetMode(gin.TestMode) }

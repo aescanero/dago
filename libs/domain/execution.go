@@ -10,6 +10,7 @@ import (
 // ExecutionStatus represents the status of an execution.
 type ExecutionStatus string
 
+// ExecutionStatus enum values.
 const (
 	ExecutionStatusPending     ExecutionStatus = "pending"
 	ExecutionStatusRunning     ExecutionStatus = "running"

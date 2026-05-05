@@ -9,11 +9,12 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/aescanero/dago/tests/testutil/fakes"
-	orchutil "github.com/aescanero/dago/services/orchestrator/testutil"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	orchutil "github.com/aescanero/dago/services/orchestrator/testutil"
+	"github.com/aescanero/dago/tests/testutil/fakes"
 )
 
 func newSmokeServer(t *testing.T) string {
@@ -113,7 +114,7 @@ func TestAPIStartExecutionSmoke(t *testing.T) {
 
 	// Start execution.
 	execResp := postJSON(t, base+"/api/v1/executions", map[string]any{
-		"graph_id": graph["id"],
+		"graph_id":  graph["id"],
 		"variables": map[string]any{"input": "hello"},
 	})
 	defer execResp.Body.Close()

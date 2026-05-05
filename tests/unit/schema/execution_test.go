@@ -7,15 +7,16 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/aescanero/dago/ent/enttest"
-	"github.com/aescanero/dago/ent/execution"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/aescanero/dago/ent/enttest"
+	"github.com/aescanero/dago/ent/execution"
 )
 
 func TestExecutionCreate(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -41,7 +42,7 @@ func TestExecutionCreate(t *testing.T) {
 
 func TestExecutionStatusDefault(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -64,7 +65,7 @@ func TestExecutionStatusDefault(t *testing.T) {
 
 func TestExecutionJSONDefaults(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -89,7 +90,7 @@ func TestExecutionJSONDefaults(t *testing.T) {
 
 func TestExecutionOptionalFields(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)

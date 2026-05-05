@@ -10,6 +10,7 @@ import (
 // GraphStatus represents the lifecycle status of a graph.
 type GraphStatus string
 
+// GraphStatus enum values.
 const (
 	GraphStatusDraft    GraphStatus = "draft"
 	GraphStatusActive   GraphStatus = "active"
