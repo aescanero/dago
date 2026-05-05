@@ -29,13 +29,13 @@ tags:
   - name: packages
     description: Catálogo de paquetes (proxy a catalog service)
 
-paths: {}
-  # Los endpoints se definen en specs/paths/ con $ref
-  # Ejemplo:
-  # /graphs:
-  #   $ref: './paths/graphs.yaml'
-  # /executions:
-  #   $ref: './paths/executions.yaml'
+paths:
+  /graphs:
+    $ref: './paths/graphs.yaml#/graphs'
+  /graphs/{id}:
+    $ref: './paths/graphs.yaml#/graphsId'
+  /executions:
+    $ref: './paths/executions.yaml#/executions'
 
 components:
   securitySchemes:
@@ -84,3 +84,18 @@ components:
           type: integer
         total_pages:
           type: integer
+
+    GraphInput:
+      $ref: './schemas/graph.yaml#/GraphInput'
+
+    GraphResponse:
+      $ref: './schemas/graph.yaml#/GraphResponse'
+
+    GraphListResponse:
+      $ref: './schemas/graph.yaml#/GraphListResponse'
+
+    ExecutionInput:
+      $ref: './schemas/execution.yaml#/ExecutionInput'
+
+    ExecutionResponse:
+      $ref: './schemas/execution.yaml#/ExecutionResponse'
