@@ -150,7 +150,43 @@ POST /executions creates as `pending` without publishing events (that is SPRINT-
 **Blocks:** SPRINT-004 (Valkey events), SPRINT-dashboard-001 (frontend).
 **Blocked by:** SPRINT-001 (go.mod + Gin), SPRINT-002 (Ent schemas).
 
-**Status:** planned
+**Status:** completed
+
+---
+
+## [2026-05-05] sprint | SPRINT-003: completed
+
+**Result:** All 14 TODOs implemented. Tests pass (unit, contract, smoke).
+`go build ./...` exits 0.
+
+**Artifacts created:**
+- `specs/schemas/graph.yaml`, `specs/schemas/execution.yaml` — OpenAPI schemas
+- `specs/paths/graphs.yaml`, `specs/paths/executions.yaml` — 6 endpoints
+- `specs/openapi.yaml` — updated with path and schema refs
+- `libs/domain/graph.go`, `execution.go`, `errors.go` — domain types (no infrastructure imports)
+- `libs/ports/storage.go` — GraphRepository + ExecutionRepository interfaces
+- `tests/testutil/fakes/graph_repo.go`, `execution_repo.go` — in-memory fakes
+- `services/orchestrator/internal/usecase/graph.go`, `execution.go`, `validate.go` — 6 use cases
+- `services/orchestrator/internal/handler/graph.go`, `execution.go`, `errors.go` — Gin handlers
+- `services/orchestrator/internal/router/router.go` — Gin router
+- `services/orchestrator/testutil/server.go` — test server builder
+- `adapters/storage/graph_repo.go` — EntGraphRepository + EntExecutionRepository
+- `services/orchestrator/cmd/main.go` — full main with graceful shutdown
+- `tests/contract/graphs_contract_test.go` — 8 contract tests (build tag: contract)
+- `tests/smoke/api_smoke_test.go` — 2 smoke tests (build tag: smoke)
+
+**Verifications:**
+- `go build ./...` → 0 errors
+- `go test ./services/orchestrator/internal/usecase/...` → 9/9 PASS
+- `go test ./services/orchestrator/internal/handler/...` → 6/6 PASS
+- `go test -tags=contract ./tests/contract/...` → 8/8 PASS
+- `go test -tags=smoke ./tests/smoke/...` → 2/2 PASS
+
+**Decisions:**
+- Unit tests co-located within internal packages (Go's internal rule prevents external imports).
+- `services/orchestrator/testutil/server.go` (non-internal) exposes test server builder for contract tests.
+- Gin moved to direct dependency (added via `go get github.com/gin-gonic/gin`).
+- `mapDomainError()` covers all 4 domain errors; default → 500 INTERNAL_ERROR.
 
 ---
 

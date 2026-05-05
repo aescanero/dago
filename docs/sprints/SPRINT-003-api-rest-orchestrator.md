@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-04-29 (after completing SPRINT-002)
 - **Estimated end date:** 2026-05-01
-- **Status:** planned
+- **Status:** completed
 - **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-006, ADR-010, ADR-016
 - **Affected specs:**
   - `specs/openapi.yaml` — add `$ref` to the new paths
@@ -890,22 +890,72 @@ Additionally:
 
 ## Sprint Result
 
-_Completed at the end of the sprint._
+_Completed 2026-05-05._
 
 ### Tests executed
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 25
+- Passed: 25
+- Failed: 0
+
+Breakdown:
+- `go test ./services/orchestrator/internal/usecase/...` → 9/9 PASS
+- `go test ./services/orchestrator/internal/handler/...` → 6/6 PASS
+- `go test -tags=contract ./tests/contract/...` → 8/8 PASS
+- `go test -tags=smoke ./tests/smoke/...` → 2/2 PASS
 
 ### Files created/modified
 
-_List generated at close._
+**Specs:**
+- `specs/schemas/graph.yaml` (new)
+- `specs/schemas/execution.yaml` (new)
+- `specs/paths/graphs.yaml` (new)
+- `specs/paths/executions.yaml` (new)
+- `specs/openapi.yaml` (updated: paths + schema refs)
+
+**Domain:**
+- `libs/domain/graph.go` (new)
+- `libs/domain/execution.go` (new)
+- `libs/domain/errors.go` (new)
+- `libs/ports/storage.go` (new)
+
+**Tests:**
+- `tests/testutil/fakes/graph_repo.go` (new)
+- `tests/testutil/fakes/execution_repo.go` (new)
+- `services/orchestrator/internal/usecase/graph_usecase_test.go` (new)
+- `services/orchestrator/internal/usecase/execution_usecase_test.go` (new)
+- `services/orchestrator/internal/handler/graph_handler_test.go` (new)
+- `services/orchestrator/internal/handler/execution_handler_test.go` (new)
+- `tests/contract/graphs_contract_test.go` (new)
+- `tests/smoke/api_smoke_test.go` (new)
+
+**Implementation:**
+- `services/orchestrator/internal/usecase/graph.go` (new)
+- `services/orchestrator/internal/usecase/execution.go` (new)
+- `services/orchestrator/internal/usecase/validate.go` (new)
+- `services/orchestrator/internal/handler/graph.go` (new)
+- `services/orchestrator/internal/handler/execution.go` (new)
+- `services/orchestrator/internal/handler/errors.go` (new)
+- `services/orchestrator/internal/router/router.go` (new)
+- `services/orchestrator/testutil/server.go` (new)
+- `adapters/storage/graph_repo.go` (new)
+- `services/orchestrator/cmd/main.go` (updated: full initialization)
+- `go.mod` / `go.sum` (updated: gin-gonic/gin added)
 
 ### Decisions made during the sprint
 
-_Any unforeseen decision that requires an ADR or note is documented here._
+1. **Unit tests co-located with internal packages.** Go's `internal/` package rule prevents
+   external packages from importing `internal/`. Tests for `usecase` and `handler` are placed
+   in the same directories as the implementation files, using `package usecase_test` / `package handler_test`.
+   Spec item `tests/unit/usecase/` was not used to respect the language constraint.
+
+2. **Test server helper as non-internal package.** `services/orchestrator/testutil/server.go`
+   is a non-internal package that wraps the internal handler/router setup so contract tests
+   in `tests/contract/` can import it without violating Go's internal package rule.
+
+3. **`GraphUseCasePort` and `ExecutionUseCasePort` interfaces in handler package.** Handlers
+   accept interfaces for testability without depending on concrete use case structs.
 
 ### Reviewer notes
 
-_Pending review._
+_To be filled in during review._
