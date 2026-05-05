@@ -1,0 +1,87 @@
+GraphInput:
+  type: object
+  required: [name, version, entry_node, definition]
+  properties:
+    name:
+      type: string
+      maxLength: 255
+      description: Unique name of the graph.
+    version:
+      type: string
+      pattern: '^\d+\.\d+\.\d+$'
+      description: Semantic version of the graph (e.g. 1.0.0).
+    description:
+      type: string
+      description: Optional human-readable description.
+    entry_node:
+      type: string
+      maxLength: 255
+      description: ID of the first node to execute.
+    definition:
+      type: object
+      description: Graph definition containing nodes and edges.
+      additionalProperties: true
+    memory_config:
+      type: object
+      description: Memory configuration for the graph.
+      properties:
+        semantic_search:
+          type: boolean
+          description: Enable semantic search over episodic memory.
+        episode_context:
+          type: integer
+          minimum: 0
+          description: Number of past episodes to include in context.
+
+GraphResponse:
+  type: object
+  required: [id, name, version, entry_node, definition, status, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique identifier (UUIDv4).
+    name:
+      type: string
+      description: Name of the graph.
+    version:
+      type: string
+      description: Semantic version of the graph.
+    description:
+      type: string
+      description: Optional human-readable description.
+    entry_node:
+      type: string
+      description: ID of the first node to execute.
+    definition:
+      type: object
+      description: Graph definition containing nodes and edges.
+      additionalProperties: true
+    memory_config:
+      type: object
+      description: Memory configuration for the graph.
+      additionalProperties: true
+    status:
+      type: string
+      enum: [draft, active, archived]
+      description: Current lifecycle status of the graph.
+    created_at:
+      type: string
+      format: date-time
+      description: Creation timestamp in RFC3339.
+    updated_at:
+      type: string
+      format: date-time
+      description: Last update timestamp in RFC3339.
+
+GraphListResponse:
+  type: object
+  required: [items, pagination]
+  properties:
+    items:
+      type: array
+      items:
+        $ref: '#/components/schemas/GraphResponse'
+      description: Page of graph results.
+    pagination:
+      $ref: '#/components/schemas/Pagination'

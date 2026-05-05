@@ -1,0 +1,52 @@
+executions:
+  post:
+    summary: Start a graph execution
+    description: >
+      Creates an Execution record in pending status.
+      Does not start real execution yet (SPRINT-004).
+    operationId: startExecution
+    tags: [executions]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/ExecutionInput'
+          example:
+            graph_id: "550e8400-e29b-41d4-a716-446655440000"
+            variables:
+              input: "Hello"
+    responses:
+      "201":
+        description: Execution created in pending status.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ExecutionResponse'
+      "400":
+        description: Malformed JSON body.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "404":
+        description: Graph not found.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_NOT_FOUND
+              message: "graph not found"
+      "422":
+        description: Validation error (e.g. invalid graph_id format).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

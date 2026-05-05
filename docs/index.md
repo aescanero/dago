@@ -35,7 +35,7 @@
 |--------|-------|--------|
 | [SPRINT-001](sprints/SPRINT-001-bootstrap-monorepo.md) | Go monorepo bootstrap | completed |
 | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Ent schemas: Graph, Node, Execution | completed |
-| [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | planned |
+| [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | completed |
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | planned |
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | planned |
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | planned |
@@ -49,8 +49,10 @@
 | Spec | Location | Status | Governs |
 |------|----------|--------|---------|
 | OpenAPI 3.1 | [specs/openapi.yaml](specs/openapi.yaml) | base structure | Orchestrator REST API |
-| ↳ paths/graphs.yaml | [specs/paths/graphs.yaml](specs/paths/graphs.yaml) | planned (SPRINT-003) | Graph CRUD |
-| ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | planned (SPRINT-003) | Execution start |
+| ↳ schemas/graph.yaml | [specs/schemas/graph.yaml](specs/schemas/graph.yaml) | implemented (SPRINT-003) | GraphInput, GraphResponse, GraphListResponse |
+| ↳ schemas/execution.yaml | [specs/schemas/execution.yaml](specs/schemas/execution.yaml) | implemented (SPRINT-003) | ExecutionInput, ExecutionResponse |
+| ↳ paths/graphs.yaml | [specs/paths/graphs.yaml](specs/paths/graphs.yaml) | implemented (SPRINT-003) | Graph CRUD (6 endpoints) |
+| ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | implemented (SPRINT-003) | Execution start |
 | AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | base structure | Valkey events (13 types) |
 | Graph Schema | [specs/patterns/graph.json](specs/patterns/graph.json) | implemented | Graph structure |
 | Edge patterns (5) | [specs/patterns/edges/](specs/patterns/edges/) | implemented | sequential, conditional, parallel, loop, interrupt |
@@ -99,6 +101,7 @@
 
 | Adapter | Port | Implementation | Status | Sprint |
 |---------|------|----------------|--------|--------|
+| Graph/Execution Storage | libs/ports/storage.go | adapters/storage/graph_repo.go | implemented | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) |
 | Event Bus Valkey | libs/ports/eventbus.go | adapters/eventbus/valkey/ | planned | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) |
 | LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |

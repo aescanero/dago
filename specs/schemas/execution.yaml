@@ -1,0 +1,66 @@
+ExecutionInput:
+  type: object
+  required: [graph_id]
+  properties:
+    graph_id:
+      type: string
+      format: uuid
+      description: ID of the graph to execute.
+    variables:
+      type: object
+      description: Initial variables for the execution.
+      additionalProperties: true
+      default: {}
+
+ExecutionResponse:
+  type: object
+  required: [id, graph_id, status, variables, messages, node_results, created_at, updated_at]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique identifier (UUIDv4).
+    graph_id:
+      type: string
+      format: uuid
+      description: ID of the graph being executed.
+    status:
+      type: string
+      enum: [pending, running, completed, failed, cancelled, interrupted]
+      description: Current status of the execution.
+    current_node:
+      type: string
+      description: ID of the node currently being executed.
+    variables:
+      type: object
+      description: Current execution variables.
+      additionalProperties: true
+    messages:
+      type: array
+      items:
+        type: object
+        additionalProperties: true
+      description: Messages produced during execution.
+    node_results:
+      type: object
+      description: Results keyed by node ID.
+      additionalProperties: true
+    error:
+      type: string
+      description: Error message if execution failed.
+    started_at:
+      type: string
+      format: date-time
+      description: Timestamp when execution started.
+    completed_at:
+      type: string
+      format: date-time
+      description: Timestamp when execution completed.
+    created_at:
+      type: string
+      format: date-time
+      description: Creation timestamp in RFC3339.
+    updated_at:
+      type: string
+      format: date-time
+      description: Last update timestamp in RFC3339.

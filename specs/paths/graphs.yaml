@@ -1,0 +1,237 @@
+graphs:
+  post:
+    summary: Create a new graph
+    description: Creates a new graph in draft status.
+    operationId: createGraph
+    tags: [graphs]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/GraphInput'
+          example:
+            name: my-graph
+            version: "1.0.0"
+            entry_node: start
+            definition:
+              nodes: []
+              edges: []
+    responses:
+      "201":
+        description: Graph created successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/GraphResponse'
+      "400":
+        description: Malformed JSON body.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: INVALID_JSON
+              message: "invalid character '}' looking for beginning of value"
+      "409":
+        description: A graph with the same name and version already exists.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_DUPLICATE_VERSION
+              message: "graph my-graph@1.0.0 already exists"
+      "422":
+        description: Validation error (e.g. version not semver).
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: VALIDATION_ERROR
+              message: "version must match \\d+\\.\\d+\\.\\d+"
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+  get:
+    summary: List graphs
+    description: Returns a paginated list of graphs, optionally filtered by status.
+    operationId: listGraphs
+    tags: [graphs]
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+          default: 1
+          minimum: 1
+        description: Page number (1-based).
+      - name: per_page
+        in: query
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 100
+        description: Number of items per page.
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum: [draft, active, archived]
+        description: Filter graphs by status.
+    responses:
+      "200":
+        description: Paginated list of graphs.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/GraphListResponse'
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+graphsId:
+  get:
+    summary: Get graph by ID
+    description: Returns a single graph by its UUID.
+    operationId: getGraph
+    tags: [graphs]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Graph UUID.
+    responses:
+      "200":
+        description: Graph found.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/GraphResponse'
+      "404":
+        description: Graph not found.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_NOT_FOUND
+              message: "graph not found"
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+  put:
+    summary: Update a graph
+    description: Updates a graph. Only graphs in draft status can be updated.
+    operationId: updateGraph
+    tags: [graphs]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Graph UUID.
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/GraphInput'
+    responses:
+      "200":
+        description: Graph updated successfully.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/GraphResponse'
+      "400":
+        description: Malformed JSON body.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "404":
+        description: Graph not found.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "409":
+        description: Graph is not in draft status.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_NOT_DRAFT
+              message: "graph must be in draft status to be updated"
+      "422":
+        description: Validation error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+  delete:
+    summary: Archive a graph
+    description: >
+      Archives a graph (soft delete). Sets status to archived.
+      Returns 409 if the graph has active executions.
+    operationId: archiveGraph
+    tags: [graphs]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+        description: Graph UUID.
+    responses:
+      "204":
+        description: Graph archived successfully. No body.
+      "404":
+        description: Graph not found.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "409":
+        description: Graph has active executions and cannot be archived.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_HAS_ACTIVE_EXECUTIONS
+              message: "graph has running executions"
+      "500":
+        description: Internal server error.
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'

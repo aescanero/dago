@@ -17,7 +17,7 @@ const sqliteDSN = "file:ent?mode=memory&cache=shared&_fk=1"
 
 func TestGraphCreate(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{"nodes":[],"edges":[]}`)
@@ -41,7 +41,7 @@ func TestGraphCreate(t *testing.T) {
 
 func TestGraphVersionValidation(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -59,7 +59,7 @@ func TestGraphVersionValidation(t *testing.T) {
 
 func TestGraphStatusDefault(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
@@ -77,7 +77,7 @@ func TestGraphStatusDefault(t *testing.T) {
 
 func TestGraphUniqueNameVersion(t *testing.T) {
 	client := enttest.Open(t, "sqlite3", sqliteDSN)
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	def := json.RawMessage(`{}`)
