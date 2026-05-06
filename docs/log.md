@@ -208,7 +208,61 @@ and wrong password); UserResponse never includes password_hash; middleware in by
 **Parallel to:** SPRINT-002, SPRINT-003 (only depends on SPRINT-001).
 **Blocks:** SPRINT-005 (protected orchestrator routes), SPRINT-ABAC.
 
-**Status:** planned
+**Status:** completed
+
+---
+
+## [2026-05-06] sprint | SPRINT-004: completed
+
+**Result:** All 16 TODOs implemented. Unit tests, contract tests, and integration tests pass.
+`go build ./...` exits 0.
+
+**Artifacts created:**
+- `specs/schemas/auth.yaml` — RegisterInput, LoginInput, TokenResponse, UserResponse, JWKSResponse
+- `specs/paths/auth.yaml` — register, login, JWKS (3 endpoints)
+- `specs/openapi.yaml` — updated with auth path and schema refs
+- `ent/schema/user.go`, `ent/schema/org_unit.go` — Ent schemas with Sensitive(), UUID, TIMESTAMPTZ
+- `ent/` (generated) — EntClient regenerated including User and OrgUnit types
+- `migrations/20260429000000_add_user_org_unit.up.sql` — SQL migration for users and org_units tables
+- `libs/domain/user.go` — User + Credentials types (no crypto imports)
+- `libs/domain/token.go` — Claims, ClaimsAttrs, TokenPair, scope constants
+- `libs/domain/errors.go` — added ErrInvalidCredentials
+- `libs/ports/auth.go` — PasswordHasher, TokenIssuer, TokenValidator, UserRepository ports
+- `adapters/auth/argon2id.go` — OWASP 2023 argon2id hasher with PHC format + ConstantTimeCompare
+- `adapters/auth/jwt_issuer.go` — RS256 JWT issuer with ABAC attrs
+- `adapters/auth/jwks_validator.go` — RSAValidator (static public key, for tests/dev)
+- `adapters/auth/jwks_http_validator.go` — JWKSHTTPValidator (lazy HTTP fetch + 5min cache)
+- `adapters/auth/jwks_endpoint.go` — PublicKeyToJWKSJSON helper
+- `adapters/auth/keygen.go` — MustGenerateRSAKeyPair (dev only)
+- `adapters/auth/ent_user_repo.go` — EntUserRepository implementing UserRepository
+- `services/auth-server/internal/usecase/register.go` — RegisterUser use case
+- `services/auth-server/internal/usecase/login.go` — LoginUser use case (timing-safe, no email reveal)
+- `services/auth-server/internal/handler/auth.go` — Register, Login, JWKS handlers
+- `services/auth-server/internal/handler/auth_handler_test.go` — 4 handler unit tests
+- `services/auth-server/internal/router/router.go` — Gin router
+- `services/auth-server/testutil/server.go` — test server builder (for contract and integration tests)
+- `services/auth-server/cmd/main.go` — full wiring with graceful shutdown, RSA key loading
+- `services/orchestrator/internal/middleware/auth.go` — JWT middleware (bypass when AUTH_REQUIRED=false)
+- `services/orchestrator/internal/middleware/auth_middleware_test.go` — 4 middleware unit tests
+- `services/orchestrator/internal/router/router.go` — updated to register auth middleware + /api/v1/protected group
+- `tests/testutil/fakes/user_repo.go` — InMemoryUserRepository
+- `tests/contract/auth_contract_test.go` — 6 contract tests (build tag: contract)
+- `tests/integration/auth_integration_test.go` — 1 end-to-end integration test (build tag: integration)
+
+**Verifications:**
+- `go build ./...` → 0 errors
+- `go test ./tests/unit/auth/...` → 11/11 PASS (argon2id: 5, JWT: 6)
+- `go test ./services/auth-server/internal/handler/...` → 4/4 PASS
+- `go test ./services/orchestrator/internal/middleware/...` → 4/4 PASS
+- `go test -tags=contract ./tests/contract/...` → 6 auth + 8 graph PASS
+- `go test -tags=integration ./tests/integration/...` → 1/1 PASS
+
+**Decisions:**
+- Unit tests for handlers and middleware co-located in respective internal packages (Go's internal rule).
+- `golang-jwt/jwt/v5` added as direct dependency.
+- Atlas CLI not available in environment — migration SQL written manually.
+- JWKSHTTPValidator has lazy caching (5min TTL) for production; RSAValidator (static key) for tests.
+- Orchestrator middleware registered only on empty `/api/v1/protected` group — SPRINT-005 applies it to routes.
 
 ---
 

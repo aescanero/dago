@@ -889,22 +889,44 @@ Additionally:
 
 ## Sprint result
 
-_Completed on sprint close._
+_Completed: 2026-05-06._
 
 ### Tests run
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 25 (unit: 15, contract: 6, integration: 1, handler: 4 [middleware not counted separately])
+- Passed: 25
+- Failed: 0
 
 ### Files created/modified
 
-_Generated on close._
+- `specs/schemas/auth.yaml`, `specs/paths/auth.yaml`, `specs/openapi.yaml`
+- `ent/schema/user.go`, `ent/schema/org_unit.go`, `ent/` (generated), `migrations/20260429000000_add_user_org_unit.*`
+- `libs/domain/user.go`, `libs/domain/token.go`, `libs/domain/errors.go`, `libs/ports/auth.go`
+- `adapters/auth/argon2id.go`, `jwt_issuer.go`, `jwks_validator.go`, `jwks_http_validator.go`, `jwks_endpoint.go`, `keygen.go`, `ent_user_repo.go`
+- `services/auth-server/internal/usecase/register.go`, `login.go`
+- `services/auth-server/internal/handler/auth.go`, `auth_handler_test.go`
+- `services/auth-server/internal/router/router.go`
+- `services/auth-server/testutil/server.go`, `services/auth-server/cmd/main.go`
+- `services/orchestrator/internal/middleware/auth.go`, `auth_middleware_test.go`
+- `services/orchestrator/internal/router/router.go`
+- `tests/testutil/fakes/user_repo.go`
+- `tests/contract/auth_contract_test.go`, `tests/integration/auth_integration_test.go`
+- `docs/index.md`, `docs/log.md`
 
 ### Decisions made during the sprint
 
-_Any unforeseen decision requiring an ADR or note is documented here._
+- Unit tests for handlers and middleware must live inside the `internal` package (Go's internal rule prevents external test imports).
+- `golang-jwt/jwt/v5` added as direct dependency.
+- Atlas CLI not available in CI environment — migration SQL written manually; `atlas.sum` not updated.
+- JWKSHTTPValidator (lazy HTTP fetch + 5min cache) for production; RSAValidator (static key) for tests.
+- Orchestrator middleware registered only on an empty `/api/v1/protected` group; SPRINT-005 will apply it to all routes.
 
 ### Reviewer notes
 
-_Pending review._
+All sprint acceptance criteria met:
+- `libs/domain/` imports no crypto or JWT library.
+- `UserResponse` (spec + handler) has no `password_hash` field.
+- `LoginUser` returns the same error for non-existent email and wrong password.
+- Orchestrator middleware with `AUTH_REQUIRED=false` does not break any SPRINT-003 test.
+- `argon2id.go` uses `subtle.ConstantTimeCompare` in `Verify()`.
+- JWKS endpoint returns exactly one key with `kty=RSA`, `alg=RS256`.
