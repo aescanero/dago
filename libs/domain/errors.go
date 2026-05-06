@@ -12,4 +12,6 @@ var (
 	ErrValidation = errors.New("validation error")
 	// ErrInvalidGraphStatus is returned when an operation is not allowed in the current graph status.
 	ErrInvalidGraphStatus = errors.New("invalid graph status for operation")
+	// ErrInvalidCredentials is returned when authentication credentials are incorrect.
+	ErrInvalidCredentials = errors.New("invalid credentials")
 )

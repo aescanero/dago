@@ -1,0 +1,105 @@
+RegisterInput:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 320
+      example: user@example.com
+    password:
+      type: string
+      minLength: 12
+      example: securepass123
+
+LoginInput:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 320
+      example: user@example.com
+    password:
+      type: string
+      example: securepass123
+
+TokenResponse:
+  type: object
+  required:
+    - access_token
+    - token_type
+    - expires_in
+  properties:
+    access_token:
+      type: string
+      description: JWT RS256 signed access token
+    token_type:
+      type: string
+      enum: [Bearer]
+    expires_in:
+      type: integer
+      description: Token validity in seconds
+      example: 3600
+
+UserResponse:
+  type: object
+  required:
+    - id
+    - email
+    - tags
+    - created_at
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+    tags:
+      type: array
+      items:
+        type: string
+      default: []
+    created_at:
+      type: string
+      format: date-time
+
+JWKSResponse:
+  type: object
+  required:
+    - keys
+  properties:
+    keys:
+      type: array
+      items:
+        type: object
+        required:
+          - kty
+          - alg
+          - kid
+          - n
+          - e
+        properties:
+          kty:
+            type: string
+            example: RSA
+          alg:
+            type: string
+            example: RS256
+          use:
+            type: string
+            example: sig
+          kid:
+            type: string
+          n:
+            type: string
+            description: RSA modulus (base64url)
+          e:
+            type: string
+            description: RSA public exponent (base64url)

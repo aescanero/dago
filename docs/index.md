@@ -36,7 +36,7 @@
 | [SPRINT-001](sprints/SPRINT-001-bootstrap-monorepo.md) | Go monorepo bootstrap | completed |
 | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Ent schemas: Graph, Node, Execution | completed |
 | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | completed |
-| [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | planned |
+| [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | completed |
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | planned |
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | planned |
 | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | planned |
@@ -53,6 +53,8 @@
 | ↳ schemas/execution.yaml | [specs/schemas/execution.yaml](specs/schemas/execution.yaml) | implemented (SPRINT-003) | ExecutionInput, ExecutionResponse |
 | ↳ paths/graphs.yaml | [specs/paths/graphs.yaml](specs/paths/graphs.yaml) | implemented (SPRINT-003) | Graph CRUD (6 endpoints) |
 | ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | implemented (SPRINT-003) | Execution start |
+| ↳ schemas/auth.yaml | [specs/schemas/auth.yaml](specs/schemas/auth.yaml) | implemented (SPRINT-004) | RegisterInput, LoginInput, TokenResponse, UserResponse |
+| ↳ paths/auth.yaml | [specs/paths/auth.yaml](specs/paths/auth.yaml) | implemented (SPRINT-004) | Register, Login, JWKS (3 endpoints) |
 | AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | base structure | Valkey events (13 types) |
 | Graph Schema | [specs/patterns/graph.json](specs/patterns/graph.json) | implemented | Graph structure |
 | Edge patterns (5) | [specs/patterns/edges/](specs/patterns/edges/) | implemented | sequential, conditional, parallel, loop, interrupt |
@@ -60,17 +62,17 @@
 
 ## Services
 
-| Service | Type | Responsibility | Location |
-|---------|------|----------------|----------|
-| orchestrator | Events + HTTP | Core: graphs, state, coordination, API, WebSocket AG-UI | services/orchestrator/ |
-| executor | Events | Worker: agentic node patterns | services/executor/ |
-| router | Events | Worker: deterministic/llm/hybrid routing | services/router/ |
-| planner | Events | NL → graph | services/planner/ |
-| auth-server | HTTP | OAuth 2.1, Identity Broker, ABAC | services/auth-server/ |
-| catalog | HTTP | Package catalogue, versioning | services/catalog/ |
-| mcp-registry | HTTP | MCP server registry + broker | services/mcp-registry/ |
-| agent-registry | HTTP | A2A Agent Cards, discovery | services/agent-registry/ |
-| dashboard | Frontend | React 19 + shadcn/ui + Module Federation | dashboard/ |
+| Service | Type | Responsibility | Location | Status |
+|---------|------|----------------|----------|--------|
+| orchestrator | Events + HTTP | Core: graphs, state, coordination, API, WebSocket AG-UI | services/orchestrator/ | implemented (SPRINT-003) |
+| executor | Events | Worker: agentic node patterns | services/executor/ | planned |
+| router | Events | Worker: deterministic/llm/hybrid routing | services/router/ | planned |
+| planner | Events | NL → graph | services/planner/ | planned |
+| auth-server | HTTP | OAuth 2.1: local login, JWT RS256, JWKS | services/auth-server/ | implemented (SPRINT-004) |
+| catalog | HTTP | Package catalogue, versioning | services/catalog/ | planned |
+| mcp-registry | HTTP | MCP server registry + broker | services/mcp-registry/ | planned |
+| agent-registry | HTTP | A2A Agent Cards, discovery | services/agent-registry/ | planned |
+| dashboard | Frontend | React 19 + shadcn/ui + Module Federation | dashboard/ | planned |
 
 ## Documentation
 
@@ -102,6 +104,8 @@
 | Adapter | Port | Implementation | Status | Sprint |
 |---------|------|----------------|--------|--------|
 | Graph/Execution Storage | libs/ports/storage.go | adapters/storage/graph_repo.go | implemented | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) |
+| Auth (argon2id + JWT + JWKS) | libs/ports/auth.go | adapters/auth/ | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
+| User Storage (Ent) | libs/ports/auth.go | adapters/auth/ent_user_repo.go | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
 | Event Bus Valkey | libs/ports/eventbus.go | adapters/eventbus/valkey/ | planned | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) |
 | LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
@@ -145,8 +149,8 @@ _Ent schemas implemented in SPRINT-002. Ent client generated. Migration applied 
 | Execution | ent/schema/execution.go | implemented | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) |
 | Episode | ent/schema/episode.go | pending | SPRINT-015 (memory) |
 | SemanticFact | ent/schema/semantic_fact.go | pending | SPRINT-015 (memory, pgvector) |
-| User | ent/schema/user.go | planned | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
-| OrgUnit | ent/schema/org_unit.go | planned | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
+| User | ent/schema/user.go | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
+| OrgUnit | ent/schema/org_unit.go | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
 | Package | ent/schema/package.go | pending | SPRINT-catalog |
 | McpServer | ent/schema/mcp_server.go | pending | SPRINT-mcp |
 | AgentCard | ent/schema/agent_card.go | pending | SPRINT-a2a |

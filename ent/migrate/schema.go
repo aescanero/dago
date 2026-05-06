@@ -122,15 +122,81 @@ var (
 			},
 		},
 	}
+	// OrgUnitsColumns holds the columns for the "org_units" table.
+	OrgUnitsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString, Size: 255},
+		{Name: "path", Type: field.TypeString, Unique: true, Size: 1024},
+		{Name: "tags", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "org_unit_children", Type: field.TypeUUID, Nullable: true},
+	}
+	// OrgUnitsTable holds the schema information for the "org_units" table.
+	OrgUnitsTable = &schema.Table{
+		Name:       "org_units",
+		Columns:    OrgUnitsColumns,
+		PrimaryKey: []*schema.Column{OrgUnitsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "org_units_org_units_children",
+				Columns:    []*schema.Column{OrgUnitsColumns[6]},
+				RefColumns: []*schema.Column{OrgUnitsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "orgunit_path",
+				Unique:  true,
+				Columns: []*schema.Column{OrgUnitsColumns[2]},
+			},
+		},
+	}
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "email", Type: field.TypeString, Unique: true, Size: 320},
+		{Name: "password_hash", Type: field.TypeString},
+		{Name: "tags", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "org_unit_users", Type: field.TypeUUID, Nullable: true},
+	}
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "users_org_units_users",
+				Columns:    []*schema.Column{UsersColumns[6]},
+				RefColumns: []*schema.Column{OrgUnitsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "user_email",
+				Unique:  true,
+				Columns: []*schema.Column{UsersColumns[1]},
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		ExecutionsTable,
 		GraphsTable,
 		NodesTable,
+		OrgUnitsTable,
+		UsersTable,
 	}
 )
 
 func init() {
 	ExecutionsTable.ForeignKeys[0].RefTable = GraphsTable
 	NodesTable.ForeignKeys[0].RefTable = GraphsTable
+	OrgUnitsTable.ForeignKeys[0].RefTable = OrgUnitsTable
+	UsersTable.ForeignKeys[0].RefTable = OrgUnitsTable
 }
