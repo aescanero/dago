@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/aescanero/dago/libs/domain"
 )
 
@@ -79,7 +80,7 @@ func fetchFirstRSAKey(ctx context.Context, url string) (*rsa.PublicKey, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch JWKS: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var doc struct {
 		Keys []struct {

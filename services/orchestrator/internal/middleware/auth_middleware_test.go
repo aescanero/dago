@@ -25,6 +25,13 @@ func (f *fakeValidator) Validate(ctx context.Context, token string) (*domain.Cla
 	return f.validateFn(ctx, token)
 }
 
+func newGetRequest(t *testing.T, path string) *http.Request {
+	t.Helper()
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, path, nil)
+	require.NoError(t, err)
+	return req
+}
+
 func setupMWEngine(t *testing.T, required bool, v middleware.TokenValidatorPort) *gin.Engine {
 	t.Helper()
 	r := gin.New()
@@ -36,8 +43,7 @@ func setupMWEngine(t *testing.T, required bool, v middleware.TokenValidatorPort)
 func TestAuthMiddlewareBypassMode(t *testing.T) {
 	r := setupMWEngine(t, false, nil)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newGetRequest(t, "/test"))
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
@@ -54,9 +60,9 @@ func TestAuthMiddlewareValidToken(t *testing.T) {
 		assert.Equal(t, "user-123", got.Subject)
 		c.Status(http.StatusOK)
 	})
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req := newGetRequest(t, "/test")
 	req.Header.Set("Authorization", "Bearer valid.jwt.token")
+	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
 }
@@ -67,8 +73,7 @@ func TestAuthMiddlewareMissingToken(t *testing.T) {
 	}
 	r := setupMWEngine(t, true, v)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newGetRequest(t, "/test"))
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
@@ -79,9 +84,9 @@ func TestAuthMiddlewareExpiredToken(t *testing.T) {
 		},
 	}
 	r := setupMWEngine(t, true, v)
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/test", nil)
+	req := newGetRequest(t, "/test")
 	req.Header.Set("Authorization", "Bearer expired.token.here")
+	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

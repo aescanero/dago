@@ -46,6 +46,14 @@ func setupEngine(t *testing.T, reg handler.RegisterUseCasePort, login handler.Lo
 	return r
 }
 
+func newRequest(t *testing.T, method, path string, body []byte) *http.Request {
+	t.Helper()
+	req, err := http.NewRequestWithContext(context.Background(), method, path, bytes.NewReader(body))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	return req
+}
+
 func TestRegisterHandlerSuccess(t *testing.T) {
 	reg := &fakeRegisterUC{
 		executeFn: func(_ context.Context, creds domain.Credentials) (*domain.User, error) {
@@ -55,9 +63,7 @@ func TestRegisterHandlerSuccess(t *testing.T) {
 	r := setupEngine(t, reg, nil)
 	body, _ := json.Marshal(map[string]string{"email": "test@example.com", "password": "securepass123"})
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newRequest(t, http.MethodPost, "/api/v1/auth/register", body))
 	assert.Equal(t, http.StatusCreated, w.Code)
 
 	var out map[string]any
@@ -75,9 +81,7 @@ func TestRegisterHandlerInvalidEmail(t *testing.T) {
 	r := setupEngine(t, reg, nil)
 	body, _ := json.Marshal(map[string]string{"email": "not-an-email", "password": "securepass123"})
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newRequest(t, http.MethodPost, "/api/v1/auth/register", body))
 	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
 }
 
@@ -90,9 +94,7 @@ func TestLoginHandlerSuccess(t *testing.T) {
 	r := setupEngine(t, nil, login)
 	body, _ := json.Marshal(map[string]string{"email": "test@example.com", "password": "securepass123"})
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newRequest(t, http.MethodPost, "/api/v1/auth/login", body))
 	assert.Equal(t, http.StatusOK, w.Code)
 
 	var out map[string]any
@@ -109,9 +111,7 @@ func TestLoginHandlerWrongCredentials(t *testing.T) {
 	r := setupEngine(t, nil, login)
 	body, _ := json.Marshal(map[string]string{"email": "test@example.com", "password": "wrong"})
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+	r.ServeHTTP(w, newRequest(t, http.MethodPost, "/api/v1/auth/login", body))
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 	var out map[string]any

@@ -37,5 +37,9 @@ func PublicKeyToJWKSJSON(pub *rsa.PublicKey) ([]byte, error) {
 	e := base64.RawURLEncoding.EncodeToString(eBig.Bytes())
 
 	doc := jwks{Keys: []jwk{{Kty: "RSA", Alg: "RS256", Use: "sig", Kid: kid, N: n, E: e}}}
-	return json.Marshal(doc)
+	out, err := json.Marshal(doc)
+	if err != nil {
+		return nil, fmt.Errorf("marshal JWKS: %w", err)
+	}
+	return out, nil
 }

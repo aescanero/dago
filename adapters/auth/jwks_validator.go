@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/aescanero/dago/libs/domain"
 )
 
@@ -50,54 +51,74 @@ func mapToClaims(mc jwt.MapClaims) (*domain.Claims, error) {
 	iss, _ := mc["iss"].(string)
 	scope, _ := mc["scope"].(string)
 	clientType, _ := mc["client_type"].(string)
-
-	var aud []string
-	switch a := mc["aud"].(type) {
-	case []any:
-		for _, v := range a {
-			if s, ok := v.(string); ok {
-				aud = append(aud, s)
-			}
-		}
-	case string:
-		aud = []string{a}
-	}
-
-	var attrs domain.ClaimsAttrs
-	if a, ok := mc["attrs"].(map[string]any); ok {
-		if tags, ok := a["tags"].([]any); ok {
-			for _, t := range tags {
-				if s, ok := t.(string); ok {
-					attrs.Tags = append(attrs.Tags, s)
-				}
-			}
-		}
-		attrs.OrgUnit, _ = a["org_unit"].(string)
-		attrs.OrgPath, _ = a["org_path"].(string)
-	}
-	if attrs.Tags == nil {
-		attrs.Tags = []string{}
-	}
-
-	exp, _ := mc.GetExpirationTime()
-	iat, _ := mc.GetIssuedAt()
-	expTime := time.Time{}
-	iatTime := time.Time{}
-	if exp != nil {
-		expTime = exp.Time
-	}
-	if iat != nil {
-		iatTime = iat.Time
-	}
-
 	return &domain.Claims{
 		Subject:    sub,
 		Issuer:     iss,
-		Audience:   aud,
+		Audience:   extractAudience(mc),
 		Scope:      scope,
 		ClientType: clientType,
-		Attrs:      attrs,
-		ExpiresAt:  expTime,
-		IssuedAt:   iatTime,
+		Attrs:      extractAttrs(mc),
+		ExpiresAt:  extractTime(mc, "exp"),
+		IssuedAt:   extractTime(mc, "iat"),
 	}, nil
+}
+
+func extractAudience(mc jwt.MapClaims) []string {
+	switch a := mc["aud"].(type) {
+	case []any:
+		out := make([]string, 0, len(a))
+		for _, v := range a {
+			if s, ok := v.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	case string:
+		return []string{a}
+	default:
+		return nil
+	}
+}
+
+func extractAttrs(mc jwt.MapClaims) domain.ClaimsAttrs {
+	a, ok := mc["attrs"].(map[string]any)
+	if !ok {
+		return domain.ClaimsAttrs{Tags: []string{}}
+	}
+	attrs := domain.ClaimsAttrs{
+		Tags: extractStringSlice(a["tags"]),
+	}
+	attrs.OrgUnit, _ = a["org_unit"].(string)
+	attrs.OrgPath, _ = a["org_path"].(string)
+	return attrs
+}
+
+func extractStringSlice(v any) []string {
+	raw, ok := v.([]any)
+	if !ok {
+		return []string{}
+	}
+	out := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if s, ok := item.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+func extractTime(mc jwt.MapClaims, key string) time.Time {
+	switch key {
+	case "exp":
+		t, _ := mc.GetExpirationTime()
+		if t != nil {
+			return t.Time
+		}
+	case "iat":
+		t, _ := mc.GetIssuedAt()
+		if t != nil {
+			return t.Time
+		}
+	}
+	return time.Time{}
 }

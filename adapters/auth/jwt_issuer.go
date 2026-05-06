@@ -3,9 +3,11 @@ package auth
 import (
 	"context"
 	"crypto/rsa"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
 	"github.com/aescanero/dago/libs/domain"
 )
 
@@ -48,5 +50,9 @@ func (i *JWTIssuer) Issue(_ context.Context, user *domain.User) (string, error) 
 		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	return token.SignedString(i.privateKey)
+	signed, err := token.SignedString(i.privateKey)
+	if err != nil {
+		return "", fmt.Errorf("sign token: %w", err)
+	}
+	return signed, nil
 }

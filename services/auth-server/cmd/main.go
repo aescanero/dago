@@ -38,12 +38,13 @@ func main() {
 		_ = client.Close()
 		log.Fatalf("run schema migration: %v", err)
 	}
-	defer func() { _ = client.Close() }()
 
 	jwksJSON, err := authadapter.PublicKeyToJWKSJSON(pubKey)
 	if err != nil {
+		_ = client.Close()
 		log.Fatalf("generate JWKS: %v", err)
 	}
+	defer func() { _ = client.Close() }()
 
 	repo := authadapter.NewEntUserRepository(client)
 	hasher := authadapter.NewArgon2idHasher()
@@ -66,10 +67,11 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("shutting down auth-server...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("shutdown: %v", err)
+	shutCtx, shutCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutErr := srv.Shutdown(shutCtx)
+	shutCancel()
+	if shutErr != nil {
+		log.Printf("shutdown error: %v", shutErr)
 	}
 }
 
