@@ -15,6 +15,8 @@ import (
 	"github.com/aescanero/dago/ent/execution"
 	"github.com/aescanero/dago/ent/graph"
 	"github.com/aescanero/dago/ent/node"
+	"github.com/aescanero/dago/ent/orgunit"
+	"github.com/aescanero/dago/ent/user"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -78,6 +80,8 @@ func checkColumn(t, c string) error {
 			execution.Table: execution.ValidColumn,
 			graph.Table:     graph.ValidColumn,
 			node.Table:      node.ValidColumn,
+			orgunit.Table:   orgunit.ValidColumn,
+			user.Table:      user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -14,3 +14,9 @@ type Graph func(*sql.Selector)
 
 // Node is the predicate function for node builders.
 type Node func(*sql.Selector)
+
+// OrgUnit is the predicate function for orgunit builders.
+type OrgUnit func(*sql.Selector)
+
+// User is the predicate function for user builders.
+type User func(*sql.Selector)

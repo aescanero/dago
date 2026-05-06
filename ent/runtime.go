@@ -9,7 +9,9 @@ import (
 	"github.com/aescanero/dago/ent/execution"
 	"github.com/aescanero/dago/ent/graph"
 	"github.com/aescanero/dago/ent/node"
+	"github.com/aescanero/dago/ent/orgunit"
 	"github.com/aescanero/dago/ent/schema"
+	"github.com/aescanero/dago/ent/user"
 	"github.com/google/uuid"
 )
 
@@ -153,4 +155,98 @@ func init() {
 	nodeDescID := nodeFields[0].Descriptor()
 	// node.DefaultID holds the default value on creation for the id field.
 	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
+	orgunitFields := schema.OrgUnit{}.Fields()
+	_ = orgunitFields
+	// orgunitDescName is the schema descriptor for name field.
+	orgunitDescName := orgunitFields[1].Descriptor()
+	// orgunit.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	orgunit.NameValidator = func() func(string) error {
+		validators := orgunitDescName.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(name string) error {
+			for _, fn := range fns {
+				if err := fn(name); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// orgunitDescPath is the schema descriptor for path field.
+	orgunitDescPath := orgunitFields[2].Descriptor()
+	// orgunit.PathValidator is a validator for the "path" field. It is called by the builders before save.
+	orgunit.PathValidator = func() func(string) error {
+		validators := orgunitDescPath.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(_path string) error {
+			for _, fn := range fns {
+				if err := fn(_path); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// orgunitDescTags is the schema descriptor for tags field.
+	orgunitDescTags := orgunitFields[3].Descriptor()
+	// orgunit.DefaultTags holds the default value on creation for the tags field.
+	orgunit.DefaultTags = orgunitDescTags.Default.([]string)
+	// orgunitDescCreatedAt is the schema descriptor for created_at field.
+	orgunitDescCreatedAt := orgunitFields[4].Descriptor()
+	// orgunit.DefaultCreatedAt holds the default value on creation for the created_at field.
+	orgunit.DefaultCreatedAt = orgunitDescCreatedAt.Default.(func() time.Time)
+	// orgunitDescUpdatedAt is the schema descriptor for updated_at field.
+	orgunitDescUpdatedAt := orgunitFields[5].Descriptor()
+	// orgunit.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	orgunit.DefaultUpdatedAt = orgunitDescUpdatedAt.Default.(func() time.Time)
+	// orgunit.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	orgunit.UpdateDefaultUpdatedAt = orgunitDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// orgunitDescID is the schema descriptor for id field.
+	orgunitDescID := orgunitFields[0].Descriptor()
+	// orgunit.DefaultID holds the default value on creation for the id field.
+	orgunit.DefaultID = orgunitDescID.Default.(func() uuid.UUID)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescEmail is the schema descriptor for email field.
+	userDescEmail := userFields[1].Descriptor()
+	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	user.EmailValidator = func() func(string) error {
+		validators := userDescEmail.Validators
+		fns := [...]func(string) error{
+			validators[0].(func(string) error),
+			validators[1].(func(string) error),
+		}
+		return func(email string) error {
+			for _, fn := range fns {
+				if err := fn(email); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	}()
+	// userDescTags is the schema descriptor for tags field.
+	userDescTags := userFields[3].Descriptor()
+	// user.DefaultTags holds the default value on creation for the tags field.
+	user.DefaultTags = userDescTags.Default.([]string)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[4].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userFields[5].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// userDescID is the schema descriptor for id field.
+	userDescID := userFields[0].Descriptor()
+	// user.DefaultID holds the default value on creation for the id field.
+	user.DefaultID = userDescID.Default.(func() uuid.UUID)
 }

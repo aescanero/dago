@@ -18,6 +18,10 @@ type Tx struct {
 	Graph *GraphClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
+	// OrgUnit is the client for interacting with the OrgUnit builders.
+	OrgUnit *OrgUnitClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
 
 	// lazily loaded.
 	client     *Client
@@ -152,6 +156,8 @@ func (tx *Tx) init() {
 	tx.Execution = NewExecutionClient(tx.config)
 	tx.Graph = NewGraphClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
+	tx.OrgUnit = NewOrgUnitClient(tx.config)
+	tx.User = NewUserClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.
