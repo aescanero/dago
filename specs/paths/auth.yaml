@@ -1,0 +1,102 @@
+register:
+  post:
+    summary: Register a new user
+    description: Creates a new user account with a hashed password.
+    operationId: registerUser
+    tags: [auth]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/RegisterInput'
+          example:
+            email: user@example.com
+            password: securepass123
+    responses:
+      "201":
+        description: User created successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/UserResponse'
+      "400":
+        description: Malformed request
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "409":
+        description: Email already registered
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: EMAIL_CONFLICT
+              message: email already registered
+      "422":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+login:
+  post:
+    summary: Authenticate with email and password
+    description: Returns a JWT RS256 access token on successful authentication.
+    operationId: loginUser
+    tags: [auth]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/LoginInput'
+          example:
+            email: user@example.com
+            password: securepass123
+    responses:
+      "200":
+        description: Authentication successful
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TokenResponse'
+      "400":
+        description: Malformed request
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+      "401":
+        description: Invalid credentials
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: INVALID_CREDENTIALS
+              message: invalid email or password
+      "422":
+        description: Validation error
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+jwks:
+  get:
+    summary: JSON Web Key Set
+    description: Public RSA key in JWK format for JWT RS256 validation. No authentication required.
+    operationId: getJWKS
+    tags: [auth]
+    security: []
+    responses:
+      "200":
+        description: JWKS response
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/JWKSResponse'

@@ -28,6 +28,8 @@ tags:
     description: Gestión de nodos
   - name: packages
     description: Catálogo de paquetes (proxy a catalog service)
+  - name: auth
+    description: Authentication (auth-server)
 
 paths:
   /graphs:
@@ -36,6 +38,12 @@ paths:
     $ref: './paths/graphs.yaml#/graphsId'
   /executions:
     $ref: './paths/executions.yaml#/executions'
+  /auth/register:
+    $ref: './paths/auth.yaml#/register'
+  /auth/login:
+    $ref: './paths/auth.yaml#/login'
+  /.well-known/jwks.json:
+    $ref: './paths/auth.yaml#/jwks'
 
 components:
   securitySchemes:
@@ -99,3 +107,18 @@ components:
 
     ExecutionResponse:
       $ref: './schemas/execution.yaml#/ExecutionResponse'
+
+    RegisterInput:
+      $ref: './schemas/auth.yaml#/RegisterInput'
+
+    LoginInput:
+      $ref: './schemas/auth.yaml#/LoginInput'
+
+    TokenResponse:
+      $ref: './schemas/auth.yaml#/TokenResponse'
+
+    UserResponse:
+      $ref: './schemas/auth.yaml#/UserResponse'
+
+    JWKSResponse:
+      $ref: './schemas/auth.yaml#/JWKSResponse'
