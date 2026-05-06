@@ -11,9 +11,9 @@ import (
 
 // LoginUser authenticates a user and issues a JWT token pair.
 type LoginUser struct {
-	repo      ports.UserRepository
-	hasher    ports.PasswordHasher
-	issuer    ports.TokenIssuer
+	repo   ports.UserRepository
+	hasher ports.PasswordHasher
+	issuer ports.TokenIssuer
 }
 
 // NewLoginUser creates a new LoginUser use case.
