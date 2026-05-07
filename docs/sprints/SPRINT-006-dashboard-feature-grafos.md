@@ -885,17 +885,29 @@ Additionally:
 
 ## Sprint Result
 
-_Completed at the end of the sprint._
+Completed: 2026-05-07.
 
 ### Tests executed
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 31
+- Passed: 31
+- Failed: 0
 
 ### Files created/modified
 
-_List generated at close._
+- `dashboard/src/api/types.gen.ts`
+- `dashboard/src/components/ui/` — 14 new shadcn/ui components
+- `dashboard/src/features/graphs/schemas/graph-form.schema.ts`
+- `dashboard/src/features/graphs/lib/definition-templates.ts`
+- `dashboard/src/features/graphs/hooks/` — 5 hooks
+- `dashboard/src/features/graphs/components/` — 7 components
+- `dashboard/src/features/graphs/pages/` — 4 pages
+- `dashboard/src/features/graphs/index.ts`
+- `dashboard/src/App.tsx`
+- `dashboard/src/test/setup.ts`
+- `dashboard/scripts/smoke.sh`
+- `docs/index.md`, `docs/log.md`
+- Deleted: `dashboard/src/pages/GraphsPage.tsx`, `dashboard/src/pages/__tests__/GraphsPage.test.tsx`
 
 ### Decisions made during the sprint
 
