@@ -38,7 +38,7 @@
 | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | completed |
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | completed |
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | completed |
-| [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | planned |
+| [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | completed |
 | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | planned |
 | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | planned |
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | planned |
@@ -72,7 +72,7 @@
 | catalog | HTTP | Package catalogue, versioning | services/catalog/ | planned |
 | mcp-registry | HTTP | MCP server registry + broker | services/mcp-registry/ | planned |
 | agent-registry | HTTP | A2A Agent Cards, discovery | services/agent-registry/ | planned |
-| dashboard | Frontend | React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | dashboard/ | implemented (SPRINT-005) |
+| dashboard | Frontend | React 19 + shadcn/ui + PKCE + graphs feature (list, detail, create, edit, archive) | dashboard/ | implemented (SPRINT-006) |
 
 ## Documentation
 
@@ -111,16 +111,26 @@
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 
-## Dashboard (SPRINT-005)
+## Dashboard (SPRINT-006)
 
 | Directory | Description |
 |-----------|-------------|
 | `dashboard/src/api/` | OpenAPI-generated types (types.gen.ts) + API client |
 | `dashboard/src/auth/` | PKCE module, AuthProvider, ProtectedRoute, AuthCallback |
-| `dashboard/src/components/ui/` | shadcn/ui components (Button, Badge, Table, etc.) |
-| `dashboard/src/hooks/` | TanStack Query hooks (useGraphs) |
+| `dashboard/src/components/ui/` | shadcn/ui base components (Button, Badge, Table, Form, etc.) |
+| `dashboard/src/features/graphs/` | Graphs feature: pages, components, hooks, schemas, templates |
 | `dashboard/src/layouts/` | AppLayout (sidebar + header + dark mode) |
-| `dashboard/src/pages/` | GraphsPage, AuthCallback, NotFoundPage |
+| `dashboard/src/pages/` | NotFoundPage |
+
+### Graphs feature (`features/graphs/`)
+
+| Sub-directory | Contents |
+|---------------|----------|
+| `pages/` | GraphsPage (list+filter), GraphDetailPage (tabs), GraphCreatePage, GraphEditPage |
+| `components/` | GraphTable, GraphForm, GraphStatusBadge, NodePatternBadge, EdgeTypeBadge, GraphDefinitionViewer, GraphArchiveDialog |
+| `hooks/` | useGraphs, useGraph, useCreateGraph, useUpdateGraph, useArchiveGraph |
+| `schemas/` | graphFormSchema (Zod), formToGraphInput |
+| `lib/` | definition-templates (4 presets: empty, llm_call, react_agent, router_handlers) |
 
 ### Environment variables (dashboard/.env.development)
 

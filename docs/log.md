@@ -452,3 +452,39 @@ next event. `CanTransitionTo` for idempotency.
 - `@radix-ui/react-slot` added as a runtime dependency for shadcn/ui Button.
 
 **Status:** completed
+
+---
+
+## SPRINT-006 — Dashboard: Graphs feature (2026-05-07)
+
+**Objective:** Implement the graphs feature in the dashboard: list with status filter, detail page with tabs, creation and edit with validated forms, archive action — connecting to the 5 CRUD endpoints from SPRINT-003.
+
+**Files created/modified:**
+- `dashboard/src/api/types.gen.ts` — updated with full GraphInput, GraphResponse, GraphListResponse, Pagination types
+- `dashboard/src/components/ui/` — 14 new shadcn/ui components: input, textarea, label, form, alert, alert-dialog, breadcrumb, tabs, switch, select, tooltip, scroll-area, collapsible, separator
+- `dashboard/src/features/graphs/schemas/graph-form.schema.ts` — Zod schema + formToGraphInput
+- `dashboard/src/features/graphs/lib/definition-templates.ts` — 4 templates (empty, llm_call, react_agent, router_handlers)
+- `dashboard/src/features/graphs/hooks/` — useGraphs, useGraph, useCreateGraph, useUpdateGraph, useArchiveGraph (all using direct fetch() + useAuth)
+- `dashboard/src/features/graphs/components/` — GraphStatusBadge, NodePatternBadge, EdgeTypeBadge, GraphTable, GraphDefinitionViewer, GraphForm, GraphArchiveDialog
+- `dashboard/src/features/graphs/pages/` — GraphsPage, GraphDetailPage, GraphCreatePage, GraphEditPage
+- `dashboard/src/features/graphs/index.ts` — barrel export
+- `dashboard/src/App.tsx` — added routes: /graphs/new, /graphs/:id, /graphs/:id/edit
+- `dashboard/src/test/setup.ts` — added jsdom polyfills for Radix UI (hasPointerCapture, setPointerCapture, releasePointerCapture, scrollIntoView, ResizeObserver)
+- `dashboard/scripts/smoke.sh` — extended with graph bundle presence checks
+- `docs/sprints/SPRINT-006-dashboard-feature-grafos.md` — manual E2E procedure added
+
+**Deleted:**
+- `dashboard/src/pages/GraphsPage.tsx` (replaced by features/graphs/pages/GraphsPage.tsx)
+- `dashboard/src/pages/__tests__/GraphsPage.test.tsx` (replaced by feature tests)
+
+**Tests:** 31 passing (5 PKCE, 5 AuthProvider, 2 useArchiveGraph, 8 GraphDetailPage, 6 GraphForm, 5 GraphCreatePage).
+
+**Key decisions:**
+- All mutation hooks use direct `fetch()` calls (not openapi-fetch) for testability with MSW v2.
+- `zodResolver(schema) as any` cast required due to TS strict incompatibility with react-hook-form generics.
+- `userEvent.type()` cannot type `{` — use `fireEvent.change()` for JSON textarea content in tests.
+- `<Toaster />` must be in the test wrapper for sonner toasts to appear in RTL tests.
+- 422 field errors rendered as inline `<Alert>` (not toast) to satisfy acceptance criteria.
+- Smoke bundle check greps for JSX string literals (survive minification) rather than component names.
+
+**Status:** completed
