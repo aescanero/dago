@@ -37,7 +37,7 @@
 | [SPRINT-002](sprints/SPRINT-002-ent-schemas-graph-node-execution.md) | Ent schemas: Graph, Node, Execution | completed |
 | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) | Orchestrator REST API: graph CRUD + executions | completed |
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | completed |
-| [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | planned |
+| [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | completed |
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | planned |
 | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | planned |
 | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | planned |
@@ -53,8 +53,8 @@
 | ↳ schemas/execution.yaml | [specs/schemas/execution.yaml](specs/schemas/execution.yaml) | implemented (SPRINT-003) | ExecutionInput, ExecutionResponse |
 | ↳ paths/graphs.yaml | [specs/paths/graphs.yaml](specs/paths/graphs.yaml) | implemented (SPRINT-003) | Graph CRUD (6 endpoints) |
 | ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | implemented (SPRINT-003) | Execution start |
-| ↳ schemas/auth.yaml | [specs/schemas/auth.yaml](specs/schemas/auth.yaml) | implemented (SPRINT-004) | RegisterInput, LoginInput, TokenResponse, UserResponse |
-| ↳ paths/auth.yaml | [specs/paths/auth.yaml](specs/paths/auth.yaml) | implemented (SPRINT-004) | Register, Login, JWKS (3 endpoints) |
+| ↳ schemas/auth.yaml | [specs/schemas/auth.yaml](specs/schemas/auth.yaml) | implemented (SPRINT-005) | RegisterInput, LoginInput, TokenResponse, UserResponse, TokenRequest, AuthorizeParams |
+| ↳ paths/auth.yaml | [specs/paths/auth.yaml](specs/paths/auth.yaml) | implemented (SPRINT-005) | Register, Login, JWKS, GET/POST /authorize, POST /token (6 endpoints) |
 | AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | base structure | Valkey events (13 types) |
 | Graph Schema | [specs/patterns/graph.json](specs/patterns/graph.json) | implemented | Graph structure |
 | Edge patterns (5) | [specs/patterns/edges/](specs/patterns/edges/) | implemented | sequential, conditional, parallel, loop, interrupt |
@@ -68,11 +68,11 @@
 | executor | Events | Worker: agentic node patterns | services/executor/ | planned |
 | router | Events | Worker: deterministic/llm/hybrid routing | services/router/ | planned |
 | planner | Events | NL → graph | services/planner/ | planned |
-| auth-server | HTTP | OAuth 2.1: local login, JWT RS256, JWKS | services/auth-server/ | implemented (SPRINT-004) |
+| auth-server | HTTP | OAuth 2.1: local login, JWT RS256, JWKS, PKCE authorize/token | services/auth-server/ | implemented (SPRINT-005) |
 | catalog | HTTP | Package catalogue, versioning | services/catalog/ | planned |
 | mcp-registry | HTTP | MCP server registry + broker | services/mcp-registry/ | planned |
 | agent-registry | HTTP | A2A Agent Cards, discovery | services/agent-registry/ | planned |
-| dashboard | Frontend | React 19 + shadcn/ui + Module Federation | dashboard/ | planned |
+| dashboard | Frontend | React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | dashboard/ | implemented (SPRINT-005) |
 
 ## Documentation
 
@@ -110,6 +110,26 @@
 | LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
+
+## Dashboard (SPRINT-005)
+
+| Directory | Description |
+|-----------|-------------|
+| `dashboard/src/api/` | OpenAPI-generated types (types.gen.ts) + API client |
+| `dashboard/src/auth/` | PKCE module, AuthProvider, ProtectedRoute, AuthCallback |
+| `dashboard/src/components/ui/` | shadcn/ui components (Button, Badge, Table, etc.) |
+| `dashboard/src/hooks/` | TanStack Query hooks (useGraphs) |
+| `dashboard/src/layouts/` | AppLayout (sidebar + header + dark mode) |
+| `dashboard/src/pages/` | GraphsPage, AuthCallback, NotFoundPage |
+
+### Environment variables (dashboard/.env.development)
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `VITE_API_URL` | `http://localhost:8080` | Orchestrator REST API base URL |
+| `VITE_AUTH_URL` | `http://localhost:8081` | Auth-server base URL |
+| `VITE_AUTH_CLIENT_ID` | `dago-dashboard` | OAuth client identifier |
+| `VITE_AUTH_REDIRECT_URI` | `http://localhost:5173/auth/callback` | PKCE callback URL |
 
 ## Development infrastructure
 
