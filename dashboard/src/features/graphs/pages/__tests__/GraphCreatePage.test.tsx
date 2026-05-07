@@ -1,8 +1,9 @@
 import { describe, test, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { AuthContext, type AuthContextValue } from "@/auth/AuthContext";
@@ -31,6 +32,7 @@ function createWrapper() {
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={["/graphs/new"]}>
           <AuthContext.Provider value={mockAuthContext}>
+            <Toaster />
             <Routes>
               <Route path="/graphs/new" element={children} />
               <Route
@@ -52,8 +54,8 @@ async function fillValidForm(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(/entry node/i), "llm");
 
   const defTextarea = screen.getByRole("textbox", { name: /definition/i });
-  await user.clear(defTextarea);
-  await user.type(defTextarea, '{"nodes":{},"edges":[]}');
+  // Use fireEvent.change for JSON to avoid userEvent interpreting { as key sequences
+  fireEvent.change(defTextarea, { target: { value: '{"nodes":{},"edges":[]}' } });
 }
 
 describe("GraphCreatePage", () => {

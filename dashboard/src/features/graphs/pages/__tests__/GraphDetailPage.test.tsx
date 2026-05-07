@@ -73,7 +73,9 @@ describe("GraphDetailPage", () => {
     render(<GraphDetailPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText("Test Graph")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Test Graph" })
+      ).toBeInTheDocument();
     });
     expect(screen.getByText("1.0.0")).toBeInTheDocument();
     expect(screen.getByText("draft")).toBeInTheDocument();
@@ -89,7 +91,9 @@ describe("GraphDetailPage", () => {
     render(<GraphDetailPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText("Test Graph")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Test Graph" })
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByRole("tab", { name: /metadata/i })).toHaveAttribute(
@@ -109,7 +113,9 @@ describe("GraphDetailPage", () => {
     render(<GraphDetailPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByText("Test Graph")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Test Graph" })
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("tab", { name: /definition/i }));
@@ -145,7 +151,9 @@ describe("GraphDetailPage", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Test Graph")).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Test Graph" })
+      ).toBeInTheDocument();
     });
 
     expect(screen.queryByRole("link", { name: /edit/i })).not.toBeInTheDocument();

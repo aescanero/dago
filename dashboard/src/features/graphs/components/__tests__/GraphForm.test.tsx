@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -110,11 +110,18 @@ describe("GraphForm", () => {
       { wrapper: Wrapper }
     );
 
-    await user.click(screen.getByRole("combobox", { name: /template/i }));
-    await user.click(screen.getByText(/LLM Call simple/i));
+    // Radix Select trigger is a button; click it to open the listbox
+    const trigger = screen.getByRole("combobox", { name: /template/i });
+    await user.click(trigger);
+
+    // After opening, look for LLM Call option in the listbox
+    const option = await screen.findByRole("option", { name: /llm call simple/i });
+    await user.click(option);
 
     await waitFor(() => {
-      const textarea = screen.getByRole("textbox", { name: /definition/i }) as HTMLTextAreaElement;
+      const textarea = screen.getByRole("textbox", {
+        name: /definition/i,
+      }) as HTMLTextAreaElement;
       expect(textarea.value).toContain("llm_call");
     });
   });
@@ -138,8 +145,8 @@ describe("GraphForm", () => {
     const definitionTextarea = screen.getByRole("textbox", {
       name: /definition/i,
     });
-    await user.clear(definitionTextarea);
-    await user.type(definitionTextarea, validDefinition);
+    // Use fireEvent.change for JSON content to avoid userEvent interpreting { as key sequences
+    fireEvent.change(definitionTextarea, { target: { value: validDefinition } });
 
     await user.click(screen.getByRole("button", { name: /create/i }));
 
@@ -149,7 +156,8 @@ describe("GraphForm", () => {
           name: "mi-grafo",
           version: "1.0.0",
           entry_node: "llm",
-        }) as GraphFormValues
+        }) as GraphFormValues,
+        expect.anything()
       );
     });
   });
