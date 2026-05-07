@@ -2,7 +2,7 @@
 // Do not edit manually.
 
 export type paths = {
-  "/graphs": {
+  "/api/v1/graphs": {
     get: {
       parameters: {
         query?: {
@@ -19,22 +19,123 @@ export type paths = {
         };
       };
     };
+    post: {
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["GraphInput"];
+        };
+      };
+      responses: {
+        201: {
+          content: {
+            "application/json": components["schemas"]["GraphResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+  };
+  "/api/v1/graphs/{id}": {
+    get: {
+      parameters: {
+        path: { id: string };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["GraphResponse"];
+          };
+        };
+        404: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    put: {
+      parameters: {
+        path: { id: string };
+      };
+      requestBody: {
+        content: {
+          "application/json": components["schemas"]["GraphInput"];
+        };
+      };
+      responses: {
+        200: {
+          content: {
+            "application/json": components["schemas"]["GraphResponse"];
+          };
+        };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+        422: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
+    delete: {
+      parameters: {
+        path: { id: string };
+      };
+      responses: {
+        204: { content: never };
+        409: {
+          content: {
+            "application/json": components["schemas"]["ErrorResponse"];
+          };
+        };
+      };
+    };
   };
 };
 
 export type components = {
   schemas: {
-    GraphListResponse: {
-      items: GraphResponse[];
-      pagination: Pagination;
+    GraphInput: {
+      name: string;
+      version: string;
+      description?: string;
+      entry_node: string;
+      definition: Record<string, unknown>;
+      memory_config?: {
+        semantic_search?: boolean;
+        episode_context?: number;
+      };
     };
     GraphResponse: {
       id: string;
       name: string;
       version: string;
-      status: string;
+      description?: string;
+      entry_node: string;
+      definition: Record<string, unknown>;
+      memory_config?: {
+        semantic_search?: boolean;
+        episode_context?: number;
+      };
+      status: "draft" | "active" | "archived";
       created_at: string;
       updated_at: string;
+    };
+    GraphListResponse: {
+      items: components["schemas"]["GraphResponse"][];
+      pagination: components["schemas"]["Pagination"];
     };
     Pagination: {
       page: number;
@@ -47,8 +148,16 @@ export type components = {
       token_type: "Bearer";
       expires_in: number;
     };
+    ErrorResponse: {
+      code: string;
+      message: string;
+      details?: Record<string, string[]>;
+    };
   };
 };
 
-type GraphResponse = components["schemas"]["GraphResponse"];
-type Pagination = components["schemas"]["Pagination"];
+export type GraphInput = components["schemas"]["GraphInput"];
+export type GraphResponse = components["schemas"]["GraphResponse"];
+export type GraphListResponse = components["schemas"]["GraphListResponse"];
+export type Pagination = components["schemas"]["Pagination"];
+export type ErrorResponse = components["schemas"]["ErrorResponse"];
