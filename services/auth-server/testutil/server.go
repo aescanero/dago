@@ -5,9 +5,11 @@ import (
 	"crypto/rsa"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	authadapter "github.com/aescanero/dago/adapters/auth"
 	"github.com/aescanero/dago/services/auth-server/internal/handler"
+	"github.com/aescanero/dago/services/auth-server/internal/oauth"
 	"github.com/aescanero/dago/services/auth-server/internal/router"
 	"github.com/aescanero/dago/services/auth-server/internal/usecase"
 	"github.com/aescanero/dago/tests/testutil/fakes"
@@ -26,8 +28,10 @@ func NewTestServer(t *testing.T) *httptest.Server {
 	issuer := authadapter.NewJWTIssuer(priv, "dago-test", "dago-api", 3600)
 	registerUC := usecase.NewRegisterUser(repo, hasher)
 	loginUC := usecase.NewLoginUser(repo, hasher, issuer)
+	codeStore := oauth.NewInMemoryCodeStore(30 * time.Second)
 	authH := handler.NewAuthHandler(registerUC, loginUC, jwksJSON)
-	r := router.NewRouter(authH)
+	oauthH := handler.NewOAuthHandler(codeStore, loginUC, repo, issuer)
+	r := router.NewRouter(authH, oauthH)
 	return httptest.NewServer(r)
 }
 
