@@ -808,6 +808,19 @@ Actions on the Metadata tab (buttons in the page header):
 - **Dependencies:** #13
 - **Commit:** `test(graphs): add smoke checks and E2E procedure for graphs feature [SPRINT-006 #14]`
 
+### Manual E2E Test Procedure (TODO #14)
+
+With all services running (`make docker-up`, auth-server :8081, orchestrator :8080, dashboard :5173):
+
+1. Open `/graphs` → see empty table or graphs list with status filter.
+2. Click "New graph" button → form page loads.
+3. Select template "LLM Call simple" from the dropdown → definition textarea fills with JSON.
+4. Fill in name, version (e.g. `1.0.0`), entry node → click "Create".
+5. Verify redirect to `/graphs/{id}` detail page.
+6. Navigate to "Definition" tab → see nodes and edges with pattern badges.
+7. Click "Archive" button → confirm in dialog → success toast appears.
+8. Verify status badge changes to "archived" and edit button disappears.
+
 ### 15. [docs] Update docs/index.md and docs/log.md
 
 - **Agente:** @docs
