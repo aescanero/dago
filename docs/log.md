@@ -413,3 +413,42 @@ next event. `CanTransitionTo` for idempotency.
 **Blocks:** SPRINT-011 (executor tool_use), SPRINT-015 (episodic memory).
 
 **Status:** planned
+
+---
+
+## [2026-05-07] sprint | SPRINT-005: Dashboard bootstrap — React 19, shadcn/ui, PKCE, OpenAPI types
+
+**Artifacts created:**
+- `docs/sprints/SPRINT-005-dashboard-bootstrap-pkce.md` (pre-existing)
+- `specs/paths/auth.yaml` — GET/POST `/authorize`, POST `/token` endpoints
+- `specs/schemas/auth.yaml` — `TokenRequest`, `AuthorizeParams` schemas
+- `specs/openapi.yaml` — wired new paths and schemas
+- `services/auth-server/internal/oauth/code_store.go` — `InMemoryCodeStore` + `AuthorizationCode`
+- `services/auth-server/internal/handler/oauth.go` — `OAuthHandler` (PKCE flow)
+- `services/auth-server/internal/router/router.go` — wired OAuth routes
+- `services/auth-server/cmd/main.go` — wired `OAuthHandler` dependencies
+- `services/auth-server/testutil/server.go` — updated to pass `OAuthHandler`
+- `dashboard/` — complete React 19 + TypeScript + Vite + Tailwind 4 scaffold
+- `dashboard/src/auth/` — PKCE module, AuthProvider, useAuth, ProtectedRoute, AuthCallback
+- `dashboard/src/components/ui/` — Button, Badge, Skeleton, Card, Table, Avatar
+- `dashboard/src/api/` — OpenAPI-generated types stub + createApiClient
+- `dashboard/src/hooks/useGraphs.ts` — TanStack Query v5 hook
+- `dashboard/src/pages/GraphsPage.tsx` — graph listing with pagination
+- `dashboard/src/layouts/AppLayout.tsx` — sidebar + header + dark mode
+- `dashboard/src/App.tsx`, `main.tsx` — routing + provider wiring
+- `dashboard/scripts/smoke.sh` — build/type-check/lint/test pipeline
+- `Makefile` — `gen-api-types`, `dashboard-check` targets
+
+**Tests:** 15 passing (5 PKCE, 5 AuthProvider, 5 GraphsPage).
+
+**Key decisions:**
+- `InMemoryCodeStore` uses `sync.RWMutex` (not `sync.Map`) for iteration under lock during cleanup.
+- Authorization codes stored by `SHA-256(code_plaintext)` — plaintext never persisted.
+- Auth code struct stores `Email` for user lookup in PostToken (avoids re-auth).
+- `redirect_uri` validated as `http://localhost` prefix only (TODO(SPRINT-ABAC): validate against registered clients).
+- PKCE token stored in `useRef` (never in localStorage), state in `useState`.
+- `GraphsPage` tests use `vi.mock("@/hooks/useGraphs")` for isolated component testing (MSW used in AuthProvider tests).
+- `types.gen.ts` is committed as the frontend↔backend contract; regenerate with `make gen-api-types`.
+- `@radix-ui/react-slot` added as a runtime dependency for shadcn/ui Button.
+
+**Status:** completed

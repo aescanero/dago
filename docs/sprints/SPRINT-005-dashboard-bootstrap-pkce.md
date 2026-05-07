@@ -890,22 +890,55 @@ Additionally:
 
 ## Sprint result
 
-_Completed at the end of the sprint._
+_Completed 2026-05-07._
 
 ### Tests executed
 
-- Total: —
-- Passed: —
-- Failed: —
+- Total: 15
+- Passed: 15
+- Failed: 0
+
+Breakdown:
+- `pkce.test.ts`: 5 (generateVerifier × 2, generateChallenge × 3)
+- `AuthProvider.test.tsx`: 5 (initial state, setToken, logout, ProtectedRoute, AuthCallback)
+- `GraphsPage.test.tsx`: 5 (skeleton, list, empty, error, pagination)
+- Go `services/auth-server/internal/handler`: existing tests still pass
 
 ### Files created/modified
 
-_List generated at close._
+**Specs:**
+- `specs/paths/auth.yaml` — GET/POST `/authorize`, POST `/token`
+- `specs/schemas/auth.yaml` — `TokenRequest`, `AuthorizeParams`
+- `specs/openapi.yaml` — wired PKCE paths and schemas
+
+**Backend (auth-server):**
+- `services/auth-server/internal/oauth/code_store.go` (new)
+- `services/auth-server/internal/oauth/errors.go` (new)
+- `services/auth-server/internal/handler/oauth.go` (new)
+- `services/auth-server/internal/router/router.go` (updated)
+- `services/auth-server/cmd/main.go` (updated)
+- `services/auth-server/testutil/server.go` (updated)
+
+**Dashboard (new):**
+- `dashboard/package.json`, `vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, `index.html`, `.gitignore`, `eslint.config.js`, `tailwind.config.ts`, `components.json`, `vitest.config.ts`
+- `dashboard/src/vite-env.d.ts`, `dashboard/src/api/`, `dashboard/src/auth/`, `dashboard/src/components/`, `dashboard/src/hooks/`, `dashboard/src/layouts/`, `dashboard/src/pages/`, `dashboard/src/styles/`, `dashboard/src/test/`
+- `dashboard/scripts/smoke.sh`
+
+**Infrastructure:**
+- `Makefile` — `gen-api-types`, `dashboard-check`
 
 ### Decisions made during the sprint
 
-_Any unforeseen decisions requiring an ADR or note are documented here._
+1. **GraphsPage tests use `vi.mock`** instead of MSW for HTTP interception, because the openapi-fetch client URL construction (`baseUrl + path`) with jsdom's fetch interception via MSW requires careful URL alignment. Component unit tests should mock at the hook boundary; MSW is used for auth flow integration tests.
+
+2. **`AuthorizationCode.Email` field** added to avoid re-authentication in `PostToken`. The code store maps a code hash to user email; `PostToken` looks up the user by email via `OAuthUserPort`.
+
+3. **`redirect_uri` validation** limited to `http://localhost` prefix for the bootstrap sprint. Documented with `TODO(SPRINT-ABAC): validate against registered clients`.
+
+4. **`@radix-ui/react-slot`** added as a runtime dependency (not devDependency) because it's imported in `button.tsx` which ships in the production bundle.
 
 ### Reviewer observations
 
-_Pending review._
+- All sprint acceptance criteria met except full E2E flow (requires running services + database).
+- `types.gen.ts` is a stub; run `make gen-api-types` after spec changes to regenerate.
+- Module Federation (ADR-019) deferred to SPRINT-mfe-001 as planned.
