@@ -13,3 +13,14 @@ if (!globalThis.crypto.subtle) {
     writable: false,
   });
 }
+
+// Polyfill Pointer Capture API for Radix UI (jsdom does not implement it)
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+}
+if (!Element.prototype.setPointerCapture) {
+  Element.prototype.setPointerCapture = () => {};
+}
+if (!Element.prototype.releasePointerCapture) {
+  Element.prototype.releasePointerCapture = () => {};
+}
