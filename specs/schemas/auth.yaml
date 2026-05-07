@@ -1,3 +1,63 @@
+TokenRequest:
+  type: object
+  required:
+    - grant_type
+    - code
+    - code_verifier
+    - redirect_uri
+    - client_id
+  properties:
+    grant_type:
+      type: string
+      enum: [authorization_code]
+      description: Must be "authorization_code"
+    code:
+      type: string
+      description: Authorization code received from the /authorize endpoint
+    code_verifier:
+      type: string
+      minLength: 43
+      maxLength: 128
+      description: Original PKCE code verifier (RFC 7636)
+    redirect_uri:
+      type: string
+      format: uri
+      description: Must match the redirect_uri used in /authorize
+    client_id:
+      type: string
+      description: OAuth client identifier
+
+AuthorizeParams:
+  type: object
+  required:
+    - email
+    - password
+    - code_challenge
+    - redirect_uri
+    - client_id
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+    response_type:
+      type: string
+      enum: [code]
+    client_id:
+      type: string
+    redirect_uri:
+      type: string
+      format: uri
+    code_challenge:
+      type: string
+      description: base64url(SHA-256(code_verifier)) per RFC 7636
+    code_challenge_method:
+      type: string
+      enum: [S256]
+    state:
+      type: string
+
 RegisterInput:
   type: object
   required:

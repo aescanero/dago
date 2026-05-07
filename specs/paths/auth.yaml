@@ -100,3 +100,139 @@ jwks:
           application/json:
             schema:
               $ref: '../openapi.yaml#/components/schemas/JWKSResponse'
+
+# NOTE(ADR-010): /authorize and /token are standard OAuth 2.1 endpoints —
+# documented exception to the /api/v1/ prefix (same as JWKS).
+authorize:
+  get:
+    summary: OAuth 2.1 authorization endpoint — render login form
+    description: |
+      Validates PKCE parameters and renders an HTML login form.
+      If parameters are invalid, returns 400 with ErrorResponse JSON.
+    operationId: getAuthorize
+    tags: [auth]
+    security: []
+    parameters:
+      - name: response_type
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [code]
+        description: Must be "code"
+      - name: client_id
+        in: query
+        required: true
+        schema:
+          type: string
+        description: OAuth client identifier
+      - name: redirect_uri
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uri
+        description: Callback URI to redirect to after authorization
+      - name: code_challenge
+        in: query
+        required: true
+        schema:
+          type: string
+        description: base64url(SHA-256(code_verifier)) per RFC 7636
+      - name: code_challenge_method
+        in: query
+        required: true
+        schema:
+          type: string
+          enum: [S256]
+        description: Must be "S256"
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: string
+        description: Opaque value to prevent CSRF
+    responses:
+      "200":
+        description: HTML login form
+        content:
+          text/html:
+            schema:
+              type: string
+      "302":
+        description: Redirect on configuration error
+      "400":
+        description: Invalid parameters
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+  post:
+    summary: OAuth 2.1 authorization endpoint — process login form
+    description: |
+      Verifies email/password credentials. On success, generates an authorization
+      code and redirects to redirect_uri?code=X&state=Y. On failure, re-renders
+      the login form with an error message.
+    operationId: postAuthorize
+    tags: [auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/x-www-form-urlencoded:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/AuthorizeParams'
+    responses:
+      "302":
+        description: Redirect to redirect_uri with code and state on success, or re-renders form on failure
+      "400":
+        description: Invalid parameters
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+
+token:
+  post:
+    summary: OAuth 2.1 token endpoint — exchange authorization code for JWT
+    description: |
+      Exchanges a PKCE authorization code for a JWT access token.
+      Validates code_verifier against the stored code_challenge using S256.
+    operationId: postToken
+    tags: [auth]
+    security: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '../openapi.yaml#/components/schemas/TokenRequest'
+          example:
+            grant_type: authorization_code
+            code: "abc123"
+            code_verifier: "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
+            redirect_uri: "http://localhost:5173/auth/callback"
+            client_id: "dago-dashboard"
+    responses:
+      "200":
+        description: Token issued successfully
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/TokenResponse'
+      "400":
+        description: Invalid code or verifier
+        content:
+          application/json:
+            schema:
+              $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            examples:
+              invalidCode:
+                value:
+                  code: INVALID_CODE
+                  message: authorization code not found or expired
+              invalidVerifier:
+                value:
+                  code: INVALID_CODE_VERIFIER
+                  message: code verifier does not match challenge

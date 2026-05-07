@@ -44,6 +44,10 @@ paths:
     $ref: './paths/auth.yaml#/login'
   /.well-known/jwks.json:
     $ref: './paths/auth.yaml#/jwks'
+  /authorize:
+    $ref: './paths/auth.yaml#/authorize'
+  /token:
+    $ref: './paths/auth.yaml#/token'
 
 components:
   securitySchemes:
@@ -122,3 +126,9 @@ components:
 
     JWKSResponse:
       $ref: './schemas/auth.yaml#/JWKSResponse'
+
+    TokenRequest:
+      $ref: './schemas/auth.yaml#/TokenRequest'
+
+    AuthorizeParams:
+      $ref: './schemas/auth.yaml#/AuthorizeParams'
