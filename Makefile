@@ -120,6 +120,14 @@ ci: ## Run full CI pipeline: lint + build-all + test
 dashboard-dev: ## Start the dashboard development server
 	cd dashboard && npm run dev
 
+.PHONY: gen-api-types
+gen-api-types: ## Generate TypeScript types from specs/openapi.yaml
+	cd dashboard && npm run gen:api
+
+.PHONY: dashboard-check
+dashboard-check: ## Run dashboard smoke checks: build, type-check, lint, tests
+	cd dashboard && bash scripts/smoke.sh
+
 .PHONY: clean
 clean: ## Remove compiled binaries from bin/
 	rm -rf $(BIN_DIR)
