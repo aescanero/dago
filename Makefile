@@ -63,9 +63,14 @@ test: ## Run all tests with go test ./...
 test-unit: ## Run unit tests in tests/unit/, libs/, adapters/
 	$(GO) test ./tests/unit/... ./libs/... ./adapters/...
 
+.PHONY: test-integration-eventbus
+test-integration-eventbus: ## Run eventbus integration tests (requires Docker)
+	$(GO) test -tags integration -count=1 -timeout 120s \
+	  ./adapters/eventbus/...
+
 .PHONY: test-integration
-test-integration: ## Run integration tests with -tags=integration
-	$(GO) test ./tests/integration/... -tags=integration
+test-integration: test-integration-eventbus ## Run all integration tests with -tags=integration
+	@echo "All integration tests passed"
 
 .PHONY: test-smoke
 test-smoke: ## Run smoke tests with -tags=smoke

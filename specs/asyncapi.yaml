@@ -2,9 +2,9 @@ asyncapi: 3.0.0
 info:
   title: Dago Event API
   description: |
-    API asíncrona del sistema de orquestación de grafos de IA.
-    Los eventos fluyen por Valkey Streams (Event-Carried State Transfer)
-    y Valkey Pub/Sub (Event Notification).
+    Async API for the AI graph orchestration system.
+    Events flow through Valkey Streams (Event-Carried State Transfer).
+    CloudEvents 1.0 envelope with auth propagation (ADR-011).
   version: 1.0.0
   license:
     name: MIT
@@ -12,167 +12,213 @@ info:
 defaultContentType: application/json
 
 channels:
-  # === Orquestación de grafos ===
-  graphSubmitted:
-    address: graph.submitted
+  # === SPRINT-007: Orchestration events (Valkey Streams) ===
+  graphExecutionRequested:
+    address: dago.graph.execution.requested
+    description: Orchestrator publishes when a graph execution is requested; executor and router consume.
     messages:
-      graphSubmittedMessage:
-        $ref: '#/components/messages/GraphSubmitted'
+      graphExecutionRequestedMessage:
+        $ref: '#/components/messages/GraphExecutionRequested'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: executor-group
+          - groupId: router-group
 
-  graphCompleted:
-    address: graph.completed
+  nodeExecutionStarted:
+    address: dago.node.execution.started
+    description: Executor publishes when it starts processing a node; orchestrator consumes.
     messages:
-      graphCompletedMessage:
-        $ref: '#/components/messages/GraphCompleted'
+      nodeExecutionStartedMessage:
+        $ref: '#/components/messages/NodeExecutionStarted'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: orchestrator-group
 
-  graphFailed:
-    address: graph.failed
+  nodeExecutionCompleted:
+    address: dago.node.execution.completed
+    description: Executor publishes when a node completes successfully; orchestrator consumes.
     messages:
-      graphFailedMessage:
-        $ref: '#/components/messages/GraphFailed'
+      nodeExecutionCompletedMessage:
+        $ref: '#/components/messages/NodeExecutionCompleted'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: orchestrator-group
 
-  graphPaused:
-    address: graph.paused
+  nodeExecutionFailed:
+    address: dago.node.execution.failed
+    description: Executor publishes when a node fails; orchestrator consumes.
     messages:
-      graphPausedMessage:
-        $ref: '#/components/messages/GraphPaused'
+      nodeExecutionFailedMessage:
+        $ref: '#/components/messages/NodeExecutionFailed'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: orchestrator-group
 
-  graphResumed:
-    address: graph.resumed
+  graphExecutionCompleted:
+    address: dago.graph.execution.completed
+    description: Orchestrator publishes when all nodes in a graph execution finish successfully.
     messages:
-      graphResumedMessage:
-        $ref: '#/components/messages/GraphResumed'
+      graphExecutionCompletedMessage:
+        $ref: '#/components/messages/GraphExecutionCompleted'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
 
-  graphPlanned:
-    address: graph.planned
+  graphExecutionFailed:
+    address: dago.graph.execution.failed
+    description: Orchestrator publishes when a graph execution fails unrecoverably.
     messages:
-      graphPlannedMessage:
-        $ref: '#/components/messages/GraphPlanned'
+      graphExecutionFailedMessage:
+        $ref: '#/components/messages/GraphExecutionFailed'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
 
-  # === Ejecución de nodos ===
-  nodeExecuteRequested:
-    address: node.execute.requested
+  dlq:
+    address: dago.dlq
+    description: Dead-letter queue. Any service publishes messages that exceeded MaxRetries.
     messages:
-      nodeExecuteRequestedMessage:
-        $ref: '#/components/messages/NodeExecuteRequested'
-
-  nodeExecuted:
-    address: node.executed
-    messages:
-      nodeExecutedMessage:
-        $ref: '#/components/messages/NodeExecuted'
-
-  nodeExecuteFailed:
-    address: node.execute.failed
-    messages:
-      nodeExecuteFailedMessage:
-        $ref: '#/components/messages/NodeExecuteFailed'
-
-  # === Routing ===
-  nodeRouteRequested:
-    address: node.route.requested
-    messages:
-      nodeRouteRequestedMessage:
-        $ref: '#/components/messages/NodeRouteRequested'
-
-  nodeRouted:
-    address: node.routed
-    messages:
-      nodeRoutedMessage:
-        $ref: '#/components/messages/NodeRouted'
-
-  # === MCP Tools ===
-  mcpToolInvoked:
-    address: mcp.tool.invoked
-    messages:
-      mcpToolInvokedMessage:
-        $ref: '#/components/messages/McpToolInvoked'
-
-  mcpToolResult:
-    address: mcp.tool.result
-    messages:
-      mcpToolResultMessage:
-        $ref: '#/components/messages/McpToolResult'
+      dlqMessage:
+        $ref: '#/components/messages/DLQMessage'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
 
 operations:
-  # Se definen las operaciones (publish/subscribe) por servicio
-  # Ejemplo:
-  # orchestratorPublishNodeExecuteRequested:
-  #   action: send
-  #   channel:
-  #     $ref: '#/channels/nodeExecuteRequested'
+  orchestratorPublishGraphExecutionRequested:
+    action: send
+    channel:
+      $ref: '#/channels/graphExecutionRequested'
+    summary: Orchestrator publishes execution request
+
+  executorConsumeGraphExecutionRequested:
+    action: receive
+    channel:
+      $ref: '#/channels/graphExecutionRequested'
+    summary: Executor consumes execution requests
+
+  executorPublishNodeExecutionStarted:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecutionStarted'
+    summary: Executor publishes node started
+
+  executorPublishNodeExecutionCompleted:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecutionCompleted'
+    summary: Executor publishes node completed
+
+  executorPublishNodeExecutionFailed:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecutionFailed'
+    summary: Executor publishes node failed
+
+  orchestratorPublishGraphExecutionCompleted:
+    action: send
+    channel:
+      $ref: '#/channels/graphExecutionCompleted'
+    summary: Orchestrator publishes graph completed
+
+  orchestratorPublishGraphExecutionFailed:
+    action: send
+    channel:
+      $ref: '#/channels/graphExecutionFailed'
+    summary: Orchestrator publishes graph failed
 
 components:
   messages:
-    GraphSubmitted:
+    GraphExecutionRequested:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    GraphCompleted:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecutionStarted:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    GraphFailed:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecutionCompleted:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    GraphPaused:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecutionFailed:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    GraphResumed:
+        $ref: '#/components/schemas/CloudEvent'
+    GraphExecutionCompleted:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    GraphPlanned:
+        $ref: '#/components/schemas/CloudEvent'
+    GraphExecutionFailed:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    NodeExecuteRequested:
+        $ref: '#/components/schemas/CloudEvent'
+    DLQMessage:
       payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    NodeExecuted:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    NodeExecuteFailed:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    NodeRouteRequested:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    NodeRouted:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    McpToolInvoked:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
-    McpToolResult:
-      payload:
-        $ref: '#/components/schemas/EventEnvelope'
+        $ref: '#/components/schemas/CloudEvent'
 
   schemas:
-    EventEnvelope:
+    CloudEvent:
       type: object
       required:
         - id
         - type
         - source
-        - timestamp
+        - specversion
+        - time
+        - datacontenttype
         - data
       properties:
         id:
           type: string
-          description: ID único del evento (formato evt_{ulid})
-          example: evt_01HX7Y8K2P3Q4R5S6T7U8V9W
+          format: uuid
+          description: Unique event ID (UUID v4)
+          example: 550e8400-e29b-41d4-a716-446655440000
         type:
           type: string
-          description: Tipo del evento (dominio.acción en pasado)
-          example: node.executed
+          description: Event type (reverse-DNS, past tense)
+          example: dago.graph.execution.requested
         source:
           type: string
-          description: Servicio que produce el evento
-          example: executor
-        timestamp:
+          description: Service that produced the event
+          example: orchestrator
+        specversion:
+          type: string
+          enum: ["1.0"]
+          description: CloudEvents spec version
+        time:
           type: string
           format: date-time
-          description: Timestamp UTC
+          description: UTC timestamp of event creation
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+          description: MIME type of the data field
+        auth:
+          $ref: '#/components/schemas/EventAuth'
         data:
           type: object
-          description: Payload específico del evento
-        auth:
+          description: Event-specific payload
+
+    EventAuth:
+      type: object
+      description: Propagated auth context from the originating JWT (ADR-012)
+      properties:
+        sub:
           type: string
-          description: Token JWT propagado para trazabilidad y autorización
+          format: uuid
+          description: Subject (user or service account ID)
+        scope:
+          type: string
+          description: OAuth 2.1 scope string
+        tags:
+          type: array
+          items:
+            type: string
+          description: ABAC tags of the subject
+        org_unit:
+          type: string
+          format: uuid
+          description: Organizational unit ID
