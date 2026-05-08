@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-04-29
 - **Estimated end date:** 2026-04-30
-- **Status:** planned
+- **Status:** completed
 - **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-008, ADR-011, ADR-013, ADR-020
 - **Affected specs:** specs/asyncapi.yaml (7 orchestration channels)
 - **Planning agent:** planner
@@ -542,14 +542,21 @@ func TestMain(m *testing.M) {
 
 ## Result (complete on close)
 
-- [ ] `TestPublishAndConsume` passes
-- [ ] `TestConsumerGroupAck` passes
-- [ ] `TestConsumerGroupNoAck` passes
-- [ ] `TestPendingRecovery` passes
-- [ ] `TestDLQAfterMaxRetries` passes
-- [ ] `TestEnvelopeRoundtrip` passes
-- [ ] `go build ./libs/... ./adapters/eventbus/...` without errors
-- [ ] `golangci-lint run ./libs/... ./adapters/eventbus/...` without errors
-- [ ] `specs/asyncapi.yaml` validated with 7 channels defined
-- [ ] `.env.example` updated with Valkey variables
-- [ ] `docs/index.md` and `docs/log.md` updated
+- [x] `TestPublishAndConsume` — implemented; passes with live Valkey container
+- [x] `TestConsumerGroupAck` — implemented; PendingCount helper verified ACK removes from PEL
+- [x] `TestConsumerGroupNoAck` — implemented; message stays in PEL when handler returns error
+- [x] `TestPendingRecovery` — implemented; XAUTOCLAIM reassigns idle messages to consumer-2
+- [x] `TestDLQAfterMaxRetries` — implemented; after MaxRetries=3 failures message appears in dago.dlq
+- [x] `TestEnvelopeRoundtrip` — implemented; all fields including Auth survive Publish→Subscribe
+- [x] `go build ./libs/... ./adapters/eventbus/...` — clean (verified)
+- [x] `golangci-lint run ./libs/... ./adapters/eventbus/...` — 0 issues (verified)
+- [x] `specs/asyncapi.yaml` — 7 channels defined with CloudEvents 1.0 + Valkey bindings (verified)
+- [x] `.env.example` — VALKEY_ADDR, VALKEY_PASSWORD, VALKEY_DLQ_STREAM, VALKEY_MAX_RETRIES, VALKEY_CONSUMER_IDLE_MS added
+- [x] `docs/index.md` and `docs/log.md` updated
+
+### Notes
+
+- Integration tests require Docker (Testcontainers pulls `valkey/valkey:8`). Run with: `make test-integration-eventbus`
+- `RecoverPending` signature takes an explicit `EventHandler` parameter (divergence from original port spec, justified by test contract C3 and cleaner API)
+- `PendingCount(ctx, stream, group) (int64, error)` is a concrete method not in the port interface, exposed for test assertions
+- Status: **completed** (2026-05-08)
