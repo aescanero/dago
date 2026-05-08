@@ -488,3 +488,44 @@ next event. `CanTransitionTo` for idempotency.
 - Smoke bundle check greps for JSX string literals (survive minification) rather than component names.
 
 **Status:** completed
+
+---
+
+## 2026-05-08 — SPRINT-007: Event Bus Adapter — Valkey Streams
+
+**Branch:** claude/sleepy-hamilton-oSncI
+**Status:** completed
+
+**What was done:**
+- TODO #1: Updated `specs/asyncapi.yaml` with 7 CloudEvents 1.0 channels for orchestration (graph.execution.requested, node.execution.started/completed/failed, graph.execution.completed/failed, dago.dlq). Added Valkey stream bindings and consumer group definitions per ADR-011.
+- TODO #2: Created `libs/domain/events.go` — pure domain types `Event`, `EventAuth`, and 7 event type constants. No infrastructure imports.
+- TODO #3: Created `libs/ports/eventbus.go` — `EventPublisher`, `EventConsumer`, `EventHandler` interfaces; `PublishOptions`, `ConsumeOptions` types.
+- TODO #4: Wrote 6 integration tests in `adapters/eventbus/valkey/integration_test.go` (build tag: `integration`) using Testcontainers (`valkey/valkey:8`).
+- TODO #5: Implemented `adapters/eventbus/valkey/envelope.go` — CloudEvents JSON serialization/deserialization via single `envelope` field.
+- TODO #6: Implemented `adapters/eventbus/valkey/publisher.go` — `ValkeyPublisher` with XADD and idempotent XGROUP CREATE MKSTREAM.
+- TODO #7+8: Implemented `adapters/eventbus/valkey/consumer.go` — `ValkeyConsumer` with XREADGROUP, XACK, DLQ after MaxRetries, and XAUTOCLAIM for pending recovery.
+- TODO #9: Added `github.com/valkey-io/valkey-go v1.0.74` and `github.com/testcontainers/testcontainers-go v0.42.0` to `go.mod`.
+- TODO #10: Added `make test-integration-eventbus` target to Makefile.
+- TODO #11: Updated `docs/index.md` (SPRINT-007 → completed, AsyncAPI → implemented, Event Bus adapter → implemented) and this log.
+
+**Files created/modified:**
+- `specs/asyncapi.yaml` — 7 orchestration channels
+- `libs/domain/events.go` — new
+- `libs/ports/eventbus.go` — new
+- `adapters/eventbus/valkey/envelope.go` — new
+- `adapters/eventbus/valkey/publisher.go` — new
+- `adapters/eventbus/valkey/consumer.go` — new
+- `adapters/eventbus/valkey/integration_test.go` — new (integration tag)
+- `go.mod` / `go.sum` — valkey-go + testcontainers added
+- `.env.example` — Valkey variables appended
+- `Makefile` — test-integration-eventbus target added
+- `docs/index.md` — SPRINT-007 completed, AsyncAPI implemented, Event Bus adapter implemented
+- `docs/log.md` — this entry
+
+**Key decisions:**
+- `RecoverPending` accepts an explicit `EventHandler` parameter (matches test expectations and makes the API clear).
+- `PendingCount(ctx, stream, group)` is a concrete method (not in port interface) for test verification.
+- `moveToDLQ` preserves original event ID + auth context; `dago.dlq` payload contains `original_id`, `original_type`, `original_source`, `original_stream`, `retry_count`.
+- BUSYGROUP errors on XGROUP CREATE are silently ignored (idempotent setup).
+
+**Status:** completed

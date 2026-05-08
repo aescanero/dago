@@ -39,7 +39,7 @@
 | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) | Auth-server: argon2id local login, JWT RS256, JWKS, middleware | completed |
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | completed |
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | completed |
-| [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | planned |
+| [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | completed |
 | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | planned |
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | planned |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | planned |
@@ -55,7 +55,7 @@
 | ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | implemented (SPRINT-003) | Execution start |
 | ↳ schemas/auth.yaml | [specs/schemas/auth.yaml](specs/schemas/auth.yaml) | implemented (SPRINT-005) | RegisterInput, LoginInput, TokenResponse, UserResponse, TokenRequest, AuthorizeParams |
 | ↳ paths/auth.yaml | [specs/paths/auth.yaml](specs/paths/auth.yaml) | implemented (SPRINT-005) | Register, Login, JWKS, GET/POST /authorize, POST /token (6 endpoints) |
-| AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | base structure | Valkey events (13 types) |
+| AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | implemented (SPRINT-007) | Valkey Streams: 7 orchestration channels (CloudEvents 1.0 + auth) |
 | Graph Schema | [specs/patterns/graph.json](specs/patterns/graph.json) | implemented | Graph structure |
 | Edge patterns (5) | [specs/patterns/edges/](specs/patterns/edges/) | implemented | sequential, conditional, parallel, loop, interrupt |
 | Node patterns (7) | [specs/patterns/nodes/](specs/patterns/nodes/) | implemented | llm_call, tool_use, react, reflection, router, guardrail, subgraph |
@@ -106,7 +106,7 @@
 | Graph/Execution Storage | libs/ports/storage.go | adapters/storage/graph_repo.go | implemented | [SPRINT-003](sprints/SPRINT-003-api-rest-orchestrator.md) |
 | Auth (argon2id + JWT + JWKS) | libs/ports/auth.go | adapters/auth/ | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
 | User Storage (Ent) | libs/ports/auth.go | adapters/auth/ent_user_repo.go | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
-| Event Bus Valkey | libs/ports/eventbus.go | adapters/eventbus/valkey/ | planned | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) |
+| Event Bus Valkey | libs/ports/eventbus.go | adapters/eventbus/valkey/ | implemented | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) |
 | LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
