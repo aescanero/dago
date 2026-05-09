@@ -677,3 +677,48 @@ Only sequential edges supported. Per-node timeout excluded (documented as future
 - `go vet ./...` → 0 issues
 - `golangci-lint run ./...` → 0 issues
 - `go test ./...` → 13/13 suites pass
+
+---
+
+## [2026-05-09] sprint | SPRINT-011: docker-compose full-stack containerization
+
+**Planned artifacts:**
+- `docs/sprints/SPRINT-011-docker-compose.md`
+
+**Scope:** Working `docker-compose.yml` for the complete dago stack (2 infra + 8 Go
+services + 1 dashboard). Single `Dockerfile.service` with `SERVICE` build arg.
+Dashboard `Dockerfile` + nginx SPA config. `.env.example` with all variables.
+Atlas init-container for migrations. 4 compose profiles. `/health` endpoints on
+all Gin services. Makefile targets. Smoke test script. Runbook.
+
+**TODOs:** 10 (audit ×1, impl ×5, test ×1, docs ×3).
+
+**Status:** completed
+
+---
+
+## [2026-05-09] sprint | SPRINT-011: completed
+
+**Result:** All 10 TODOs implemented.
+
+**Artifacts created:**
+- `Dockerfile.service` — shared multi-stage Go build (golang:1.25-alpine → alpine:3.20)
+- `dashboard/Dockerfile` — multi-stage React 19 build (node:20-alpine → nginx:1.27-alpine)
+- `dashboard/nginx.conf` — SPA routing (`try_files $uri /index.html`)
+- `.env.example` — all 25+ env vars grouped by service with defaults and descriptions
+- `docker-compose.yml` — extended with 11 services across 4 profiles (infra/backend/frontend/all)
+- `services/orchestrator/internal/router/router.go` — added `GET /health`
+- `services/auth-server/internal/router/router.go` — added `GET /health`
+- `services/catalog/cmd/main.go` — minimal Gin server with `GET /health` on :8082
+- `services/mcp-registry/cmd/main.go` — minimal Gin server with `GET /health` on :8083
+- `services/agent-registry/cmd/main.go` — minimal Gin server with `GET /health` on :8084
+- `Makefile` — 5 compose targets: compose-infra, compose-up, compose-down, compose-logs, compose-ps
+- `scripts/smoke-test-compose.sh` — full stack smoke test (start → health checks → valkey ping → teardown)
+- `docs/deploy/docker-compose-runbook.md` — prerequisites, quick-start, profiles, secrets, troubleshooting
+- `docs/index.md`, `docs/log.md` — updated
+
+**Key decisions:**
+- Alpine:3.20 runtime (not distroless/static) to enable `wget` health checks in docker-compose.
+- Stub services (catalog, mcp-registry, agent-registry) get minimal Gin /health so health checks pass.
+- Atlas migrate init-container ensures schema migrations run before orchestrator boots.
+- Profiles: infra/backend/frontend/all — postgres+valkey included in both infra and backend profiles.

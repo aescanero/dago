@@ -43,6 +43,7 @@
 | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | completed |
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | completed |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | completed |
+| [SPRINT-011](sprints/SPRINT-011-docker-compose.md) | docker-compose full-stack containerization: Dockerfiles, profiles, health endpoints, runbook | completed |
 
 ## Specs (sources of truth)
 
@@ -146,10 +147,13 @@
 | Artifact | Location | Description |
 |----------|----------|-------------|
 | Makefile | `Makefile` | Unified build: `make ci`, `make bootstrap`, `make build-all` |
-| Docker Compose | `docker-compose.yml` | PostgreSQL 16 + pgvector + Valkey 8 |
+| Docker Compose | `docker-compose.yml` | Full stack: postgres + valkey + 8 Go services + dashboard (4 profiles) — SPRINT-011 |
+| Dockerfile.service | `Dockerfile.service` | Shared multi-stage Go build (SERVICE build arg) — SPRINT-011 |
+| Dashboard Dockerfile | `dashboard/Dockerfile` | Multi-stage React 19 build + nginx — SPRINT-011 |
 | Linter | `.golangci.yml` | goimports, errcheck, funlen, wrapcheck (ADR-003, ADR-004) |
 | Atlas config | `atlas.hcl` | Ent → PostgreSQL migrations (ADR-007) |
-| Env vars | `.env.example` | Environment variables for local development |
+| Env vars | `.env.example` | All service env vars for local development — SPRINT-011 |
+| Deploy runbook | `docs/deploy/docker-compose-runbook.md` | Prereqs, quick-start, profiles, secrets, troubleshooting — SPRINT-011 |
 
 _Artifacts created in SPRINT-001. Status: completed (2026-04-30)._
 
