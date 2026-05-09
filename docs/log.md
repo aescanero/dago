@@ -582,3 +582,45 @@ next event. `CanTransitionTo` for idempotency.
 **Test results:** `make test-llm` → 14 tests (7 Anthropic + 1 Fake + 6 Ollama), all pass, no network or real credentials needed.
 
 **Status:** completed
+
+---
+
+## 2026-05-09 — SPRINT-009: Executor — llm_call pattern handler
+
+**Sprint:** SPRINT-009
+**Branch:** claude/adoring-mccarthy-FSwgJ
+**Status:** completed
+
+**Objective:** Implement the executor service as an event worker for the `llm_call` pattern: consumes `node.execute.requested`, builds the LLM request with input mapping, calls `LLMClient.Complete`, applies output mapping, and publishes `node.executed` or `node.execute.failed`.
+
+**Files created/modified:**
+- `specs/asyncapi.yaml` — 3 new channels (nodeExecuteRequested, nodeExecuted, nodeExecuteFailed), 3 operations, 3 data schemas (NodeExecuteRequestedData, NodeExecutedData, NodeExecuteFailedData)
+- `specs/patterns/nodes/llm_call.json` — enriched descriptions for defaults and supported paths
+- `libs/domain/events.go` — StreamNodeExecuteRequested, StreamNodeExecuted, StreamNodeExecuteFailed, EventTypeNodeExecute* constants
+- `adapters/llm/fake/client.go` — extended FakeLLMClient with Errors []error field for test error injection
+- `services/executor/internal/mapping/input.go` — new: ApplyInputMapping (state.variables.*, state.messages[-1].content)
+- `services/executor/internal/mapping/input_test.go` — new: 6 unit tests
+- `services/executor/internal/mapping/output.go` — new: ApplyOutputMapping (output.content, output.stop_reason → state.variables.*)
+- `services/executor/internal/mapping/output_test.go` — new: 6 unit tests
+- `services/executor/internal/handler/node_handler.go` — new: NodeHandler interface + data types
+- `services/executor/internal/handler/llm_call.go` — new: LLMCallHandler.Handle (TDD Green)
+- `services/executor/internal/handler/llm_call_test.go` — new: 7 unit tests
+- `services/executor/internal/handler/dispatcher.go` — new: Dispatcher.Dispatch
+- `services/executor/internal/consumer/node_execute.go` — new: NodeExecuteConsumer.Run (ACK/NACK by retryability)
+- `services/executor/internal/consumer/node_execute_test.go` — new: 1 integration test (build tag: integration)
+- `services/executor/cmd/main.go` — implemented: env config, LLM provider selection, wiring, graceful shutdown
+- `Makefile` — test-executor target added
+- `.env.example` — Executor variables appended
+- `docs/index.md` — SPRINT-009 completed, executor partial, asyncapi updated
+- `docs/log.md` — this entry
+
+**Key decisions:**
+- FakeLLMClient extended with `Errors []error` (drained before Responses) so handler tests can inject ErrRateLimited, ErrProviderUnavailable, ErrUnauthorized without network.
+- Consumer ACKs non-retryable errors (failure event already published) and NACKs retryable ones (ErrRateLimited, ErrProviderUnavailable) to leave them in the Valkey PEL for retry.
+- `fakePublisher` defined as a package-private type in `llm_call_test.go`; not exported until a second handler requires it.
+- input/output mapping packages are pure domain code — zero infrastructure imports.
+- Dispatcher returns an error for unsupported patterns; consumer ACKs these after logging to avoid queue blockage.
+
+**Test results:** 12 mapping tests + 7 handler tests = 19 unit tests, all pass, no network or real credentials needed.
+
+**Status:** completed
