@@ -55,6 +55,9 @@ domain types and Ent types.
 1. **Ent schemas = data spec.** Reviewed in PRs, analogous to OpenAPI.
 2. **`go generate ./ent`** after each change. Generated code is committed.
 3. **Atlas generates migrations**, never by hand. Reviewed in PRs.
+   After `atlas migrate diff` (or any manual addition of files to `migrations/`),
+   always run `atlas migrate hash --dir file://migrations` to keep `atlas.sum` in sync.
+   Without this step `atlas migrate apply` will fail with a checksum mismatch error.
 4. **Migration linting in CI** (destructive changes, locks, data loss).
 5. **Ent query builder** for CRUD. **Raw SQL** for complex queries.
 6. **Transactions** with `client.Tx(ctx)` and defer rollback.
@@ -79,7 +82,8 @@ learning curve, less fine-grained control than pure SQL.
 ## Notes for Claude Code
 
 - Schemas in `ent/schema/`. After a change: `go generate ./ent`.
-- Migrations: `atlas migrate diff`. Never by hand.
+- Migrations: `atlas migrate diff` → `atlas migrate hash --dir file://migrations`. Never by hand.
+- If any file is added to `migrations/` manually, always rehash: `atlas migrate hash --dir file://migrations`.
 - Adapter in `adapters/storage/` uses `ent.Client`.
 - Ent types do not leave the adapter. The domain has its own types.
 - Always use context. Transactions with `client.Tx(ctx)`.
