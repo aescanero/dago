@@ -722,3 +722,11 @@ all Gin services. Makefile targets. Smoke test script. Runbook.
 - Stub services (catalog, mcp-registry, agent-registry) get minimal Gin /health so health checks pass.
 - Atlas migrate init-container ensures schema migrations run before orchestrator boots.
 - Profiles: infra/backend/frontend/all — postgres+valkey included in both infra and backend profiles.
+
+---
+
+## [2026-05-09] sprint | SPRINT-011: PR #14 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/14 — squash-merged.
+**main** is now at commit `99dfa7d` with full docker-compose containerization for the dago stack.
+Local branch `sprint/SPRINT-011-docker-compose` deleted.
