@@ -142,6 +142,26 @@ gen-api-types: ## Generate TypeScript types from specs/openapi.yaml
 dashboard-check: ## Run dashboard smoke checks: build, type-check, lint, tests
 	cd dashboard && bash scripts/smoke.sh
 
+.PHONY: compose-infra
+compose-infra: ## Start only postgres + valkey
+	docker compose --profile infra up -d
+
+.PHONY: compose-up
+compose-up: ## Start full stack (all profiles) with build
+	docker compose --profile all up -d --build
+
+.PHONY: compose-down
+compose-down: ## Stop and remove all containers
+	docker compose --profile all down
+
+.PHONY: compose-logs
+compose-logs: ## Tail logs for all running services
+	docker compose logs -f
+
+.PHONY: compose-ps
+compose-ps: ## Show status of all containers
+	docker compose ps
+
 .PHONY: clean
 clean: ## Remove compiled binaries from bin/
 	rm -rf $(BIN_DIR)
