@@ -730,3 +730,74 @@ all Gin services. Makefile targets. Smoke test script. Runbook.
 **PR:** https://github.com/aescanero/dago/pull/14 — squash-merged.
 **main** is now at commit `99dfa7d` with full docker-compose containerization for the dago stack.
 Local branch `sprint/SPRINT-011-docker-compose` deleted.
+
+---
+
+## [2026-05-03] sprint | SPRINT-001: PR #2 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/2 — squash-merged.
+Branch `sprint/001-bootstrap-monorepo` deleted.
+
+---
+
+## [2026-05-05] sprint | SPRINT-003: PR #4 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/4 — squash-merged.
+Branch `claude/ecstatic-volta-ozpll` deleted.
+
+---
+
+## [2026-05-06] sprint | SPRINT-004: PR #5 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/5 — squash-merged.
+Branch `claude/optimistic-goldberg-ZB5Yg` deleted.
+
+---
+
+## [2026-05-07] sprint | SPRINT-005: PR #6 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/6 — squash-merged.
+Branch `claude/ecstatic-allen-MTTjT` deleted.
+
+---
+
+## [2026-05-07] sprint | SPRINT-006: PR #7 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/7 — squash-merged.
+Branch `sprint/SPRINT-006-dashboard-feature-grafos` deleted.
+
+---
+
+## [2026-05-08] sprint | SPRINT-007: PR #8 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/8 — squash-merged.
+Branch `claude/sleepy-hamilton-oSncI` deleted.
+
+---
+
+## [2026-05-09] sprint | SPRINT-008: PR #9 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/9 (LLM adapters impl) — squash-merged.
+**PR:** https://github.com/aescanero/dago/pull/10 (sprint result docs) — squash-merged.
+Branches `claude/kind-hawking-3WrBD` and `docs/sprint-008-result` deleted.
+
+---
+
+## [2026-05-09] sprint | SPRINT-009: PR #11 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/11 — squash-merged.
+Branch `claude/adoring-mccarthy-FSwgJ` deleted.
+
+---
+
+## [2026-05-09] sprint | SPRINT-010: PR #12 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/12 — squash-merged.
+Branch `claude/admiring-turing-RXoB2` deleted.
+
+---
+
+## [2026-05-09] sprint | SPRINT-011: PR #13 merged to main
+
+**PR:** https://github.com/aescanero/dago/pull/13 (sprint plan document) — squash-merged.
+Branch `sprint/SPRINT-011-docker-compose` deleted (first pass, re-used for implementation).
