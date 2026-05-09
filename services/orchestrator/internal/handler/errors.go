@@ -26,6 +26,8 @@ func mapDomainError(c *gin.Context, err error) {
 		c.JSON(http.StatusConflict, errorResp("GRAPH_NOT_DRAFT", err.Error()))
 	case errors.Is(err, domain.ErrConflict):
 		c.JSON(http.StatusConflict, errorResp("GRAPH_DUPLICATE_VERSION", err.Error()))
+	case errors.Is(err, domain.ErrGraphValidation):
+		c.JSON(http.StatusUnprocessableEntity, errorResp("GRAPH_VALIDATION_ERROR", err.Error()))
 	case errors.Is(err, domain.ErrValidation):
 		c.JSON(http.StatusUnprocessableEntity, errorResp("VALIDATION_ERROR", err.Error()))
 	default:
