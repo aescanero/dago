@@ -24,4 +24,11 @@ var (
 
 	// ErrProviderUnavailable indicates the LLM provider is temporarily unavailable (HTTP 500/529). Retryable.
 	ErrProviderUnavailable = errors.New("provider unavailable")
+
+	// ErrGraphValidation is returned when the graph definition fails structural validation
+	// (e.g. unsupported edge type, unreachable node, missing entry_node).
+	ErrGraphValidation = errors.New("domain: graph validation failed")
+
+	// ErrRetryable signals that an event consumer must NACK so the broker re-delivers the message.
+	ErrRetryable = errors.New("domain: retryable — consumer must NACK")
 )
