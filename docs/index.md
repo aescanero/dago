@@ -41,7 +41,7 @@
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | completed |
 | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | completed |
 | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | completed |
-| [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | planned |
+| [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | completed |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | planned |
 
 ## Specs (sources of truth)
@@ -55,7 +55,7 @@
 | ↳ paths/executions.yaml | [specs/paths/executions.yaml](specs/paths/executions.yaml) | implemented (SPRINT-003) | Execution start |
 | ↳ schemas/auth.yaml | [specs/schemas/auth.yaml](specs/schemas/auth.yaml) | implemented (SPRINT-005) | RegisterInput, LoginInput, TokenResponse, UserResponse, TokenRequest, AuthorizeParams |
 | ↳ paths/auth.yaml | [specs/paths/auth.yaml](specs/paths/auth.yaml) | implemented (SPRINT-005) | Register, Login, JWKS, GET/POST /authorize, POST /token (6 endpoints) |
-| AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | implemented (SPRINT-007) | Valkey Streams: 7 orchestration channels (CloudEvents 1.0 + auth) |
+| AsyncAPI 3.0 | [specs/asyncapi.yaml](specs/asyncapi.yaml) | implemented (SPRINT-007, SPRINT-009) | Valkey Streams: 10 channels (7 graph-level + 3 node-level executor) |
 | Graph Schema | [specs/patterns/graph.json](specs/patterns/graph.json) | implemented | Graph structure |
 | Edge patterns (5) | [specs/patterns/edges/](specs/patterns/edges/) | implemented | sequential, conditional, parallel, loop, interrupt |
 | Node patterns (7) | [specs/patterns/nodes/](specs/patterns/nodes/) | implemented | llm_call, tool_use, react, reflection, router, guardrail, subgraph |
@@ -65,7 +65,7 @@
 | Service | Type | Responsibility | Location | Status |
 |---------|------|----------------|----------|--------|
 | orchestrator | Events + HTTP | Core: graphs, state, coordination, API, WebSocket AG-UI | services/orchestrator/ | implemented (SPRINT-003) |
-| executor | Events | Worker: agentic node patterns | services/executor/ | planned |
+| executor | Events | Worker: agentic node patterns (llm_call implemented) | services/executor/ | partial (SPRINT-009) |
 | router | Events | Worker: deterministic/llm/hybrid routing | services/router/ | planned |
 | planner | Events | NL → graph | services/planner/ | planned |
 | auth-server | HTTP | OAuth 2.1: local login, JWT RS256, JWKS, PKCE authorize/token | services/auth-server/ | implemented (SPRINT-005) |

@@ -34,4 +34,13 @@ const (
 	EventTypeExecutionCompleted = "dago.graph.execution.completed"
 	EventTypeExecutionFailed    = "dago.graph.execution.failed"
 	EventTypeDLQ                = "dago.dlq"
+
+	// Executor node-level event streams (SPRINT-009).
+	StreamNodeExecuteRequested = "node.execute.requested"
+	StreamNodeExecuted         = "node.executed"
+	StreamNodeExecuteFailed    = "node.execute.failed"
+
+	EventTypeNodeExecuteRequested = "node.execute.requested"
+	EventTypeNodeExecuted         = "node.executed"
+	EventTypeNodeExecuteFailed    = "node.execute.failed"
 )

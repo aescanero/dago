@@ -92,6 +92,43 @@ channels:
       valkey:
         bindingVersion: '0.1.0'
 
+  # === SPRINT-009: Executor node-level channels ===
+  nodeExecuteRequested:
+    address: node.execute.requested
+    description: Orchestrator publishes per-node execution requests; executor consumes.
+    messages:
+      nodeExecuteRequestedMessage:
+        $ref: '#/components/messages/NodeExecuteRequested'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: executor-group
+
+  nodeExecuted:
+    address: node.executed
+    description: Executor publishes successful node execution result; orchestrator consumes.
+    messages:
+      nodeExecutedMessage:
+        $ref: '#/components/messages/NodeExecuted'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: orchestrator-group
+
+  nodeExecuteFailed:
+    address: node.execute.failed
+    description: Executor publishes node execution failure; orchestrator consumes.
+    messages:
+      nodeExecuteFailedMessage:
+        $ref: '#/components/messages/NodeExecuteFailed'
+    bindings:
+      valkey:
+        bindingVersion: '0.1.0'
+        consumers:
+          - groupId: orchestrator-group
+
 operations:
   orchestratorPublishGraphExecutionRequested:
     action: send
@@ -135,6 +172,25 @@ operations:
       $ref: '#/channels/graphExecutionFailed'
     summary: Orchestrator publishes graph failed
 
+  # === SPRINT-009: Executor node-level operations ===
+  executorConsumeNodeExecuteRequested:
+    action: receive
+    channel:
+      $ref: '#/channels/nodeExecuteRequested'
+    summary: Executor consumes node execution request
+
+  executorPublishNodeExecuted:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecuted'
+    summary: Executor publishes successful node execution result
+
+  executorPublishNodeExecuteFailed:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecuteFailed'
+    summary: Executor publishes node execution failure
+
 components:
   messages:
     GraphExecutionRequested:
@@ -156,6 +212,15 @@ components:
       payload:
         $ref: '#/components/schemas/CloudEvent'
     DLQMessage:
+      payload:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecuteRequested:
+      payload:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecuted:
+      payload:
+        $ref: '#/components/schemas/CloudEvent'
+    NodeExecuteFailed:
       payload:
         $ref: '#/components/schemas/CloudEvent'
 
@@ -222,3 +287,115 @@ components:
           type: string
           format: uuid
           description: Organizational unit ID
+
+    # === SPRINT-009: Executor node-level data payloads ===
+    NodeExecuteRequestedData:
+      type: object
+      required:
+        - execution_id
+        - graph_id
+        - node_id
+        - node_key
+        - pattern
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+          description: Graph execution identifier
+        graph_id:
+          type: string
+          format: uuid
+          description: Graph definition identifier
+        node_id:
+          type: string
+          description: Node instance identifier within the execution
+        node_key:
+          type: string
+          description: Node key in the graph definition
+        pattern:
+          type: string
+          description: Node pattern type (e.g. llm_call)
+        config:
+          type: object
+          description: Pattern-specific node configuration
+        variables:
+          type: object
+          additionalProperties: true
+          description: Current graph state variables
+        messages:
+          type: array
+          items:
+            type: object
+            required: [role, content]
+            properties:
+              role:
+                type: string
+                enum: [user, assistant, tool_result]
+              content:
+                type: string
+          description: Current conversation history
+        auth:
+          type: string
+          description: Propagated JWT for downstream auth
+
+    NodeExecutedData:
+      type: object
+      required:
+        - execution_id
+        - graph_id
+        - node_id
+        - node_key
+        - duration_ms
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        graph_id:
+          type: string
+          format: uuid
+        node_id:
+          type: string
+        node_key:
+          type: string
+        output:
+          type: object
+          description: Raw node output (pattern-specific)
+        variables_update:
+          type: object
+          additionalProperties: true
+          description: Variables to merge into graph state after execution
+        duration_ms:
+          type: integer
+          description: Node execution duration in milliseconds
+
+    NodeExecuteFailedData:
+      type: object
+      required:
+        - execution_id
+        - graph_id
+        - node_id
+        - node_key
+        - error
+        - error_code
+        - retryable
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        graph_id:
+          type: string
+          format: uuid
+        node_id:
+          type: string
+        node_key:
+          type: string
+        error:
+          type: string
+          description: Human-readable error message
+        error_code:
+          type: string
+          enum: [rate_limited, provider_unavailable, unauthorized, execution_error]
+          description: Machine-readable error code
+        retryable:
+          type: boolean
+          description: Whether the orchestrator may retry this node
