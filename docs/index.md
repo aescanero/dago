@@ -40,7 +40,7 @@
 | [SPRINT-005](sprints/SPRINT-005-dashboard-bootstrap-pkce.md) | Dashboard: React 19 + shadcn/ui + PKCE + OpenAPI types + GraphsPage | completed |
 | [SPRINT-006](sprints/SPRINT-006-dashboard-feature-grafos.md) | Dashboard: Graph feature — list, detail, create, edit | completed |
 | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) | Event Bus adapter — Valkey Streams + consumer groups + DLQ | completed |
-| [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | planned |
+| [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) | LLM adapter — LLMClient port + Anthropic + Ollama/Mixtral + Fake | completed |
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | planned |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | planned |
 
@@ -107,9 +107,9 @@
 | Auth (argon2id + JWT + JWKS) | libs/ports/auth.go | adapters/auth/ | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
 | User Storage (Ent) | libs/ports/auth.go | adapters/auth/ent_user_repo.go | implemented | [SPRINT-004](sprints/SPRINT-004-auth-server-jwt-basico.md) |
 | Event Bus Valkey | libs/ports/eventbus.go | adapters/eventbus/valkey/ | implemented | [SPRINT-007](sprints/SPRINT-007-eventbus-valkey-adapter.md) |
-| LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
-| LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
-| LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | planned | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
+| LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
+| LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
+| LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 
 ## Dashboard (SPRINT-006)
 
