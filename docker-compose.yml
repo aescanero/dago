@@ -47,8 +47,9 @@ services:
     profiles: [backend, all]
     command: >
       migrate apply
-      --dir "file:///migrations"
+      --dir "file:///migrations?format=golang-migrate"
       --url "${DATABASE_URL:-postgres://dago:dago@postgres:5432/dago?sslmode=disable}"
+      --allow-dirty
     volumes:
       - ./migrations:/migrations:ro
     depends_on:

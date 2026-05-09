@@ -6,7 +6,7 @@ env "local" {
   src = data.ent.schema.url
   dev = "docker://postgres/16/dev?search_path=public"
   migration {
-    dir = "file://migrations"
+    dir    = "file://migrations?format=golang-migrate"
   }
   format {
     migrate {
