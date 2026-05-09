@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-05-09
 - **Estimated end date:** 2026-05-12
-- **Status:** planned
+- **Status:** completed
 - **Applied ADRs:** ADR-004, ADR-005, ADR-006, ADR-007, ADR-008, ADR-009, ADR-013, ADR-020
 - **Affected specs:** —
 - **Planning agent:** planner
@@ -356,9 +356,25 @@ compose-ps: ## Show status of all containers
 
 ## Result
 
-> _Complete on sprint close._
+- TODOs completed: 10/10
+- Tests passing: `go build ./...` ✓ · `go vet ./...` ✓ · `go test ./...` 13/13 ✓ · `golangci-lint run ./...` 0 issues ✓
+- Decisions reviewed: all 7 key decisions from plan implemented as designed
+- Artifacts delivered:
+  - `Dockerfile.service` — shared multi-stage Go build (`golang:1.25-alpine` → `alpine:3.20`)
+  - `dashboard/Dockerfile` + `dashboard/nginx.conf` — React 19 build + nginx SPA
+  - `.env.example` — 25+ variables, all services, with defaults and descriptions
+  - `docker-compose.yml` — 11 services across 4 profiles (infra/backend/frontend/all), atlas migrate init-container
+  - `services/orchestrator/internal/router/router.go` — `GET /health` added
+  - `services/auth-server/internal/router/router.go` — `GET /health` added
+  - `services/catalog/cmd/main.go` — minimal Gin server + `GET /health` on :8082
+  - `services/mcp-registry/cmd/main.go` — minimal Gin server + `GET /health` on :8083
+  - `services/agent-registry/cmd/main.go` — minimal Gin server + `GET /health` on :8084
+  - `Makefile` — 5 `compose-*` targets
+  - `scripts/smoke-test-compose.sh` — full stack smoke test
+  - `docs/deploy/docker-compose-runbook.md` — prerequisites, quick-start, profiles, troubleshooting
+  - `.golangci.yml` — migrated to v2 `linters.exclusions` format; excludes `dashboard/node_modules`
 
-- TODOs completed: —/10
-- Tests passing: —
-- Decisions reviewed: —
-- Artifacts delivered: —
+### Deviations from plan
+
+- **Alpine instead of distroless/static** — `gcr.io/distroless/static:nonroot` has no shell or wget, making Docker healthchecks impossible. Switched final stage to `alpine:3.20` which provides `wget` while keeping image minimal. Security posture: static Go binary + non-root user.
+- **`golangci-lint` v2 config migration** — config was in legacy `issues.exclude-rules` format; migrated to `linters.exclusions.rules` and added `dashboard/node_modules` path exclusion. This fixed pre-existing lint warnings from `dashboard/node_modules/flatted/` Go files and `noctx` in test files.

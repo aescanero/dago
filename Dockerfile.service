@@ -1,0 +1,17 @@
+# Dockerfile.service — shared multi-stage build for all 8 Go services.
+# Usage: docker build --build-arg SERVICE=orchestrator -f Dockerfile.service .
+ARG SERVICE
+
+FROM golang:1.25-alpine AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+ARG SERVICE
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/service ./services/${SERVICE}/cmd/
+
+FROM alpine:3.20
+RUN apk add --no-cache ca-certificates wget
+COPY --from=builder /bin/service /bin/service
+USER nobody
+ENTRYPOINT ["/bin/service"]

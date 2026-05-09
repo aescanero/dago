@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/aescanero/dago/services/auth-server/internal/handler"
@@ -11,6 +13,7 @@ func NewRouter(authH *handler.AuthHandler, oauthH *handler.OAuthHandler) *gin.En
 	r := gin.New()
 	r.Use(gin.Recovery())
 
+	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 	r.GET("/.well-known/jwks.json", authH.JWKS)
 
 	// Standard OAuth 2.1 endpoints — exception to /api/v1/ prefix per ADR-010 (same as JWKS).

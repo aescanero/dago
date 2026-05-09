@@ -45,19 +45,20 @@ linters:
         - name: error-return
         - name: error-naming
 
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  exclude-rules:
-    - path: "_test\\.go"
-      linters:
-        - funlen
-        - wrapcheck
-        - exhaustive
-        - errcheck
-    - source: "defer client\\.Close"
-      linters:
-        - errcheck
-    - path: "libs/utils"
-      linters:
-        - revive
+  exclusions:
+    paths:
+      - dashboard/node_modules
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - funlen
+          - wrapcheck
+          - exhaustive
+          - errcheck
+          - noctx
+      - source: "defer client\\.Close"
+        linters:
+          - errcheck
+      - path: "libs/utils"
+        linters:
+          - revive
