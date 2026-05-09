@@ -1,6 +1,7 @@
 package router
 
 import (
+	"net/http"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,8 @@ import (
 func NewRouter(graphH *handler.GraphHandler, execH *handler.ExecutionHandler) *gin.Engine {
 	r := gin.New()
 	r.Use(gin.Recovery())
+
+	r.GET("/health", func(c *gin.Context) { c.JSON(http.StatusOK, gin.H{"status": "ok"}) })
 
 	authRequired := os.Getenv("AUTH_REQUIRED") == "true"
 	jwksURL := os.Getenv("JWKS_URL")
