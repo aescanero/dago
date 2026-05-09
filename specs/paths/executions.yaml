@@ -39,11 +39,14 @@ executions:
               code: GRAPH_NOT_FOUND
               message: "graph not found"
       "422":
-        description: Validation error (e.g. invalid graph_id format).
+        description: Graph validation failed (unsupported edge types, unreachable nodes, etc.)
         content:
           application/json:
             schema:
               $ref: '../openapi.yaml#/components/schemas/ErrorResponse'
+            example:
+              code: GRAPH_VALIDATION_ERROR
+              message: "graph contains unsupported edge type: conditional"
       "500":
         description: Internal server error.
         content:

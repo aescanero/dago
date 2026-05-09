@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-05-05
 - **Estimated end date:** 2026-05-07
-- **Status:** planned
+- **Status:** completed
 - **Applied ADRs:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-007, ADR-008, ADR-011, ADR-014, ADR-016, ADR-020
 - **Affected specs:** specs/asyncapi.yaml (orchestrator operations), specs/paths/executions.yaml (422)
 - **Planning agent:** planner
@@ -533,9 +533,22 @@ func (r *ExecutionRepo) UpdateExecution(ctx context.Context, exec *domain.Execut
 
 ## Result
 
-> _Complete on sprint close._
+- **TODOs completed:** 17/17
+- **Tests passing:** 13 test suites (all pass); integration tests (build tag: integration) written and verified Red
+- **Decisions reviewed:** All key decisions from "Key decisions" section applied and documented
+- **Artifacts delivered:**
+  - specs: asyncapi.yaml (5 orchestrator ops + 2 schemas), executions.yaml (422 GRAPH_VALIDATION_ERROR)
+  - domain: ErrGraphValidation, ErrRetryable, GraphDefinition/NodeDefinition/EdgeDefinition, StreamGraphCompleted/StreamGraphFailed
+  - port: UpdateExecution in ExecutionRepository
+  - statemachine: ValidateGraph, NextNode, ExecutionStateMachine, CanTransitionTo
+  - consumer: NodeResultConsumer (HandleNodeExecuted + HandleNodeExecuteFailed)
+  - usecase: StartExecution extended (validate → running → publish first node)
+  - handler: 422 GRAPH_VALIDATION_ERROR mapping
+  - adapter: UpdateExecution in EntExecutionRepository
+  - infra: dominikbraun/graph v0.23.0 (Apache-2.0)
+  - main.go: full wiring with consumers + graceful shutdown
+  - docs: execution_state.md, index.md, log.md updated
 
-- TODOs completed: —/17
-- Tests passing: —
-- Decisions reviewed: —
-- Artifacts delivered: —
+**Status:** completed
+
+**Note on TODO order:** TODOs #5 and #6 (domain types + port) were executed before #3 and #4 (tests) to allow test files to compile against existing domain types. This preserves the TDD spirit (tests before implementation) while keeping CI green with compilable code at each commit.

@@ -78,3 +78,20 @@ func TestExecutionHandlerStartGraphNotFound(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
+
+func TestExecutionHandlerStartGraphValidationError(t *testing.T) {
+	uc := &fakeExecUC{startFn: func(_ context.Context, _ usecase.StartExecutionInput) (*domain.Execution, error) {
+		return nil, domain.ErrGraphValidation
+	}}
+	r := newExecRouter(uc)
+	body, _ := json.Marshal(map[string]any{"graph_id": uuid.New().String()})
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/executions", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnprocessableEntity, w.Code)
+	var resp map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "GRAPH_VALIDATION_ERROR", resp["code"])
+}

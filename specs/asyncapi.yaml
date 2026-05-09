@@ -191,6 +191,46 @@ operations:
       $ref: '#/channels/nodeExecuteFailed'
     summary: Executor publishes node execution failure
 
+  # === SPRINT-010: Orchestrator state machine operations ===
+  orchestratorPublishNodeExecuteRequested:
+    action: send
+    channel:
+      $ref: '#/channels/nodeExecuteRequested'
+    bindings:
+      valkey:
+        group: orchestrator
+    summary: Orchestrator publishes per-node execution request when transitioning state
+
+  orchestratorConsumeNodeExecuted:
+    action: receive
+    channel:
+      $ref: '#/channels/nodeExecuted'
+    bindings:
+      valkey:
+        group: orchestrator
+    summary: Orchestrator consumes successful node execution result
+
+  orchestratorConsumeNodeExecuteFailed:
+    action: receive
+    channel:
+      $ref: '#/channels/nodeExecuteFailed'
+    bindings:
+      valkey:
+        group: orchestrator
+    summary: Orchestrator consumes node execution failure
+
+  orchestratorPublishGraphCompleted:
+    action: send
+    channel:
+      $ref: '#/channels/graphExecutionCompleted'
+    summary: Orchestrator publishes graph completed when all nodes finish successfully
+
+  orchestratorPublishGraphFailed:
+    action: send
+    channel:
+      $ref: '#/channels/graphExecutionFailed'
+    summary: Orchestrator publishes graph failed when execution fails unrecoverably
+
 components:
   messages:
     GraphExecutionRequested:
@@ -399,3 +439,46 @@ components:
         retryable:
           type: boolean
           description: Whether the orchestrator may retry this node
+
+    # === SPRINT-010: Graph-level result payloads ===
+    GraphCompletedData:
+      type: object
+      required:
+        - execution_id
+        - graph_id
+        - duration_ms
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+          description: Graph execution identifier
+        graph_id:
+          type: string
+          format: uuid
+          description: Graph definition identifier
+        duration_ms:
+          type: integer
+          description: Total graph execution duration in milliseconds
+
+    GraphFailedData:
+      type: object
+      required:
+        - execution_id
+        - graph_id
+        - error
+        - error_code
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+          description: Graph execution identifier
+        graph_id:
+          type: string
+          format: uuid
+          description: Graph definition identifier
+        error:
+          type: string
+          description: Human-readable error message
+        error_code:
+          type: string
+          description: Machine-readable error code
