@@ -90,7 +90,10 @@ func (sm *ExecutionStateMachine) HandleNodeExecuted(
 			return fmt.Errorf("statemachine.HandleNodeExecuted: marshal payload: %w", err)
 		}
 		evt := newEvent(domain.EventTypeNodeExecuteRequested, "orchestrator", data)
-		return sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamNodeExecuteRequested})
+		if err := sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamNodeExecuteRequested}); err != nil {
+			return fmt.Errorf("statemachine.HandleNodeExecuted: publish node.execute.requested: %w", err)
+		}
+		return nil
 	}
 
 	// Terminal node — mark the execution completed.
@@ -117,7 +120,10 @@ func (sm *ExecutionStateMachine) HandleNodeExecuted(
 		return fmt.Errorf("statemachine.HandleNodeExecuted: marshal completed payload: %w", err)
 	}
 	evt := newEvent(domain.EventTypeGraphCompleted, "orchestrator", data)
-	return sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamGraphCompleted})
+	if err := sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamGraphCompleted}); err != nil {
+		return fmt.Errorf("statemachine.HandleNodeExecuted: publish graph.completed: %w", err)
+	}
+	return nil
 }
 
 // HandleNodeExecuteFailed processes a failed node execution result.
@@ -155,7 +161,10 @@ func (sm *ExecutionStateMachine) HandleNodeExecuteFailed(
 		return fmt.Errorf("statemachine.HandleNodeExecuteFailed: marshal failed payload: %w", err)
 	}
 	evt := newEvent(domain.EventTypeGraphFailed, "orchestrator", data)
-	return sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamGraphFailed})
+	if err := sm.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamGraphFailed}); err != nil {
+		return fmt.Errorf("statemachine.HandleNodeExecuteFailed: publish graph.failed: %w", err)
+	}
+	return nil
 }
 
 // CanTransitionTo reports whether a transition from current to next status is valid.
@@ -168,6 +177,8 @@ func CanTransitionTo(current, next domain.ExecutionStatus) bool {
 		return current == domain.ExecutionStatusRunning
 	case domain.ExecutionStatusFailed:
 		return current == domain.ExecutionStatusRunning
+	case domain.ExecutionStatusPending, domain.ExecutionStatusCancelled, domain.ExecutionStatusInterrupted:
+		return false
 	default:
 		return false
 	}

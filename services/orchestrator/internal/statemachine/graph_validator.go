@@ -14,16 +14,23 @@ func ValidateGraph(g domain.GraphDefinition) error {
 	if _, ok := g.Nodes[g.EntryNode]; !ok {
 		return fmt.Errorf("%w: entry_node %q not found in nodes", domain.ErrGraphValidation, g.EntryNode)
 	}
+	if err := validateEdgeTypes(g.Edges); err != nil {
+		return err
+	}
+	return validateReachability(g)
+}
 
-	for _, e := range g.Edges {
+func validateEdgeTypes(edges []domain.EdgeDefinition) error {
+	for _, e := range edges {
 		if e.Type != "sequential" {
 			return fmt.Errorf("%w: unsupported edge type: %s", domain.ErrGraphValidation, e.Type)
 		}
 	}
+	return nil
+}
 
-	// Build a DAG using dominikbraun/graph to verify reachability.
+func validateReachability(g domain.GraphDefinition) error {
 	dag := graph.New(graph.StringHash, graph.Directed())
-
 	for key := range g.Nodes {
 		if err := dag.AddVertex(key); err != nil {
 			return fmt.Errorf("%w: add vertex %q: %s", domain.ErrGraphValidation, key, err.Error())
@@ -35,24 +42,11 @@ func ValidateGraph(g domain.GraphDefinition) error {
 		}
 	}
 
-	// BFS/DFS from entry_node; every node must be reachable.
 	adjacency, err := dag.AdjacencyMap()
 	if err != nil {
 		return fmt.Errorf("%w: build adjacency map: %s", domain.ErrGraphValidation, err.Error())
 	}
-	reachable := make(map[string]bool)
-	var visit func(n string)
-	visit = func(n string) {
-		if reachable[n] {
-			return
-		}
-		reachable[n] = true
-		for neighbor := range adjacency[n] {
-			visit(neighbor)
-		}
-	}
-	visit(g.EntryNode)
-
+	reachable := reachableFrom(g.EntryNode, adjacency)
 	for key := range g.Nodes {
 		if !reachable[key] {
 			return fmt.Errorf("%w: node %q is not reachable from entry_node %q",
@@ -60,4 +54,21 @@ func ValidateGraph(g domain.GraphDefinition) error {
 		}
 	}
 	return nil
+}
+
+// reachableFrom returns the set of all nodes reachable from start via DFS.
+func reachableFrom(start string, adjacency map[string]map[string]graph.Edge[string]) map[string]bool {
+	visited := make(map[string]bool)
+	var dfs func(n string)
+	dfs = func(n string) {
+		if visited[n] {
+			return
+		}
+		visited[n] = true
+		for neighbor := range adjacency[n] {
+			dfs(neighbor)
+		}
+	}
+	dfs(start)
+	return visited
 }

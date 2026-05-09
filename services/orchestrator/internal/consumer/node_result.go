@@ -68,7 +68,7 @@ func (c *NodeResultConsumer) HandleNodeExecuted(ctx context.Context, evt domain.
 	}
 	if err := c.sm.HandleNodeExecuted(ctx, exec, *graph, data.NodeKey, data.Output, auth); err != nil {
 		if errors.Is(err, domain.ErrRetryable) {
-			return err // NACK
+			return fmt.Errorf("consumer.HandleNodeExecuted: %w", err) // NACK
 		}
 		log.Printf("consumer: HandleNodeExecuted state machine error: %v", err)
 		return nil // ACK — non-retryable internal error
@@ -96,7 +96,7 @@ func (c *NodeResultConsumer) HandleNodeExecuteFailed(ctx context.Context, evt do
 	}
 	if err := c.sm.HandleNodeExecuteFailed(ctx, exec, data.Retryable, data.Error, data.ErrorCode, auth); err != nil {
 		if errors.Is(err, domain.ErrRetryable) {
-			return err // NACK
+			return fmt.Errorf("consumer.HandleNodeExecuteFailed: %w", err) // NACK
 		}
 		log.Printf("consumer: HandleNodeExecuteFailed state machine error: %v", err)
 	}

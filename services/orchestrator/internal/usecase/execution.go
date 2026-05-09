@@ -52,7 +52,7 @@ func (u *ExecutionUseCase) StartExecution(ctx context.Context, in StartExecution
 	}
 
 	if err := statemachine.ValidateGraph(graphDef); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("StartExecution.validateGraph: %w", err)
 	}
 
 	active, err := u.execRepo.CountActiveByGraph(ctx, in.GraphID)
@@ -115,5 +115,8 @@ func (u *ExecutionUseCase) publishFirstNode(
 		DataContentType: "application/json",
 		Data:            payload,
 	}
-	return u.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamNodeExecuteRequested})
+	if err := u.publisher.Publish(ctx, evt, ports.PublishOptions{Stream: domain.StreamNodeExecuteRequested}); err != nil {
+		return fmt.Errorf("publish node.execute.requested: %w", err)
+	}
+	return nil
 }
