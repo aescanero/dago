@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-04-30
 - **Estimated end date:** 2026-05-02
-- **Status:** planned
+- **Status:** completed
 - **Applied ADRs:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-011, ADR-013, ADR-014, ADR-016, ADR-020
 - **Affected specs:** specs/asyncapi.yaml (executor operations), specs/patterns/nodes/llm_call.json
 - **Planning agent:** planner
@@ -722,25 +722,34 @@ chore: add test-executor Makefile target and env vars [SPRINT-009 #12]
 docs: update index.md and log.md for SPRINT-009 [SPRINT-009 #13]
 ```
 
-## Result (complete on close)
+## Result
 
-- [ ] `TestApplyInputMapping_NoMapping` passes
-- [ ] `TestApplyInputMapping_StateMessagesLast` passes
-- [ ] `TestApplyInputMapping_StateVariables` passes
-- [ ] `TestApplyInputMapping_StateVariables_Missing` passes — descriptive error
-- [ ] `TestApplyOutputMapping_NoMapping` passes — default {"response": content}
-- [ ] `TestApplyOutputMapping_ContentToVariable` passes
-- [ ] `TestApplyOutputMapping_MultipleTargets` passes
-- [ ] `TestLLMCallHandler_Success` passes — node.executed published with variables_update
-- [ ] `TestLLMCallHandler_WithInputMapping` passes — LLMRequest.Messages[0].Content correct
-- [ ] `TestLLMCallHandler_WithOutputMapping` passes — variables_update mapped correctly
-- [ ] `TestLLMCallHandler_RateLimited` passes — error_code=="rate_limited", retryable==true
-- [ ] `TestLLMCallHandler_ProviderUnavailable` passes — retryable==true
-- [ ] `TestLLMCallHandler_Unauthorized` passes — retryable==false
-- [ ] `TestLLMCallHandler_ExecutionError` passes — error_code=="execution_error", retryable==false
-- [ ] `TestExecutorConsumer_LLMCallSuccess` passes (build tag integration)
-- [ ] `go build ./services/executor/` no errors
-- [ ] `golangci-lint run ./services/executor/...` no errors
-- [ ] `make test-executor` runs 10 unit tests, all pass, no network
-- [ ] `specs/asyncapi.yaml` validated with executor operations
-- [ ] `docs/index.md` and `docs/log.md` updated
+**Status:** completed — 2026-05-09
+**Reviewed by:** @reviewer (Claude Code)
+
+- [x] `TestApplyInputMapping_NoMapping` passes
+- [x] `TestApplyInputMapping_StateMessagesLast` passes
+- [x] `TestApplyInputMapping_StateVariables` passes
+- [x] `TestApplyInputMapping_StateVariables_Missing` passes — descriptive error
+- [x] `TestApplyOutputMapping_NoMapping` passes — default {"response": content}
+- [x] `TestApplyOutputMapping_ContentToVariable` passes
+- [x] `TestApplyOutputMapping_MultipleTargets` passes
+- [x] `TestLLMCallHandler_Success` passes — node.executed published with variables_update
+- [x] `TestLLMCallHandler_WithInputMapping` passes — LLMRequest.Messages[0].Content correct
+- [x] `TestLLMCallHandler_WithOutputMapping` passes — variables_update mapped correctly
+- [x] `TestLLMCallHandler_RateLimited` passes — error_code=="rate_limited", retryable==true
+- [x] `TestLLMCallHandler_ProviderUnavailable` passes — retryable==true
+- [x] `TestLLMCallHandler_Unauthorized` passes — retryable==false
+- [x] `TestLLMCallHandler_ExecutionError` passes — error_code=="execution_error", retryable==false
+- [x] `TestExecutorConsumer_LLMCallSuccess` implemented (build tag integration, requires Valkey)
+- [x] `go build ./services/executor/cmd/` no errors
+- [x] `golangci-lint run ./services/executor/...` — 0 issues
+- [x] `make test-executor` runs 19 unit tests (12 mapping + 7 handler), all pass, no network
+- [x] `specs/asyncapi.yaml` — 3 channels, 3 operations, 3 data schemas added
+- [x] `docs/index.md` and `docs/log.md` updated
+
+**Deviations from plan:**
+- `make test-executor` runs 19 tests (not 10 as estimated); 12 mapping + 7 handler.
+- Build path is `./services/executor/cmd/` not `./services/executor/` (consistent with all other services).
+- FakeLLMClient was extended with `Errors []error` field (not in original SPRINT-008 scope) to enable handler error-injection tests.
+- Integration test (TODO #6) is implemented but not run in CI (build tag: integration).
