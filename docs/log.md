@@ -529,3 +529,56 @@ next event. `CanTransitionTo` for idempotency.
 - BUSYGROUP errors on XGROUP CREATE are silently ignored (idempotent setup).
 
 **Status:** completed
+
+---
+
+## 2026-05-09 — SPRINT-008: LLM Adapter — LLMClient Port, Anthropic and Ollama/Mixtral
+
+**Sprint:** SPRINT-008 | **Branch:** claude/kind-hawking-3WrBD
+
+**Objective:** Implement the `LLMClient` port and two concrete adapters (Anthropic + Ollama/Mixtral) plus a deterministic fake for tests.
+
+**Operations performed:**
+- TODO #1: Added `ErrUnauthorized`, `ErrRateLimited`, `ErrProviderUnavailable` to `libs/domain/errors.go`.
+- TODO #2: Created `libs/ports/llm.go` — `LLMClient` interface with `Message`, `ToolDefinition`, `LLMRequest`, `LLMResponse`, `ToolUse` types.
+- TODO #9/#12: Added `github.com/anthropics/anthropic-sdk-go v1.41.0` and `github.com/sashabaranov/go-openai v1.41.2` to `go.mod`; appended Anthropic + Ollama vars to `.env.example`.
+- TODO #3: Wrote 7 Red tests in `adapters/llm/anthropic/client_test.go` (httptest.NewServer mocks).
+- TODO #4: Wrote 1 Red test in `adapters/llm/fake/client_test.go` (FIFO queue + call registry).
+- TODO #13: Wrote 6 Red tests in `adapters/llm/ollama/client_test.go` (httptest.NewServer mocks).
+- TODO #5: Implemented `adapters/llm/fake/client.go` — `FakeLLMClient` with FIFO Responses + Calls registry.
+- TODO #6: Implemented `adapters/llm/anthropic/convert.go` — `toAnthropicMessages`, `toAnthropicTools`, `fromAnthropicResponse`.
+- TODO #7: Implemented `adapters/llm/anthropic/errors.go` — `mapAnthropicError` mapping HTTP codes to domain errors.
+- TODO #8: Implemented `adapters/llm/anthropic/client.go` — `AnthropicClient` with `NewAnthropicClient` and `Complete`.
+- TODO #14: Implemented `adapters/llm/ollama/convert.go` — `toOpenAIMessages`, `toOpenAITools`, `fromOpenAIResponse`, `ConvertFinishReason`.
+- TODO #15: Implemented `adapters/llm/ollama/client.go` + `errors.go` — `OllamaClient` using go-openai SDK.
+- TODO #10/#16: Added `make test-llm` target to `Makefile`; added as dependency of `test`; `./adapters/llm/...` covers all 3 sub-packages.
+- TODO #11: Updated `docs/index.md` (SPRINT-008 → completed, LLM adapters → implemented) and this log.
+
+**Files created/modified:**
+- `libs/domain/errors.go` — 3 new errors added
+- `libs/ports/llm.go` — new
+- `adapters/llm/anthropic/client.go` — new
+- `adapters/llm/anthropic/convert.go` — new
+- `adapters/llm/anthropic/errors.go` — new
+- `adapters/llm/anthropic/client_test.go` — new (7 tests)
+- `adapters/llm/fake/client.go` — new
+- `adapters/llm/fake/client_test.go` — new (1 test)
+- `adapters/llm/ollama/client.go` — new
+- `adapters/llm/ollama/convert.go` — new
+- `adapters/llm/ollama/errors.go` — new
+- `adapters/llm/ollama/client_test.go` — new (6 tests)
+- `go.mod` / `go.sum` — anthropic-sdk-go + go-openai added
+- `.env.example` — Anthropic + Ollama variables appended
+- `Makefile` — test-llm target added
+- `docs/index.md` — SPRINT-008 completed, LLM adapters implemented
+- `docs/log.md` — this entry
+
+**Key decisions:**
+- `ConvertFinishReason` is exported so `TestOllamaConvertFinishReason` can call it directly without round-tripping through the HTTP mock.
+- `mapOllamaError` handles both `*openai.APIError` and `*openai.RequestError` for HTTP 500 → `ErrProviderUnavailable` (go-openai returns RequestError when the response body is not the standard OpenAI error format).
+- `NewAnthropicClient` passes `option.WithoutEnvironmentDefaults()` so tests never pick up real API keys from env.
+- `NewOllamaClient` never returns an error because BaseURL always has a valid default.
+
+**Test results:** `make test-llm` → 14 tests (7 Anthropic + 1 Fake + 6 Ollama), all pass, no network or real credentials needed.
+
+**Status:** completed

@@ -55,8 +55,12 @@ build-mcp-registry: ## Compile the mcp-registry service
 build-agent-registry: ## Compile the agent-registry service
 	$(GO) build -o $(BIN_DIR)/agent-registry ./services/agent-registry/cmd/
 
+.PHONY: test-llm
+test-llm: ## Run LLM adapter unit tests (anthropic + fake + ollama)
+	$(GO) test -count=1 -timeout 30s ./adapters/llm/...
+
 .PHONY: test
-test: ## Run all tests with go test ./...
+test: test-llm ## Run all tests with go test ./...
 	$(GO) test ./...
 
 .PHONY: test-unit
