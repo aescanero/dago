@@ -43,4 +43,11 @@ const (
 	EventTypeNodeExecuteRequested = "node.execute.requested"
 	EventTypeNodeExecuted         = "node.executed"
 	EventTypeNodeExecuteFailed    = "node.execute.failed"
+
+	// Orchestrator graph-level result streams (SPRINT-010).
+	StreamGraphCompleted = "dago.graph.execution.completed"
+	StreamGraphFailed    = "dago.graph.execution.failed"
+
+	EventTypeGraphCompleted = "dago.graph.execution.completed"
+	EventTypeGraphFailed    = "dago.graph.execution.failed"
 )

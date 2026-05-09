@@ -56,5 +56,17 @@ func (r *InMemoryExecutionRepository) CountActiveByGraph(ctx context.Context, gr
 	return count, nil
 }
 
+// UpdateExecution persists status and current_node changes on an existing execution.
+func (r *InMemoryExecutionRepository) UpdateExecution(ctx context.Context, exec *domain.Execution) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if _, ok := r.data[exec.ID]; !ok {
+		return fmt.Errorf("%w: execution %s", domain.ErrNotFound, exec.ID)
+	}
+	copy := *exec
+	r.data[exec.ID] = &copy
+	return nil
+}
+
 // compile-time interface check
 var _ ports.ExecutionRepository = (*InMemoryExecutionRepository)(nil)
