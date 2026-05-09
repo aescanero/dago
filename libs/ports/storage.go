@@ -29,4 +29,5 @@ type ExecutionRepository interface {
 	Create(ctx context.Context, e *domain.Execution) (*domain.Execution, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Execution, error)
 	CountActiveByGraph(ctx context.Context, graphID uuid.UUID) (int, error)
+	UpdateExecution(ctx context.Context, exec *domain.Execution) error
 }

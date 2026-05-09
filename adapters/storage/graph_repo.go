@@ -179,6 +179,30 @@ func (r *EntExecutionRepository) FindByID(ctx context.Context, id uuid.UUID) (*d
 	return entExecToDomain(e, graphID), nil
 }
 
+// UpdateExecution persists status and current_node changes on an existing execution.
+func (r *EntExecutionRepository) UpdateExecution(ctx context.Context, exec *domain.Execution) error {
+	q := r.client.Execution.UpdateOneID(exec.ID).
+		SetStatus(execution.Status(exec.Status))
+	if exec.CurrentNode != "" {
+		q = q.SetCurrentNode(exec.CurrentNode)
+	} else {
+		q = q.ClearCurrentNode()
+	}
+	if exec.Error != "" {
+		q = q.SetError(exec.Error)
+	}
+	if exec.CompletedAt != nil {
+		q = q.SetCompletedAt(*exec.CompletedAt)
+	}
+	if _, err := q.Save(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("%w: execution %s", domain.ErrNotFound, exec.ID)
+		}
+		return fmt.Errorf("storage.UpdateExecution: %w", err)
+	}
+	return nil
+}
+
 // CountActiveByGraph returns the number of running executions for the given graph.
 func (r *EntExecutionRepository) CountActiveByGraph(ctx context.Context, graphID uuid.UUID) (int, error) {
 	count, err := r.client.Execution.Query().
