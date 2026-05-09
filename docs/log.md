@@ -624,3 +624,56 @@ next event. `CanTransitionTo` for idempotency.
 **Test results:** 12 mapping tests + 7 handler tests = 19 unit tests, all pass, no network or real credentials needed.
 
 **Status:** completed
+
+---
+
+## [2026-05-09] sprint | SPRINT-010: Orchestrator state machine — Submit, validate, execute, transition, complete
+
+**Scope:** Connect orchestrator with Valkey event bus: validate graph on submission,
+publish `node.execute.requested` for the entry node, consume `node.executed` /
+`node.execute.failed`, update state and transition until completion or failure.
+Only sequential edges supported. Per-node timeout excluded (documented as future TODO).
+
+**TODOs completed:** 17/17 (spec ×2, domain ×1, port ×1, test ×4, impl ×7, infra ×1, docs ×1)
+
+**Status:** completed
+
+---
+
+## [2026-05-09] sprint | SPRINT-010: completed
+
+**Result:** All 17 TODOs implemented. 13 test suites pass.
+`go build ./...`, `go vet ./...`, `golangci-lint run ./...` all exit 0.
+
+**Artifacts created:**
+- `specs/asyncapi.yaml` — 5 orchestrator operations + GraphCompletedData + GraphFailedData schemas
+- `specs/paths/executions.yaml` — 422 GRAPH_VALIDATION_ERROR documented
+- `libs/domain/errors.go` — ErrGraphValidation, ErrRetryable
+- `libs/domain/graph.go` — GraphDefinition, NodeDefinition, EdgeDefinition
+- `libs/domain/events.go` — StreamGraphCompleted, StreamGraphFailed constants
+- `libs/ports/storage.go` — UpdateExecution in ExecutionRepository interface
+- `adapters/storage/graph_repo.go` — UpdateExecution implemented
+- `tests/testutil/fakes/` — UpdateExecution in InMemoryExecutionRepository; new InMemoryPublisher
+- `services/orchestrator/internal/statemachine/` — graph_validator.go, traversal.go, execution_sm.go + tests
+- `services/orchestrator/internal/consumer/node_result.go` — NodeResultConsumer
+- `services/orchestrator/internal/usecase/execution.go` — StartExecution extended
+- `services/orchestrator/internal/handler/errors.go` — 422 GRAPH_VALIDATION_ERROR
+- `services/orchestrator/cmd/main.go` — full wiring with graceful shutdown
+- `go.mod` — github.com/dominikbraun/graph v0.23.0 (Apache-2.0)
+- `docs/views/process/execution_state.md` — execution state diagram
+- `docs/index.md`, `docs/log.md` — updated
+
+**Key decisions:**
+- Only `sequential` edges in this sprint; other types → ErrGraphValidation (documented as known limitation).
+- Per-node timeout excluded; context is propagated but no per-node deadline (documented as future TODO).
+- ErrRetryable sentinel in libs/domain/ keeps consumer NACK logic adapter-independent.
+- CanTransitionTo prevents double transitions (Valkey at-least-once delivery).
+- StartExecution goes directly to `running` (not `pending`) since first event publication is synchronous.
+
+**Test results:** 13 test suites, all pass (10 new statemachine/usecase/handler tests + 3 integration stubs).
+
+**Verifications:**
+- `go build ./...` → 0 errors
+- `go vet ./...` → 0 issues
+- `golangci-lint run ./...` → 0 issues
+- `go test ./...` → 13/13 suites pass
