@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dago.dev/schemas/patterns/nodes/llm_call.json",
   "title": "LLM Call Pattern",
-  "description": "Envía un prompt a un LLM y devuelve la respuesta",
+  "description": "Sends a prompt to an LLM and stores the response in graph state. Supports input_mapping to build the LLM request from state variables and output_mapping to write LLM output back into state.",
   "type": "object",
   "required": ["pattern", "config"],
   "properties": {
@@ -11,19 +11,36 @@
       "type": "object",
       "required": ["model"],
       "properties": {
-        "model": { "type": "string", "description": "Modelo LLM a usar" },
-        "system_prompt": { "type": "string" },
-        "temperature": { "type": "number", "minimum": 0, "maximum": 2, "default": 0.7 },
-        "max_tokens": { "type": "integer", "minimum": 1, "default": 2048 },
+        "model": {
+          "type": "string",
+          "description": "LLM model identifier (e.g. claude-sonnet-4-6, llama3.2)"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "Optional system prompt prepended to every request"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.7,
+          "description": "Sampling temperature. Default: 0.7"
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 2048,
+          "description": "Maximum tokens in the LLM response. Default: 2048"
+        },
         "input_mapping": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "description": "Mapeo de estado del grafo → input del LLM"
+          "description": "Maps graph state paths to LLM message roles. Supported source paths: state.variables.<name> (reads a state variable), state.messages[-1].content (reads the last message content). Each key becomes the user message content."
         },
         "output_mapping": {
           "type": "object",
           "additionalProperties": { "type": "string" },
-          "description": "Mapeo de output del LLM → estado del grafo"
+          "description": "Maps LLM output fields to graph state variables. Supported source fields: output.content (generated text), output.stop_reason (end_turn|tool_use|max_tokens). Target must be state.variables.<name>. If omitted, defaults to {\"response\": output.content}."
         }
       }
     }
