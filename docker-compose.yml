@@ -1,6 +1,10 @@
 services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure — profile: infra, backend, all
+  # ---------------------------------------------------------------------------
   postgres:
     image: pgvector/pgvector:pg16
+    profiles: [infra, backend, all]
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     environment:
@@ -20,6 +24,7 @@ services:
 
   valkey:
     image: valkey/valkey:8
+    profiles: [infra, backend, all]
     ports:
       - "${VALKEY_PORT:-6379}:6379"
     command: valkey-server --save 60 1 --loglevel warning
@@ -33,6 +38,255 @@ services:
       start_period: 5s
     networks:
       - dago-network
+
+  # ---------------------------------------------------------------------------
+  # Migration init-container — profile: backend, all
+  # ---------------------------------------------------------------------------
+  migrate:
+    image: arigaio/atlas:latest
+    profiles: [backend, all]
+    command: >
+      migrate apply
+      --dir "file:///migrations"
+      --url "${DATABASE_URL:-postgres://dago:dago@postgres:5432/dago?sslmode=disable}"
+    volumes:
+      - ./migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - dago-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Orchestrator — profile: backend, all
+  # ---------------------------------------------------------------------------
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: orchestrator
+    profiles: [backend, all]
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://dago:dago@postgres:5432/dago?sslmode=disable}
+      PORT: "8080"
+      VALKEY_ADDR: ${VALKEY_ADDR:-valkey:6379}
+      AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
+      JWKS_URL: ${JWKS_URL:-http://auth-server:8081/.well-known/jwks.json}
+      JWT_ISSUER: ${JWT_ISSUER:-dago-auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-dago-api}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Executor — profile: backend, all (event-driven worker)
+  # ---------------------------------------------------------------------------
+  executor:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: executor
+    profiles: [backend, all]
+    environment:
+      EXECUTOR_VALKEY_ADDR: ${EXECUTOR_VALKEY_ADDR:-valkey:6379}
+      EXECUTOR_LLM_PROVIDER: ${EXECUTOR_LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Router — profile: backend, all (event-driven worker — stub)
+  # ---------------------------------------------------------------------------
+  router:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: router
+    profiles: [backend, all]
+    environment:
+      ROUTER_VALKEY_ADDR: ${ROUTER_VALKEY_ADDR:-valkey:6379}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Planner — profile: backend, all (event-driven worker — stub)
+  # ---------------------------------------------------------------------------
+  planner:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: planner
+    profiles: [backend, all]
+    environment:
+      PLANNER_VALKEY_ADDR: ${PLANNER_VALKEY_ADDR:-valkey:6379}
+    depends_on:
+      valkey:
+        condition: service_healthy
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Auth-Server — profile: backend, all
+  # ---------------------------------------------------------------------------
+  auth-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: auth-server
+    profiles: [backend, all]
+    ports:
+      - "${AUTH_PORT:-8081}:8081"
+    environment:
+      DATABASE_URL: ${AUTH_DATABASE_URL:-postgres://dago:dago@postgres:5432/dago?sslmode=disable}
+      AUTH_PORT: "8081"
+      JWT_ISSUER: ${JWT_ISSUER:-dago-auth}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-dago-api}
+      JWT_PRIVATE_KEY_PATH: ${JWT_PRIVATE_KEY_PATH:-/secrets/jwt_private.pem}
+    volumes:
+      - ./secrets:/secrets:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Catalog — profile: backend, all (stub)
+  # ---------------------------------------------------------------------------
+  catalog:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: catalog
+    profiles: [backend, all]
+    ports:
+      - "${CATALOG_PORT:-8082}:8082"
+    environment:
+      CATALOG_PORT: "8082"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # MCP Registry — profile: backend, all (stub)
+  # ---------------------------------------------------------------------------
+  mcp-registry:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: mcp-registry
+    profiles: [backend, all]
+    ports:
+      - "${MCP_PORT:-8083}:8083"
+    environment:
+      MCP_PORT: "8083"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Agent Registry — profile: backend, all (stub)
+  # ---------------------------------------------------------------------------
+  agent-registry:
+    build:
+      context: .
+      dockerfile: Dockerfile.service
+      args:
+        SERVICE: agent-registry
+    profiles: [backend, all]
+    ports:
+      - "${AGENT_REGISTRY_PORT:-8084}:8084"
+    environment:
+      AGENT_REGISTRY_PORT: "8084"
+    depends_on:
+      valkey:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - dago-network
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Dashboard — profile: frontend, all
+  # ---------------------------------------------------------------------------
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_AUTH_URL: ${VITE_AUTH_URL:-http://localhost:8081}
+        VITE_AUTH_CLIENT_ID: ${VITE_AUTH_CLIENT_ID:-dago-dashboard}
+        VITE_AUTH_REDIRECT_URI: ${VITE_AUTH_REDIRECT_URI:-http://localhost:3000/auth/callback}
+    profiles: [frontend, all]
+    ports:
+      - "3000:80"
+    networks:
+      - dago-network
+    restart: unless-stopped
 
 volumes:
   pgdata:
