@@ -14,4 +14,14 @@ var (
 	ErrInvalidGraphStatus = errors.New("invalid graph status for operation")
 	// ErrInvalidCredentials is returned when authentication credentials are incorrect.
 	ErrInvalidCredentials = errors.New("invalid credentials")
+
+	// ErrUnauthorized indicates invalid LLM provider credentials (HTTP 401).
+	ErrUnauthorized = errors.New("unauthorized")
+
+	// ErrRateLimited indicates the LLM provider rejected the request due to rate limiting (HTTP 429).
+	// The caller can retry with exponential backoff.
+	ErrRateLimited = errors.New("rate limited")
+
+	// ErrProviderUnavailable indicates the LLM provider is temporarily unavailable (HTTP 500/529). Retryable.
+	ErrProviderUnavailable = errors.New("provider unavailable")
 )
