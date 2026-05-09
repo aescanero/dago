@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-04-29
 - **Estimated end date:** 2026-04-30
-- **Status:** planned
+- **Status:** completed
 - **ADRs applied:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-013, ADR-015, ADR-016
 - **Affected specs:** specs/patterns/nodes/llm_call.json (reference; no new spec created in this sprint)
 - **Planning agent:** planner
@@ -875,27 +875,29 @@ var _ ports.LLMClient = &OllamaClient{}
 
 ## Result (complete on close)
 
-- [ ] `TestCompleteText` passes
-- [ ] `TestCompleteWithTools` passes
-- [ ] `TestCompleteToolResult` passes
-- [ ] `TestCompleteRateLimit` passes — `errors.Is(err, domain.ErrRateLimited)` true
-- [ ] `TestCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
-- [ ] `TestCompleteUnauthorized` passes — `errors.Is(err, domain.ErrUnauthorized)` true
-- [ ] `TestCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
-- [ ] `TestFakeLLMClientQueue` passes
-- [ ] `var _ ports.LLMClient = &AnthropicClient{}` compiles
-- [ ] `var _ ports.LLMClient = &FakeLLMClient{}` compiles
-- [ ] `go build ./libs/... ./adapters/llm/...` without errors
-- [ ] `golangci-lint run ./libs/... ./adapters/llm/...` without errors
-- [ ] `make test-llm` runs 14 tests (8 Anthropic+Fake + 6 Ollama), all pass, without real network
-- [ ] `.env.example` updated with Anthropic and Ollama variables
-- [ ] `docs/index.md` and `docs/log.md` updated
-- [ ] `TestOllamaCompleteText` passes
-- [ ] `TestOllamaCompleteWithTools` passes
-- [ ] `TestOllamaCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
-- [ ] `TestOllamaCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
-- [ ] `TestOllamaCompleteModelDefault` passes — body contains `"model":"mixtral"`
-- [ ] `TestOllamaConvertFinishReason` passes — "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
-- [ ] `var _ ports.LLMClient = &OllamaClient{}` compiles
-- [ ] `go build ./adapters/llm/ollama/...` without errors
-- [ ] `golangci-lint run ./adapters/llm/ollama/...` without errors
+- [x] `TestCompleteText` passes
+- [x] `TestCompleteWithTools` passes
+- [x] `TestCompleteToolResult` passes
+- [x] `TestCompleteRateLimit` passes — `errors.Is(err, domain.ErrRateLimited)` true
+- [x] `TestCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
+- [x] `TestCompleteUnauthorized` passes — `errors.Is(err, domain.ErrUnauthorized)` true
+- [x] `TestCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
+- [x] `TestFakeLLMClientQueue` passes
+- [x] `var _ ports.LLMClient = &AnthropicClient{}` compiles
+- [x] `var _ ports.LLMClient = &FakeLLMClient{}` compiles
+- [x] `go build ./libs/... ./adapters/llm/...` without errors
+- [x] `golangci-lint run ./libs/... ./adapters/llm/...` without errors
+- [x] `make test-llm` runs 14 tests (7 Anthropic + 1 Fake + 6 Ollama), all pass, without real network
+- [x] `.env.example` updated with Anthropic and Ollama variables
+- [x] `docs/index.md` and `docs/log.md` updated
+- [x] `TestOllamaCompleteText` passes
+- [x] `TestOllamaCompleteWithTools` passes
+- [x] `TestOllamaCompleteServerError` passes — `errors.Is(err, domain.ErrProviderUnavailable)` true
+- [x] `TestOllamaCompleteContextTimeout` passes — `context.DeadlineExceeded` propagated
+- [x] `TestOllamaCompleteModelDefault` passes — body contains `"model":"mixtral"`
+- [x] `TestOllamaConvertFinishReason` passes — "stop"→"end_turn", "tool_calls"→"tool_use", "length"→"max_tokens"
+- [x] `var _ ports.LLMClient = &OllamaClient{}` compiles
+- [x] `go build ./adapters/llm/ollama/...` without errors
+- [x] `golangci-lint run ./adapters/llm/ollama/...` without errors
+
+**PR:** [#9](https://github.com/aescanero/dago/pull/9) — merged 2026-05-09
