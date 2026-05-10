@@ -44,7 +44,7 @@
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | completed |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | completed |
 | [SPRINT-011](sprints/SPRINT-011-docker-compose.md) | docker-compose full-stack containerization: Dockerfiles, profiles, health endpoints, runbook | completed |
-| [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) | LLM adapters: OpenAI, Azure OpenAI, Mistral | planned |
+| [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) | LLM adapters: OpenAI, Azure OpenAI, Mistral | completed |
 
 ## Specs (sources of truth)
 
@@ -112,6 +112,9 @@
 | LLM Anthropic | libs/ports/llm.go | adapters/llm/anthropic/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Ollama (Mixtral) | libs/ports/llm.go | adapters/llm/ollama/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
 | LLM Fake | libs/ports/llm.go | adapters/llm/fake/ | implemented | [SPRINT-008](sprints/SPRINT-008-llm-adapter-anthropic.md) |
+| LLM OpenAI | libs/ports/llm.go | adapters/llm/openai/ | implemented | [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) |
+| LLM Azure OpenAI | libs/ports/llm.go | adapters/llm/azureopenai/ | implemented | [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) |
+| LLM Mistral | libs/ports/llm.go | adapters/llm/mistral/ | implemented | [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) |
 
 ## Dashboard (SPRINT-006)
 
