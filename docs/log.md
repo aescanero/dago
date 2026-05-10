@@ -801,3 +801,21 @@ Branch `claude/admiring-turing-RXoB2` deleted.
 
 **PR:** https://github.com/aescanero/dago/pull/13 (sprint plan document) — squash-merged.
 Branch `sprint/SPRINT-011-docker-compose` deleted (first pass, re-used for implementation).
+
+---
+
+## [2026-05-10] sprint | SPRINT-012: LLM adapters — OpenAI, Azure OpenAI, Mistral
+
+**Planned artifacts:**
+- `docs/sprints/SPRINT-012-llm-openai-azure-mistral.md`
+
+**Scope:** Three new `LLMClient` adapters using `github.com/sashabaranov/go-openai` (already in
+go.mod): native OpenAI, Azure OpenAI (via `DefaultAzureConfig`), and Mistral (OpenAI-compatible).
+Each follows the four-file pattern from SPRINT-008. Executor wiring extended with 3 new cases.
+9 new env vars documented in `.env.example`.
+
+**TODOs:** 12 (test ×3, impl ×7, docs ×2).
+
+**Blocked by:** SPRINT-008 (port + SDK), SPRINT-009 (executor pattern).
+
+**Status:** planned

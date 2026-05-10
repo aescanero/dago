@@ -44,6 +44,7 @@
 | [SPRINT-009](sprints/SPRINT-009-executor-llm-call.md) | Executor: llm_call pattern handler, node.execute.requested consumer | completed |
 | [SPRINT-010](sprints/SPRINT-010-orchestrator-state-machine.md) | Orchestrator: state machine, graph validation, publish events, transition, complete | completed |
 | [SPRINT-011](sprints/SPRINT-011-docker-compose.md) | docker-compose full-stack containerization: Dockerfiles, profiles, health endpoints, runbook | completed |
+| [SPRINT-012](sprints/SPRINT-012-llm-openai-azure-mistral.md) | LLM adapters: OpenAI, Azure OpenAI, Mistral | planned |
 
 ## Specs (sources of truth)
 
