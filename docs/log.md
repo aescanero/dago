@@ -840,3 +840,9 @@ Each follows the four-file pattern from SPRINT-008. Executor wiring extended wit
 - `//nolint:revive` on struct names (consistent with ollama/anthropic adapters).
 - `buildLLMClient` refactored into 4 provider-specific `mustBuild*` helpers to keep gocognit < 15.
 - Azure `Deployment` always overrides `req.Model` (Azure routes by deployment name).
+
+---
+
+## [2026-05-10] sprint | SPRINT-012: PR #15 merged to main
+
+PR #15 squash-merged to `main`. Local branch `sprint/SPRINT-012-llm-openai-azure-mistral` deleted.
