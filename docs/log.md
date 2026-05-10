@@ -818,4 +818,25 @@ Each follows the four-file pattern from SPRINT-008. Executor wiring extended wit
 
 **Blocked by:** SPRINT-008 (port + SDK), SPRINT-009 (executor pattern).
 
-**Status:** planned
+**Status:** completed
+
+---
+
+## [2026-05-10] sprint | SPRINT-012: completed
+
+**TODOs completed:** 12/12
+
+**Artifacts delivered:**
+- `adapters/llm/openai/` — `client.go`, `convert.go`, `errors.go`, `client_test.go` (7 tests)
+- `adapters/llm/azureopenai/` — `client.go`, `convert.go`, `errors.go`, `client_test.go` (6 tests)
+- `adapters/llm/mistral/` — `client.go`, `convert.go`, `errors.go`, `client_test.go` (7 tests)
+- `services/executor/cmd/main.go` — extended `buildLLMClient` with 3 new cases + 4 extracted helpers
+- `.env.example` — 9 new variables (OPENAI_*, AZURE_OPENAI_*, MISTRAL_*)
+
+**Tests:** 20 new unit tests; all pass. Full suite: all pass.
+**Lint:** 0 issues (golangci-lint).
+
+**Key decisions:**
+- `//nolint:revive` on struct names (consistent with ollama/anthropic adapters).
+- `buildLLMClient` refactored into 4 provider-specific `mustBuild*` helpers to keep gocognit < 15.
+- Azure `Deployment` always overrides `req.Model` (Azure routes by deployment name).

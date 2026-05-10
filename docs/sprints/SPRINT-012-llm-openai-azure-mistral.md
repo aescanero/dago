@@ -4,7 +4,7 @@
 
 - **Start date:** 2026-05-10
 - **Estimated end date:** 2026-05-13
-- **Status:** planned
+- **Status:** completed
 - **Applied ADRs:** ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-013, ADR-020
 - **Affected specs:** — (port interface unchanged)
 - **Planning agent:** planner
@@ -312,9 +312,18 @@ MISTRAL_MODEL=mistral-large-latest
 
 ## Result
 
-> _Complete on sprint close._
+- TODOs completed: 12/12
+- Tests passing: 20 new unit tests pass; full suite passes
+- Lint: 0 issues (golangci-lint)
+- Artifacts delivered:
+  - `adapters/llm/openai/` — `client.go`, `convert.go`, `errors.go`, `client_test.go`
+  - `adapters/llm/azureopenai/` — `client.go`, `convert.go`, `errors.go`, `client_test.go`
+  - `adapters/llm/mistral/` — `client.go`, `convert.go`, `errors.go`, `client_test.go`
+  - `services/executor/cmd/main.go` — 3 new provider cases + 4 extracted `mustBuild*` helpers
+  - `.env.example` — 9 new variables (OPENAI_*, AZURE_OPENAI_*, MISTRAL_*)
+  - `docs/index.md`, `docs/log.md` — updated
 
-- TODOs completed: —/12
-- Tests passing: —
-- Decisions reviewed: —
-- Artifacts delivered: —
+- Decisions reviewed:
+  - `//nolint:revive` on struct names — consistent with ollama/anthropic (revive `exported` rule flags package-prefixed names)
+  - `buildLLMClient` refactored to `mustBuild*` helpers — gocognit would exceed 15 otherwise (ADR-003)
+  - Azure `Deployment` always overrides `req.Model` — Azure routes by deployment, not model name
