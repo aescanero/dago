@@ -99,12 +99,6 @@ func mustOpenDB(dsn string) *ent.Client {
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
-	if err := client.Schema.Create(context.Background()); err != nil {
-		if err2 := client.Close(); err2 != nil {
-			log.Printf("close db: %v", err2)
-		}
-		log.Fatalf("failed to run schema migration: %v", err)
-	}
 	return client
 }
 

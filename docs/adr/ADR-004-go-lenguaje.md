@@ -101,6 +101,46 @@ must consult them in this order of precedence:
 8. **Go modules.** Every project uses Go modules. No vendor/ unless
    there is an explicit need for offline builds.
 
+9. **Every long-running service MUST block in `main()` until SIGTERM/SIGINT.**
+   A service whose `main()` returns immediately exits with code 0; container
+   orchestrators (Docker Compose, Kubernetes) treat this as a crash and restart
+   it in an infinite loop, masking the real problem.
+
+   The mandatory pattern for all services:
+
+   ```go
+   func main() {
+       ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+       defer stop()
+
+       // ... initialisation ...
+
+       log.Println("<service>: started")
+       <-ctx.Done()          // blocks until signal received
+       log.Println("<service>: stopping")
+
+       // ... graceful shutdown ...
+   }
+   ```
+
+   **Stub services** that are not yet implemented MUST use the same skeleton
+   with `<-ctx.Done()` as the only blocking statement. An empty
+   `func main() {}` is not a valid stub — it is a defect.
+
+   ```go
+   // ✅ Valid stub
+   func main() {
+       ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+       defer stop()
+       log.Println("router: started (stub)")
+       <-ctx.Done()
+       log.Println("router: stopped")
+   }
+
+   // ❌ Invalid stub — causes infinite restart loop in any container runtime
+   func main() {}
+   ```
+
 ## Alternatives considered
 
 - **Rust:** Superior performance and compile-time memory safety.

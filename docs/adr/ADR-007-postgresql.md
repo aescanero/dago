@@ -63,6 +63,11 @@ domain types and Ent types.
 6. **Transactions** with `client.Tx(ctx)` and defer rollback.
 7. **Never expose Ent types** outside the adapter.
 8. **UUIDs** as identifiers. **TIMESTAMPTZ** for timestamps, in UTC.
+9. **`client.Schema.Create()` and `client.Schema.WriteTo()` are FORBIDDEN in service
+   code.** They bypass Atlas, generate a parallel unversioned schema management path,
+   and produce type divergence between the migration files and the live database
+   (e.g. `text[]` vs `jsonb`). These methods are only permitted inside test helpers
+   that use `enttest.Open` with an in-memory or throwaway database.
 
 ## Alternatives considered
 
@@ -88,3 +93,4 @@ learning curve, less fine-grained control than pure SQL.
 - Adapter in `adapters/storage/` uses `ent.Client`.
 - Ent types do not leave the adapter. The domain has its own types.
 - Always use context. Transactions with `client.Tx(ctx)`.
+- **NEVER call `client.Schema.Create()` in service code.** Search for it in PRs — its presence is a blocking review comment. Only allowed in `enttest.Open` test helpers.

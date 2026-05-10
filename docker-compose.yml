@@ -40,6 +40,39 @@ services:
       - dago-network
 
   # ---------------------------------------------------------------------------
+  # Secrets init-container — profile: backend, all
+  # Generates jwt_private.pem + jwt_public.pem in ./secrets/ if absent.
+  # Never overwrites an existing key. In production disable with
+  # AUTO_GENERATE_SECRETS=false and mount keys from a secret manager.
+  # ---------------------------------------------------------------------------
+  secrets-init:
+    image: alpine:3.20
+    profiles: [backend, all]
+    volumes:
+      - ./secrets:/secrets
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ "${AUTO_GENERATE_SECRETS:-true}" != "true" ]; then
+          echo "secrets-init: AUTO_GENERATE_SECRETS=false, skipping"
+          exit 0
+        fi
+        if [ -f /secrets/jwt_private.pem ]; then
+          echo "secrets-init: jwt_private.pem already exists, skipping"
+          exit 0
+        fi
+        apk add --no-cache openssl > /dev/null 2>&1
+        mkdir -p /secrets
+        openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+          -out /secrets/jwt_private.pem
+        openssl rsa -in /secrets/jwt_private.pem -pubout \
+          -out /secrets/jwt_public.pem 2>/dev/null
+        chmod 600 /secrets/jwt_private.pem
+        echo "secrets-init: generated jwt_private.pem and jwt_public.pem"
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
   # Migration init-container — profile: backend, all
   # ---------------------------------------------------------------------------
   migrate:
@@ -107,8 +140,23 @@ services:
     environment:
       EXECUTOR_VALKEY_ADDR: ${EXECUTOR_VALKEY_ADDR:-valkey:6379}
       EXECUTOR_LLM_PROVIDER: ${EXECUTOR_LLM_PROVIDER:-anthropic}
+      # Anthropic
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Ollama
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434}
+      # OpenAI
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-}
+      # Azure OpenAI
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-}
+      # Mistral
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      MISTRAL_BASE_URL: ${MISTRAL_BASE_URL:-}
+      MISTRAL_MODEL: ${MISTRAL_MODEL:-}
     depends_on:
       valkey:
         condition: service_healthy
@@ -175,6 +223,8 @@ services:
     volumes:
       - ./secrets:/secrets:ro
     depends_on:
+      secrets-init:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
       valkey:

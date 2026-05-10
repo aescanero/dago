@@ -178,6 +178,21 @@ type AttributeSet struct {
 10. No passwords stored in the backend API. Only the auth-server
     manages credentials.
 
+### JWT signing key management
+
+The auth-server requires an RSA private key (`jwt_private.pem`) for RS256 signing.
+Key management differs by environment:
+
+| Environment | Approach |
+|-------------|----------|
+| **Local / docker-compose** | `secrets-init` init container generates the key pair in `./secrets/` if absent. `auth-server` declares `depends_on: secrets-init: condition: service_completed_successfully`. |
+| **Production** | Keys come from an external secret manager (Vault, K8s Secrets, AWS SM). The `secrets-init` container is disabled via `AUTO_GENERATE_SECRETS=false`. Keys are NEVER auto-generated. |
+
+Rules:
+- `secrets/` is listed in `.gitignore`. Private keys are NEVER committed.
+- The init container only generates the key if `jwt_private.pem` is absent — it never overwrites an existing key.
+- Key rotation in production follows the secret manager's rotation policy.
+
 ## Notes for Claude Code
 
 - auth-server in `services/auth-server/internal/`.
