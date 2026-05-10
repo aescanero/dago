@@ -19,7 +19,7 @@ type Config struct {
 }
 
 // AzureOpenAIClient implements ports.LLMClient using the Azure OpenAI API.
-type AzureOpenAIClient struct {
+type AzureOpenAIClient struct { //nolint:revive
 	client     *goai.Client
 	deployment string
 }

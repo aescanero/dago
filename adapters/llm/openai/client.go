@@ -21,7 +21,7 @@ type Config struct {
 }
 
 // OpenAIClient implements ports.LLMClient using the OpenAI API.
-type OpenAIClient struct {
+type OpenAIClient struct { //nolint:revive
 	client *goai.Client
 	model  string
 }

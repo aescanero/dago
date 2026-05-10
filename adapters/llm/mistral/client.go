@@ -21,7 +21,7 @@ type Config struct {
 }
 
 // MistralClient implements ports.LLMClient using Mistral's OpenAI-compatible API.
-type MistralClient struct {
+type MistralClient struct { //nolint:revive
 	client *goai.Client
 	model  string
 }
