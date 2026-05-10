@@ -105,6 +105,24 @@ migrate-diff: ## Compute Atlas migration diff from Ent schema
 migrate-apply: ## Apply Atlas migrations to local database
 	atlas migrate apply --env local
 
+.PHONY: migrate-test
+migrate-test: ## Execute all migrations against a throwaway postgres (runtime check, not just lint)
+	@echo "migrate-test: starting throwaway postgres on port 5433…"
+	@docker rm -f dago-migrate-test 2>/dev/null || true
+	@docker run -d --name dago-migrate-test \
+		-e POSTGRES_USER=dago -e POSTGRES_PASSWORD=dago -e POSTGRES_DB=dago \
+		-p 5433:5432 pgvector/pgvector:pg16 >/dev/null
+	@echo "migrate-test: waiting for postgres to be ready…"
+	@until docker exec dago-migrate-test pg_isready -U dago -q 2>/dev/null; do sleep 1; done
+	@echo "migrate-test: applying migrations…"
+	@atlas migrate apply \
+		--dir "file://migrations?format=golang-migrate" \
+		--url "postgres://dago:dago@localhost:5433/dago?sslmode=disable" \
+		--allow-dirty; \
+	STATUS=$$?; docker rm -f dago-migrate-test >/dev/null 2>&1; \
+	[ $$STATUS -eq 0 ] && echo "migrate-test: OK" || echo "migrate-test: FAILED"; \
+	exit $$STATUS
+
 .PHONY: tools
 tools: ## Install pinned versions of golangci-lint and atlas CLI
 	$(GO) install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_VER)

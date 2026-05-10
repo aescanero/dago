@@ -69,6 +69,29 @@ domain types and Ent types.
    (e.g. `text[]` vs `jsonb`). These methods are only permitted inside test helpers
    that use `enttest.Open` with an in-memory or throwaway database.
 
+10. **Type-conversion migrations must follow the DROP DEFAULT → ALTER TYPE → SET DEFAULT
+    pattern.** When changing a column type (e.g. `text[]` → `jsonb`), PostgreSQL applies
+    the `USING` clause to existing row data but validates the column's `DEFAULT` expression
+    separately — and cannot cast it automatically. Failing to drop the default first causes
+    error `42804` even though the data conversion is valid.
+
+    Mandatory pattern for any `ALTER COLUMN ... TYPE` migration:
+
+    ```sql
+    -- 1. Remove the old default (type-incompatible with the new type)
+    ALTER TABLE "t" ALTER COLUMN "col" DROP DEFAULT;
+    -- 2. Change the type; USING converts existing row data
+    ALTER TABLE "t" ALTER COLUMN "col" TYPE new_type USING <expr>;
+    -- 3. Restore the default with the correct new-type literal
+    ALTER TABLE "t" ALTER COLUMN "col" SET DEFAULT <new_default>;
+    ```
+
+11. **Every migration must be verified by executing it against a real PostgreSQL instance
+    before the PR is merged.** `atlas migrate lint` performs static analysis (destructive
+    changes, locks) but does not execute SQL — it cannot catch runtime errors such as
+    invalid casts, missing extensions, or constraint violations. Run `make migrate-test`
+    after writing any migration file and before opening the PR.
+
 ## Alternatives considered
 
 - **pgx pure:** Maximum control but without schema as code or type safety.
@@ -94,3 +117,5 @@ learning curve, less fine-grained control than pure SQL.
 - Ent types do not leave the adapter. The domain has its own types.
 - Always use context. Transactions with `client.Tx(ctx)`.
 - **NEVER call `client.Schema.Create()` in service code.** Search for it in PRs — its presence is a blocking review comment. Only allowed in `enttest.Open` test helpers.
+- **Any migration with `ALTER COLUMN ... TYPE` must use the three-step pattern** (rule 10). Always drop the default first.
+- **Run `make migrate-test` after writing any migration.** Do not open a PR with a migration that has not been executed against a real PostgreSQL instance.
